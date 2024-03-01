@@ -1,0 +1,16 @@
+pyproject.toml
+src/api_maker/adapters/adapter.py
+src/api_maker/adapters/lambda_adapter.py
+src/api_maker/api_maker.egg-info/PKG-INFO
+src/api_maker/api_maker.egg-info/SOURCES.txt
+src/api_maker/api_maker.egg-info/dependency_links.txt
+src/api_maker/api_maker.egg-info/requires.txt
+src/api_maker/api_maker.egg-info/top_level.txt
+src/api_maker/connectors/connector.py
+src/api_maker/connectors/connector_factory.py
+src/api_maker/dao/case_adapter_dao.py
+src/api_maker/dao/dao.py
+src/api_maker/services/service.py
+src/api_maker/services/transactional_service.py
+src/api_maker/utils/logger.py
+tests/test_adapter.py
