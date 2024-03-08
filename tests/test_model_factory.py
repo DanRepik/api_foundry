@@ -7,12 +7,10 @@ log = logger(__name__)
 class TestModelFactory():
 
     def test_get_schema_object(self):
-        schema = ModelFactory.get_schema_object("employee")
-        log.info(f"schemas: {schema}")
+        schema = ModelFactory.get_schema_object("invoice")
+        
+        log.info(f"relations: {schema.relations}")
+        log.info(f"properties: {schema.properties}")
+        log.info(f"table_name: {schema.table_name}")
+        assert schema.table_name == "chinook.invoice"
 
-        properties = schema.get("properties")
-        assert properties is not None
-        assert properties.get("employee_id", None) is not None
-
-    def test_get_operation(self):
-        pass

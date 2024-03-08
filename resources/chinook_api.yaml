@@ -4,6 +4,8 @@ components:
       type: object
       x-am-engine: postgres
       x-am-database: chinook
+      x-am-timestamp: last_updated
+      x-am-primary-key: album_id
       properties:
         album_id:
           type: integer
@@ -12,6 +14,9 @@ components:
           maxLength: 160
         artist_id:
           type: integer
+        last_updated:
+          type: string
+          format: date
       required:
         - album_id
         - title
@@ -171,6 +176,11 @@ components:
         billing_postal_code:
           type: string
           maxLength: 10
+        line_items:
+          x-am-column-type: relation
+          x-am-schema: invoice_line
+          x-am-cardinality: many
+          x-am-child_key: invoice_id
         total:
           type: number
           format: float

@@ -2,7 +2,7 @@ import json
 import os
 import re
 
-from ..get_logger import logger
+from api_maker.utils.logger import logger
 
 # Initialize the logger
 log = logger(__name__)
