@@ -176,6 +176,10 @@ components:
         billing_postal_code:
           type: string
           maxLength: 10
+        last_updated:
+          type: string
+          format: date-time
+        
         line_items:
           x-am-column-type: relation
           x-am-schema: invoice_line
