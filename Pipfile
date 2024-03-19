@@ -11,6 +11,7 @@ twine = "*"
 boto3 = "*"
 pyyaml = "*"
 psycopg2-binary = "*"
+oracledb = "*"
 
 [dev-packages]
 pytest = "*"

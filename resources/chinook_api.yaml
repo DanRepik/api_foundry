@@ -9,6 +9,7 @@ components:
       properties:
         album_id:
           type: integer
+          x-am-primary-key: auto
         title:
           type: string
           maxLength: 160
@@ -29,6 +30,7 @@ components:
       properties:
         artist_id:
           type: integer
+          x-am-primary-key: auto
         name:
           type: string
           maxLength: 120
@@ -42,6 +44,7 @@ components:
       properties:
         customer_id:
           type: integer
+          x-am-primary-key: auto
         first_name:
           type: string
           maxLength: 40
@@ -90,6 +93,7 @@ components:
       properties:
         employee_id:
           type: integer
+          x-am-primary-key: auto
         last_name:
           type: string
           maxLength: 20
@@ -143,6 +147,7 @@ components:
       properties:
         genre_id:
           type: integer
+          x-am-primary-key: auto
         name:
           type: string
           maxLength: 120
@@ -156,6 +161,7 @@ components:
       properties:
         invoice_id:
           type: integer
+          x-am-primary-key: auto
         customer_id:
           type: integer
         invoice_date:
@@ -179,7 +185,6 @@ components:
         last_updated:
           type: string
           format: date-time
-        
         line_items:
           x-am-column-type: relation
           x-am-schema: invoice_line
@@ -202,6 +207,7 @@ components:
       properties:
         invoice_line_id:
           type: integer
+          x-am-primary-key: auto
         invoice_id:
           type: integer
         track_id:
@@ -226,6 +232,7 @@ components:
       properties:
         media_type_id:
           type: integer
+          x-am-primary-key: auto
         name:
           type: string
           maxLength: 120
@@ -239,6 +246,7 @@ components:
       properties:
         playlist_id:
           type: integer
+          x-am-primary-key: auto
         name:
           type: string
           maxLength: 120
@@ -253,6 +261,7 @@ components:
       properties:
         playlist_id:
           type: integer
+          x-am-primary-key: auto
         track_id:
           type: integer
       required:
@@ -266,6 +275,7 @@ components:
       properties:
         track_id:
           type: integer
+          x-am-primary-key: auto
         name:
           type: string
           maxLength: 200

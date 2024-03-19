@@ -42,33 +42,25 @@ class SchemaObjectProperty:
         
 
     def convert_to_db_value(self, value: str):
-        log.info(f"convert_to_db value: {value}, column_type: {self.column_type}")
+        log.info(f"convert_to_db type: {self.column_type}, value:{value}, column_type: {self.column_type}")
         if value is None:
             return None
 
-        type_mapping = {
-            "int": int,
-            "bool": lambda x: x.lower() == 'true',
-            "str": str,
+        conversion_mapping = {
+            "string": lambda x: x,
+            "number": float,
             "float": float,
-            "time": time.fromisoformat,
-            "date": date.fromisoformat,
-            "date-time": datetime.fromisoformat,
+            "integer": int,
+            "boolean": lambda x: x.lower() == "true",
+            "date": lambda x: datetime.strptime(x, "%Y-%m-%d").date() if x else None,
+            "date-time": lambda x: datetime.fromisoformat(x) if x else None,
+            "time": lambda x: datetime.strptime(x, "%H:%M:%S").time() if x else None,
+            # Add more conversions for other formats as needed
         }
 
-        conversion_func = type_mapping.get(self.column_type, lambda x: x) # type: ignore
+        conversion_func = conversion_mapping.get(self.column_type, lambda x: x) # type: ignore
         return conversion_func(value)
 
-    def placeholder(self, param: str) -> str:
-        if self.engine == "oracle":
-            if self.column_type == "date":
-                return f"TO_DATE(:{param}, 'YYYY-MM-DD')"
-            elif self.column_type == "datetime":
-                return f"TO_TIMESTAMP(:{param}, 'YYYY-MM-DD\"T\"HH24:MI:SS.FF')"
-            elif self.column_type == "time":
-                return f"TO_TIME(:{param}, 'HH24:MI:SS.FF')"
-            return f":{param}"
-        return f"%({param})s"
 
 
 class SchemaObject:

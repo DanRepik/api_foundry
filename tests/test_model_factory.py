@@ -3,7 +3,6 @@ from api_maker.utils.model_factory import ModelFactory
 from api_maker.utils.logger import logger
 
 log = logger(__name__)
-
 class TestModelFactory():
 
     def test_get_schema_object(self):

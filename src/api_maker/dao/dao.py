@@ -1,5 +1,8 @@
 import abc
 
+from api_maker.connectors.connector import Connector
+from api_maker.operation import Operation
+
 
 class DAO(metaclass=abc.ABCMeta):
 
@@ -7,32 +10,10 @@ class DAO(metaclass=abc.ABCMeta):
     def __subclasshook__(cls, __subclass: type) -> bool:
         return hasattr(__subclass, "execute") and callable(__subclass.execute)
 
-    def execute(
-        self,
-        *,
-        entity: str,
-        operation: str,
-        store_params: dict,
-        query_params: dict,
-        metadata_params: dict,
-    ) -> list[dict]: 
+    def execute(self, connector: Connector, operation: Operation) -> list[dict]:
         raise NotImplementedError
 
 
 class DAOAdapter(DAO):
-    def execute(
-        self,
-        *,
-        entity: str,
-        operation: str,
-        store_params: dict,
-        query_params: dict,
-        metadata_params: dict,
-    ) -> list[dict]:
-        return super().execute(
-            entity=entity,
-            operation=operation,
-            store_params=store_params,
-            query_params=query_params,
-            metadata_params=metadata_params,
-        )
+    def execute(self, connector: Connector, operation: Operation) -> list[dict]:
+        return super().execute(connector, operation)

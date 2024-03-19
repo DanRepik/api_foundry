@@ -1,10 +1,53 @@
-from api_maker.connectors.connector import Connector
+from api_maker.connectors.connector import Connector, Cursor
 from api_maker.utils.logger import logger
 
 from psycopg2 import Error, IntegrityError, ProgrammingError, connect
 
 # Initialize the logger
 log = logger(__name__)
+
+class PostgresCursor(Cursor):
+
+    def __init__(self, cursor):
+        self.__cursor = cursor
+
+    def execute(self, sql: str, parameters: dict) -> list:
+        """
+        Execute SQL statements on the PostgreSQL database.
+
+        Parameters:
+        - cursor: The database cursor.
+        - sql (str): The SQL statement to execute.
+        - parameters (dict): Parameters to be used in the SQL statement.
+
+        Returns:
+        - None
+
+        Raises:
+        - AppException: Custom exception for handling database-related errors.
+        """
+        log.info(f"sql: {self.__cursor.mogrify(sql, parameters)}")
+
+        try:
+            # Execute the SQL statement with parameters
+            self.__cursor.execute(sql, parameters)
+            result = []
+            for record in self.__cursor:
+                result.append(record)
+            return result
+        except IntegrityError as err:
+            # Handle integrity constraint violation (e.g., duplicate key)
+            raise Exception(409, err.pgerror)
+        except ProgrammingError as err:
+            # Handle programming errors (e.g., syntax error in SQL)
+            raise Exception(400, err.pgerror)
+        except Error as err:
+            # Handle other database errors
+            raise Exception(500, err.pgerror)
+
+    def close(self):
+        self.__cursor.close()
+
 
 class PostgresConnector(Connector):
     def get_connection(self):
@@ -32,32 +75,3 @@ class PostgresConnector(Connector):
             options="-c search_path={0}".format(search_path) if search_path else None
         )
 
-    def execute_sql(self, cursor, sql: str, parameters: dict):
-        """
-        Execute SQL statements on the PostgreSQL database.
-
-        Parameters:
-        - cursor: The database cursor.
-        - sql (str): The SQL statement to execute.
-        - parameters (dict): Parameters to be used in the SQL statement.
-
-        Returns:
-        - None
-
-        Raises:
-        - AppException: Custom exception for handling database-related errors.
-        """
-        log.info(f"sql: {cursor.mogrify(sql, parameters)}")
-
-        try:
-            # Execute the SQL statement with parameters
-            cursor.execute(sql, parameters)
-        except IntegrityError as err:
-            # Handle integrity constraint violation (e.g., duplicate key)
-            raise Exception(409, err.pgerror)
-        except ProgrammingError as err:
-            # Handle programming errors (e.g., syntax error in SQL)
-            raise Exception(400, err.pgerror)
-        except Error as err:
-            # Handle other database errors
-            raise Exception(500, err.pgerror)

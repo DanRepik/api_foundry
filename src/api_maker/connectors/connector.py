@@ -3,16 +3,30 @@ import os
 import re
 
 from api_maker.utils.logger import logger
+from api_maker.utils.app_exception import ApplicationException
 
 # Initialize the logger
 log = logger(__name__)
 
 db_config_map = dict()
 
+class Cursor:
+    def execute(self, sql: str, params: dict) -> list[tuple]:
+        raise NotImplemented    
+
+    def close(self):
+        raise NotImplementedError  
+
 class Connector:
-    def __init__(self, *, db_secret_name: str) -> None:
+    def __init__(self, db_secret_name: str) -> None:
         super().__init__()
         self.db_config = self.get_db_config(db_secret_name)
+
+    def cursor(self) -> Cursor:
+        raise NotImplementedError
+    
+    def commit(self):
+        raise NotImplementedError
 
     def get_db_config(self, db_secret_name: str):
         """
@@ -79,3 +93,8 @@ class Connector:
 
         # Return the parsed JSON secret string
         return json.loads(db_secret.get("SecretString"))
+    
+    def close(self):
+        raise NotImplementedError
+
+
