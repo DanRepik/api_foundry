@@ -3,7 +3,6 @@ import json
 import os
 
 from api_maker.utils.logger import logger
-from api_maker.connectors.connector import Connector
 from api_maker.operation import Operation
 
 log = logger(__name__)

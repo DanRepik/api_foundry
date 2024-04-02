@@ -11,13 +11,13 @@ log = logger(__name__)
 db_config_map = dict()
 
 class Cursor:
-    def execute(self, sql: str, params: dict) -> list[tuple]:
-        raise NotImplemented    
+    def execute(self, sql: str, params: dict, result_columns: list[str]) -> list[tuple]:
+        raise NotImplementedError  
 
     def close(self):
         raise NotImplementedError  
 
-class Connector:
+class Connection:
     def __init__(self, db_secret_name: str) -> None:
         super().__init__()
         self.db_config = self.get_db_config(db_secret_name)
@@ -26,6 +26,10 @@ class Connector:
         raise NotImplementedError
     
     def commit(self):
+        raise NotImplementedError
+    
+        
+    def close(self):
         raise NotImplementedError
 
     def get_db_config(self, db_secret_name: str):
@@ -88,13 +92,11 @@ class Connector:
             secretsmanager = boto3.client("secretsmanager")
 
         # Get the secret value from AWS Secrets Manager
+        log.info(f"db_secret_name: {db_secret_name}")
         db_secret = secretsmanager.get_secret_value(SecretId=db_secret_name)
         log.debug(f"loading secret name: {db_secret_name}")
 
         # Return the parsed JSON secret string
         return json.loads(db_secret.get("SecretString"))
-    
-    def close(self):
-        raise NotImplementedError
 
 

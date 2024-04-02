@@ -1,7 +1,7 @@
 
 from api_maker.utils.logger import logger
 from api_maker.utils.app_exception import ApplicationException
-from api_maker.connectors.connector import Connector
+from api_maker.connectors.connection import Connector
 
 log = logger(__name__)
 

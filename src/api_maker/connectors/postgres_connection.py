@@ -1,7 +1,5 @@
-from api_maker.connectors.connector import Connector, Cursor
+from api_maker.connectors.connection import Connection, Cursor
 from api_maker.utils.logger import logger
-
-from psycopg2 import Error, IntegrityError, ProgrammingError, connect
 
 # Initialize the logger
 log = logger(__name__)
@@ -11,7 +9,7 @@ class PostgresCursor(Cursor):
     def __init__(self, cursor):
         self.__cursor = cursor
 
-    def execute(self, sql: str, parameters: dict) -> list:
+    def execute(self, sql: str, parameters: dict, result_columns: list[str]) -> list:
         """
         Execute SQL statements on the PostgreSQL database.
 
@@ -26,14 +24,19 @@ class PostgresCursor(Cursor):
         Raises:
         - AppException: Custom exception for handling database-related errors.
         """
+        from psycopg2 import Error, IntegrityError, ProgrammingError
+
         log.info(f"sql: {self.__cursor.mogrify(sql, parameters)}")
 
         try:
             # Execute the SQL statement with parameters
             self.__cursor.execute(sql, parameters)
+            log.info(f"description: {self.__cursor.description}")
             result = []
             for record in self.__cursor:
-                result.append(record)
+                # Convert record tuple to dictionary using result_columns
+                result.append({col: value for col, value in zip(result_columns, record)})
+
             return result
         except IntegrityError as err:
             # Handle integrity constraint violation (e.g., duplicate key)
@@ -49,7 +52,17 @@ class PostgresCursor(Cursor):
         self.__cursor.close()
 
 
-class PostgresConnector(Connector):
+class PostgresConnection(Connection):
+    def __init__(self, db_secret_name: str) -> None:
+        super().__init__(db_secret_name)
+        self.__connection = self.get_connection()
+
+    def cursor(self) -> Cursor:
+        return PostgresCursor(self.__connection.cursor())
+
+    def close(self):
+        self.__connection.close()
+
     def get_connection(self):
         """
         Get a connection to the PostgreSQL database.
@@ -60,12 +73,14 @@ class PostgresConnector(Connector):
         Returns:
         - connection: A connection to the PostgreSQL database.
         """
+        from psycopg2 import connect
+
         dbname = self.db_config["dbname"]
         user = self.db_config["username"]
         password = self.db_config["password"]
         host = self.db_config["host"]
-        port = self.db_config("port", 5432)
-        search_path = self.db_config("search_path", None)
+        port = self.db_config.get("port", 5432)
+        search_path = self.db_config.get("search_path", None)
 
         log.info(f"dbname={dbname}, user={user}, host={host}, port={port}, search_path={search_path}")
 
@@ -74,4 +89,3 @@ class PostgresConnector(Connector):
             dbname=dbname, user=user, password=password, host=host, port=port,
             options="-c search_path={0}".format(search_path) if search_path else None
         )
-

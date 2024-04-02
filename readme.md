@@ -77,3 +77,13 @@ Schema Component Object Properties
 | Attribute | Description |
 |-----------|-------------|
 | x-am-column-name | The database column name if different from the property name.  Optional |
+
+
+Schema Component Object Relations
+
+| Attribute | | Description |
+|-----------|-|-------------|
+| x-am-schema | Required | The name of the schema component object to use as the source of the relation. |
+| x-am-cardinality | Optional | Can be either single or multiple, defaults to single |
+| x-am-parent-property | Required | The name of the sibling property to use as the selection key in the relation |
+| x-am-child-property | Optional | 

@@ -1,13 +1,22 @@
 import json
 import os
 
-from api_maker.connectors.connector import Connector
+from api_maker.connectors.connection import Connection
 from api_maker.utils.logger import logger
 
-# Load secrets map once during import
-SECRETS_MAP = json.loads(os.environ.get("SECRETS_MAP", "{}"))
+log = logger(__name__)
 
-def connector_factory(engine: str, database: str) -> Connector:
+__secrets_map = None
+
+def secrets_map() -> dict:
+    global __secrets_map
+    if not __secrets_map:
+        log.info(f"secrets_map; {os.environ.get('SECRETS_MAP')}")
+        __secrets_map = json.loads(os.environ.get("SECRETS_MAP", "{}"))
+    return __secrets_map
+
+
+def connection_factory(engine: str, database: str) -> Connection:
     """
     Factory function to create a database connector based on the specified engine and schema.
 
@@ -20,12 +29,13 @@ def connector_factory(engine: str, database: str) -> Connector:
     """
 
     # Get the secret name based on the engine and database from the secrets map
-    secret_name = SECRETS_MAP.get(f"{engine}|{database}")
+    secret_name = secrets_map().get(f"{engine}|{database}")
+    log.info(f"secret_name: {secret_name}")
 
     if secret_name:
         if engine == "postgres":
-            from .postgres_connector import PostgresConnector
-            return PostgresConnector(db_secret_name=secret_name)
+            from .postgres_connection import PostgresConnection
+            return PostgresConnection(db_secret_name=secret_name)
         # Add support for other engines here if needed in the future
         else:
             raise ValueError(f"Unsupported database engine: {engine}")

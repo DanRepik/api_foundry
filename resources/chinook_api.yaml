@@ -164,6 +164,11 @@ components:
           x-am-primary-key: auto
         customer_id:
           type: integer
+        customer:
+          x-am-type: relation
+          x-am-schema: customer
+          x-am-cardinality: single
+          x-am-parent-property: customer_id
         invoice_date:
           type: string
           format: date-time
@@ -186,10 +191,10 @@ components:
           type: string
           format: date-time
         line_items:
-          x-am-column-type: relation
+          x-am-type: relation
           x-am-schema: invoice_line
           x-am-cardinality: many
-          x-am-child_key: invoice_id
+          x-am-parent-property: invoice_id
         total:
           type: number
           format: float
