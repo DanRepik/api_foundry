@@ -10,12 +10,14 @@ log = logger(__name__)
 
 db_config_map = dict()
 
+
 class Cursor:
     def execute(self, sql: str, params: dict, result_columns: list[str]) -> list[tuple]:
-        raise NotImplementedError  
+        raise NotImplementedError
 
     def close(self):
-        raise NotImplementedError  
+        raise NotImplementedError
+
 
 class Connection:
     def __init__(self, db_secret_name: str) -> None:
@@ -24,11 +26,10 @@ class Connection:
 
     def cursor(self) -> Cursor:
         raise NotImplementedError
-    
+
     def commit(self):
         raise NotImplementedError
-    
-        
+
     def close(self):
         raise NotImplementedError
 
@@ -53,7 +54,7 @@ class Connection:
             db_config = self.__get_secret(db_secret_name)
             db_config_map[db_secret_name] = db_config
 
-        return db_config            
+        return db_config
 
     def __get_secret(self, db_secret_name: str):
         """
@@ -66,37 +67,41 @@ class Connection:
         - dict: The database configuration obtained from the secret.
         """
         import boto3
-        
-        sts_client = boto3.client('sts')
+
+        sts_client = boto3.client("sts")
 
         secret_account_id = os.environ.get("SECRET_ACCOUNT_ID", None)
+        log.info(f"secret_account_id: {secret_account_id}")
 
         if secret_account_id:
             # If a secret account ID is provided, assume a role in that account
             secret_role = os.environ.get("ROLE_NAME", None)
             assume_role_response = sts_client.assume_role(
                 RoleArn=f"arn:aws:iam::{secret_account_id}:role/{secret_role}",
-                RoleSessionName='AssumeRoleSession'
+                RoleSessionName="AssumeRoleSession",
             )
 
-            credentials = assume_role_response['Credentials']
+            credentials = assume_role_response["Credentials"]
 
             secretsmanager = boto3.client(
-                'secretsmanager',
-                aws_access_key_id=credentials['AccessKeyId'],
-                aws_secret_access_key=credentials['SecretAccessKey'],
-                aws_session_token=credentials['SessionToken']
+                "secretsmanager",
+                aws_access_key_id=credentials["AccessKeyId"],
+                aws_secret_access_key=credentials["SecretAccessKey"],
+                aws_session_token=credentials["SessionToken"],
             )
         else:
             # If no secret account ID is provided, use the default account
-            secretsmanager = boto3.client("secretsmanager")
+            secretsmanager = boto3.client(
+                "secretsmanager",
+                endpoint_url="http://localhost.localstack.cloud:4566",
+            )
 
         # Get the secret value from AWS Secrets Manager
         log.info(f"db_secret_name: {db_secret_name}")
+        log.info(f"credentials: {vars(boto3.DEFAULT_SESSION.get_credentials())}")
+        db_secret = secretsmanager.describe_secret(SecretId=db_secret_name)
         db_secret = secretsmanager.get_secret_value(SecretId=db_secret_name)
-        log.debug(f"loading secret name: {db_secret_name}")
+        log.debug(f"loading secret name: {db_secret}")
 
         # Return the parsed JSON secret string
         return json.loads(db_secret.get("SecretString"))
-
-

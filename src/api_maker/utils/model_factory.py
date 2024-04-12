@@ -2,6 +2,7 @@ import os
 import yaml
 from typing import Any, Dict, Optional
 from datetime import datetime, date, time
+from api_maker.utils.app_exception import ApplicationException
 from api_maker.utils.logger import logger
 
 log = logger(__name__)
@@ -12,14 +13,25 @@ class SchemaObjectRelation:
         self.entity = entity
         self.name = name
         self.cardinality = properties.get("x-am-cardinality", "1:1")
-        log.debug(f"schema name: {properties['x-am-schema']}")
-        self.schema_object = ModelFactory.get_schema_object(properties["x-am-schema"])
-        self.parent_property = properties["x-am-parent-property"]
-        child = properties.get("x-am-child-property", None)
-        if child:
-            self.child_property = self.schema_object.get_property(child)
+        log.debug(f"schema name: {properties}")
+        self.child_schema_object = ModelFactory.get_schema_object(properties["x-am-schema-object"])
+        self.parent = properties.get("x-am-parent-property", None)
+        self.child = properties.get("x-am-child-property", None)
+
+    @property
+    def child_property(self):
+        if self.child:
+            return self.child_schema_object.get_property(self.child)
         else:
-            self.child_property = self.schema_object.primary_key
+            return self.child_schema_object.primary_key
+
+    @property
+    def parent_property(self):
+        parent_schema_object = ModelFactory.get_schema_object(self.entity)
+        if self.parent:
+            return parent_schema_object.get_property(self.parent)
+        else:
+            return parent_schema_object.primary_key
 
 class SchemaObjectProperty:
     def __init__(self, engine: str, entity: str, name: str, properties: Dict[str, Any]):
@@ -102,8 +114,11 @@ class SchemaObject:
     def get_property(self, property_name: str) -> Optional[SchemaObjectProperty]:
         return self.properties.get(property_name)
 
-    def get_relation(self, property_name: str) -> Optional[SchemaObjectRelation]:
-        return self.relations.get(property_name)
+    def get_relation(self, property_name: str) -> SchemaObjectRelation:
+        try:
+            return self.relations[property_name]
+        except:
+            raise ApplicationException(500, "Unknown relation {property_name}, check api spec.subselect sql:")
 
 class ModelFactory:
     __document = None

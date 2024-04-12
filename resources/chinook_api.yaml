@@ -166,8 +166,8 @@ components:
           type: integer
         customer:
           x-am-type: relation
-          x-am-schema: customer
-          x-am-cardinality: single
+          x-am-schema-object: customer
+          x-am-cardinality: 1:1
           x-am-parent-property: customer_id
         invoice_date:
           type: string
@@ -192,9 +192,9 @@ components:
           format: date-time
         line_items:
           x-am-type: relation
-          x-am-schema: invoice_line
-          x-am-cardinality: many
-          x-am-parent-property: invoice_id
+          x-am-schema-object: invoice_line
+          x-am-cardinality: 1:m
+          x-am-child-property: invoice_id
         total:
           type: number
           format: float
@@ -208,7 +208,6 @@ components:
       type: object
       x-am-engine: postgres
       x-am-database: chinook
-      x-am-table: InvoiceLine
       properties:
         invoice_line_id:
           type: integer

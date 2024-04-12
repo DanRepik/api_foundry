@@ -87,3 +87,41 @@ Schema Component Object Relations
 | x-am-cardinality | Optional | Can be either single or multiple, defaults to single |
 | x-am-parent-property | Required | The name of the sibling property to use as the selection key in the relation |
 | x-am-child-property | Optional | 
+
+# Services
+
+For annotated compoenent schema objects API-Make provides RESTful services supporting the full CRUD based record lifecycle.
+
+When interacting with these services there are three catagories of data being supplied in the request.  These catagories are;
+
+**Query Parameters** - These parameters are generally passed in the request query string or path parameters.  With query string values relational expressions can be applied to filter sets of records.  These parameters can be applied to GET, PUT, and DELETE methods.
+
+Fundanmental relational expressions are supported when selecting records using a query string.  When passing a query string parameter the value can be prefixed with an relational operator separated by a ':'.  For example a parameter of 'laditude=lt:30' would select records those records with a laditude of less than 30. The supported operations are lt, le, eq, ne, ge, gt, in, between, not-in, not-between. 
+
+**Store Parameters** - These parameters are always passed in the request body in JSON format and represent data to be stored.  These parameters are only accepted only by POST and PUT methods.
+
+**Metadata Parameters** - These parameters are alway passed via the request query string and are used to supply directives for processing the request.  The names of these parameters are always prefixed with an '_'.
+
+| Name | Methods | Description |
+|------|---------|-------------|
+| _count | GET   | Returns the count of records selected. |
+| _properties | GET | Allows tailoring the output results.  |
+| _case | GET | Return the results properties in camel case |
+
+
+
+| Operation | Method | Description |
+|-----------|--------|-------------|
+| Query     | GET    | Query and Metadata parameters are passed via either path parmeters or the query string. |
+| Create    | POST   | Values to be stored are passed in the request body in JSON format. |
+| Update    | PUT    | Values to be stored are passed in the request body in JSON format. Query and Metadata parameters for record selection are passed via either path parmeters or the query string. |
+| Delete   | DELETE | Query and Metadata parameters are passed via either path parmeters or the query string. |
+
+## GET - Record Selection
+
+## POST - Record Creation
+
+## PUT - Record Modification
+
+## DELETE - Record Deletion
+
