@@ -26,14 +26,12 @@ class PostgresCursor(Cursor):
         """
         from psycopg2 import Error, IntegrityError, ProgrammingError
 
-        log.info(f"sql: {sql}, parameters: {parameters}")
-#        log.info(f"sql: {self.__cursor.mogrify(sql, parameters)}")
+#        log.info(f"sql: {sql}, parameters: {parameters}")
 
         try:
             # Execute the SQL statement with parameters
-            log.info(f"sql: {sql}, parameters: {parameters}")
+            log.info(f"sql: {self.__cursor.mogrify(sql, parameters)}")
             self.__cursor.execute(sql, parameters)
-            log.info(f"description: {self.__cursor.description}")
             result = []
             for record in self.__cursor:
                 # Convert record tuple to dictionary using result_columns

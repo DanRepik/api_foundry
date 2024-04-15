@@ -46,7 +46,7 @@ class SQLGenerator:
 
     @property
     def placeholders(self) -> dict:
-        log.info(f"search placeholders: {self.search_placeholders}")
+#        log.info(f"search placeholders: {self.search_placeholders}")
         return {**self.search_placeholders, **self.store_placeholders}
 
     def __get_prefix_map(self, schema_object: SchemaObject):
@@ -76,11 +76,8 @@ class SQLGenerator:
     
     @property
     def result_fields(self) -> dict[str, SchemaObjectProperty]:
-        log.info(f"select_list: {self.select_list}")
-        log.info(f"select_result_map: {self.selection_results}")
         result = {}
         for column in self.select_list_columns:
-            log.info(f"column: {column}")
             result[column] = self.selection_results[column]
         return result;
 
@@ -95,8 +92,6 @@ class SQLGenerator:
         self.search_placeholders = {}
         conditions = []
 
-        log.info("building sinple search conditions")
-
         for name, value in self.operation.query_params.items():
             if "." in name:
                 raise ApplicationException(400, "Selection on relations is not supported")
@@ -108,25 +103,18 @@ class SQLGenerator:
                     500, f"Search condition column not found {name}"
                 )
 
-            log.info(f"name: {name}, value: {value}")
             assignment, holders = self.search_value_assignment(property, value)
-            log.info(f"assignment; {assignment}, holders: {holders}")
             conditions.append(assignment)
             self.search_placeholders.update(holders)
 
-        log.info(f"conditions: {conditions}")
         return f" WHERE {' AND '.join(conditions)}" if len(conditions) > 0 else ""
 
     def relation_search_condition(self, name: str) -> str:
         placeholders = {}
         conditions = []
 
-        log.info("building relation search conditions")
-        log.info(f"query_params: {self.operation.query_params}")
-
         for name, value in self.operation.query_params.items():
             parts = name.split(".")
-            log.info(f"parts: {parts}")
 
             try:
                 if len(parts) > 1:
@@ -135,9 +123,7 @@ class SQLGenerator:
                         property = relation.schema_object.properties[parts[1]]
                         prefix = self.prefix_map[parts[0]]
 
-                        log.info(f"name: {name}, value: {value}, prefix: {prefix}")
                         assignment, holders = self.search_value_assignment(property, value, prefix)
-                        log.info(f"assignment; {assignment}, holders: {holders}")
                         conditions.append(assignment)
                         placeholders.update(holders)
             except KeyError:
@@ -145,19 +131,14 @@ class SQLGenerator:
                     500, f"Search condition column not found {name}"
                 )
 
-
-        log.info(f"conditions: {conditions}")
         return f" WHERE {' AND '.join(conditions)}" if len(conditions) > 0 else ""
 
 
     def search_value_assignment(
         self, property: SchemaObjectProperty, value_str, prefix: str|None = None
     ) -> tuple[str, dict]:
-        log.info(f"prefix: {prefix}, property: {vars(property)}, value_str: {value_str}")
-
 
         operand = "="
-
         relational_types = {
             "lt": "<",
             "le": "<=",
@@ -174,9 +155,6 @@ class SQLGenerator:
         operand = relational_types[parts[0] if len(parts) > 1 else "eq"]
         value_str = parts[-1]
 
-        log.info(
-            f"operand: {operand}, column: {property.column_name}, value_str: {value_str}"
-        )
         column = (
             f"{prefix}.{property.column_name}"
             if prefix 
@@ -190,7 +168,6 @@ class SQLGenerator:
 
         if operand in ["between", "not-between"]:
             value_set = value_str.split(",")
-            log.info(f"value_set: {value_set}")
             placeholder_name = (
                 property.name if self.single_table else f"{prefix}_{property.name}"
             )
@@ -230,21 +207,19 @@ class SQLGenerator:
                 f"{placeholder_name}": property.convert_to_db_value(value_str)
             }
 
-        log.debug(f"placeholders: {placeholders}")
         return sql, placeholders
 
     def selection_result_map(self) -> dict:
-        filter_str = self.operation.metadata_params.get("_properties", ".*")
+        filters = self.operation.metadata_params.get("_properties", ".*").split()
 
         # Filter and prefix keys for the current entity and regular expressions
-        return self.filter_and_prefix_keys(filter_str.split(), self.schema_object.properties)
+        return self.filter_and_prefix_keys(filters, self.schema_object.properties)
     
     def marshal_record(self, record) -> dict:
-        log.info(f"selection_results: {self.selection_results}")
+#        log.info(f"selection_results: {self.selection_results}")
         result = {}
         for name, value in record.items():
             property = self.selection_results[name]
-            log.info(f"name: {name}, value: {value}, type: {type(value)}, parts: {parts}")
             result[property.name] = property.convert_to_api_value(value)
 
         return result
@@ -265,9 +240,6 @@ class SQLGenerator:
         Returns:
         - dict: A new dictionary containing filtered items with modified key values.
         """
-        log.info(
-            f"prefix: {prefix}, regex_list: {regex_list}, properties: {properties}"
-        )
         filtered_dict = {}
 
         # Compile the regular expression patterns
@@ -285,7 +257,6 @@ class SQLGenerator:
                         filtered_dict[key] = value
                     break
 
-        log.info(f"filtered: {filtered_dict}")
         return filtered_dict
 
     def placeholder(self, property: SchemaObjectProperty, param: str) -> str:

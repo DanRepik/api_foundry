@@ -23,9 +23,12 @@ class TestTransactionalService():
             entity="invoice",
             action="read",
             query_params={"invoice_id": "363"},
-            metadata_params={"_properties": ".* customer:.*, line_items:.*"},
+            metadata_params={"_properties": ".* customer:.* line_items:.*"},
         )
 
     result = transactional_service.execute(operation)
     log.info(f"result: {json.dumps(result, indent=4)}")
-    assert False
+    assert result[0]["invoice_id"] == 363
+    assert result[0]["customer"]["customer_id"] == 28
+    assert result[0]["line_items"][0]["invoice_id"] == 363
+ 

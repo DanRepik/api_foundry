@@ -13,7 +13,7 @@ class SchemaObjectRelation:
         self.entity = entity
         self.name = name
         self.cardinality = properties.get("x-am-cardinality", "1:1")
-        log.debug(f"schema name: {properties}")
+        assert self.cardinality in ['1:1', '1:m'], f"Cardinality incorrect name: {self.name}, cardinality: {self.cardinality}"
         self.child_schema_object = ModelFactory.get_schema_object(properties["x-am-schema-object"])
         self.parent = properties.get("x-am-parent-property", None)
         self.child = properties.get("x-am-child-property", None)
@@ -47,7 +47,7 @@ class SchemaObjectProperty:
         self.is_primary_key = properties.get("x-am-primary-key", False)
 
     def convert_to_db_value(self, value: str) -> Optional[Any]:
-        log.info(f"convert_to_db type: {self.type}, value:{value}, column_type: {self.column_type}")
+#        log.info(f"convert_to_db type: {self.type}, value:{value}, column_type: {self.column_type}")
         if value is None:
             return None
         conversion_mapping = {
@@ -64,8 +64,8 @@ class SchemaObjectProperty:
         return conversion_func(value)
 
     def convert_to_api_value(self, value) -> Optional[Any]:
-        log.info(f"self: {vars(self)}")
-        log.info(f"convert_to_api type: {self.api_type}, value:{value}, type: {type(value)}, column_type: {self.column_type}")
+#        log.info(f"self: {vars(self)}")
+#        log.info(f"convert_to_api type: {self.api_type}, value:{value}, type: {type(value)}, column_type: {self.column_type}")
         if value is None:
             return None
         conversion_mapping = {
@@ -83,17 +83,16 @@ class SchemaObjectProperty:
 
 class SchemaObject:
     def __init__(self, entity: str, schema_object: Dict[str, Any]):
-        log.info(f"schema_object: {schema_object}")
         assert all(arg is not None for arg in (entity, schema_object))
         self.entity = entity
         self.__schema_object = schema_object
-        engine = schema_object.get("x-am-engine", "").lower()
-        assert engine in ['postgres', 'oracle', 'mysql']
-        self.engine = engine
+        self.engine = schema_object.get("x-am-engine", "").lower()
+        assert self.engine in ['postgres', 'oracle', 'mysql'], f"Unrecognized engine entity: {self.entity}, engine: {self.engine}"
         self.database = schema_object["x-am-database"].lower()
         self.properties = {}
         self.relations = {}
         for property_name, prop in schema_object.get("properties", {}).items():
+            assert prop != None, f"Property is none entity: {self.entity}, property: {property_name}"
             if prop.get("x-am-type", "") == "relation":
                 self.relations[property_name] = SchemaObjectRelation(
                     self.entity, property_name, prop
@@ -105,7 +104,7 @@ class SchemaObject:
                 self.properties[property_name] = object_property
                 if object_property.is_primary_key:
                     self.primary_key = object_property
-        log.info(f"relations: {self.relations}")
+#        log.info(f"relations: {self.relations}")
 
     @property
     def table_name(self) -> str:
@@ -143,5 +142,5 @@ class ModelFactory:
             components["schemas"] = {
                 key.lower().replace("_", "-"): value for key, value in schemas.items()
             }
-        log.info(f"entities: {cls.__document.get('components', {}).get('schemas', {}).keys()}")
+#        log.info(f"entities: {cls.__document.get('components', {}).get('schemas', {}).keys()}")
         return cls.__document

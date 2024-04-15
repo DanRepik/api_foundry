@@ -21,7 +21,6 @@ class SQLSubselectGenerator(SQLSelectGenerator):
 
     def selection_result_map(self) -> dict:
         filter_str = self.operation.metadata_params.get("_properties", "")
-        log.info(f"Filter string: {filter_str}")
         result = {self.relation.child_property.name: self.relation.child_property}
 
         log.info(f"Building map; {self.get_regex_map(filter_str)}")
@@ -62,7 +61,6 @@ class SQLSubselectGenerator(SQLSelectGenerator):
             #            + f"{order_by} {limit} {offset})"
             + ")"
         )
-        log.debug(f"subselect sql: {sql}")
         self.search_placeholders = self.parent_generator.search_placeholders
         #        self._execute_sql(args["cursor"], sql, query_parameters)
         return sql

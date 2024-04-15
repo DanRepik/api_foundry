@@ -167,7 +167,6 @@ components:
         customer:
           x-am-type: relation
           x-am-schema-object: customer
-          x-am-cardinality: 1:1
           x-am-parent-property: customer_id
         invoice_date:
           type: string

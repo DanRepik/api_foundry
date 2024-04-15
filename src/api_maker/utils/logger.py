@@ -5,7 +5,7 @@ import os
 # where the log level is obtained from the environment variable LOGGING_LEVEL
 # with a default of DEBUG, and force=True to ensure the configuration is applied immediately.
 logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    format="%(name)s:%(lineno)s - %(levelname)s - %(message)s",
     level=os.getenv("LOGGING_LEVEL", "DEBUG").upper(),
     force=True,
 )

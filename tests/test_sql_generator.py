@@ -355,6 +355,7 @@ class TestSQLGenerator:
         )
         assert sql_generator.placeholders == {"customer_id": 2}
 
+    @pytest.mark.quick
     def test_relation_search_condition(self):
         schema_object = ModelFactory.get_schema_object("invoice")
         operation = Operation(
@@ -363,12 +364,15 @@ class TestSQLGenerator:
             query_params={"billing_state": "FL"},
             metadata_params={"_properties": ".* customer:.* line_items:.*"},
         )
-        sql_generator = SQLSubselectGenerator(operation, schema_object.get_relation("line_items"), SQLSelectGenerator(operation, schema_object))
+        sql_generator = SQLSelectGenerator(operation, schema_object)
+        log.info(f"sql_generator: {sql_generator.sql}")
+        assert sql_generator.sql == "SELECT i.invoice_id, i.customer_id, i.invoice_date, i.billing_address, i.billing_city, i.billing_state, i.billing_country, i.billing_postal_code, i.last_updated, i.total, c.customer_id, c.first_name, c.last_name, c.company, c.address, c.city, c.state, c.country, c.postal_code, c.phone, c.fax, c.email, c.support_rep_id FROM chinook.invoice AS i INNER JOIN chinook.customer AS c ON i.customer_id = c.customer_id WHERE i.billing_state = %(i.billing_state)s"
 
-        subselect_sql = sql_generator.sql()
-        log.info(f"subselect_sql: {subselect_sql}")
-        assert subselect_sql == "SELECT invoice_id, invoice_line_id, track_id, unit_price, quantity FROM chinook.InvoiceLine WHERE invoice_id IN ( SELECT invoice_line_id FROM chinook.invoice AS i INNER JOIN chinook.customer AS c ON i.customer_id = c.customer_id WHERE i.billing_state = %(i.billing_state)s "
+        subselect_sql_generator = SQLSubselectGenerator(operation, schema_object.get_relation("line_items"), SQLSelectGenerator(operation, schema_object))
 
-        select_map = sql_generator.selection_result_map()
+        log.info(f"subselect_sql_generator: {subselect_sql_generator.sql}")
+        assert subselect_sql_generator.sql == "SELECT invoice_id, invoice_line_id, track_id, unit_price, quantity FROM chinook.invoice_line WHERE invoice_id IN ( SELECT invoice_id FROM chinook.invoice AS i INNER JOIN chinook.customer AS c ON i.customer_id = c.customer_id WHERE i.billing_state = %(i.billing_state)s )"
+
+        select_map = subselect_sql_generator.selection_result_map()
         log.info(f"select_map: {select_map}")
 
