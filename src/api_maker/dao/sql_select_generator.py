@@ -27,7 +27,7 @@ class SQLSelectGenerator(SQLGenerator):
             try:
                 if len(parts) > 1:
                     relation = self.schema_object.relations[parts[0]]
-                    if relation.type != "1:1":
+                    if relation.cardinality != "1:1":
                         continue
                     property = relation.schema_object.properties[parts[1]]
                     prefix = self.prefix_map[parts[0]]

@@ -13,7 +13,25 @@ class SQLUpdateGenerator(SQLGenerator):
 
     @property
     def sql(self) -> str:
-        return f"UPDATE {self.table_expression}{self.update_values}{self.search_condition} RETURNING {self.select_list}"
+        version_property = self.schema_object.version_property
+        log.info(f"version_property: {vars(version_property)}")
+        if not version_property:
+            return f"UPDATE {self.table_expression}{self.update_values}{self.search_condition} RETURNING {self.select_list}"
+
+        if not self.operation.query_params.get(version_property.name):
+            raise ApplicationException(
+                400,
+                "For updating version managed schema objects the current version must be supplied as a query parameter." + 
+                f"  schema_object: {self.schema_object.entity}, property: {version_property.name}",
+            )
+        if self.operation.store_params.get(version_property.name):
+            raise ApplicationException(
+                400,
+                "For updating version managed schema objects the current version may not be supplied as a storage parameter." + 
+                f"  schema_object: {self.schema_object.entity}, property: {version_property.name}",
+            )
+
+        return f"UPDATE {self.table_expression}{self.update_values}, {version_property.column_name} = {self.version_generator(version_property)} {self.search_condition} RETURNING {self.select_list}"
 
     @property
     def update_values(self) -> str:
@@ -39,4 +57,3 @@ class SQLUpdateGenerator(SQLGenerator):
             self.store_placeholders[placeholder] = property.convert_to_db_value(value)
 
         return f" SET {', '.join(columns)}"
-

@@ -4,8 +4,6 @@ components:
       type: object
       x-am-engine: postgres
       x-am-database: chinook
-      x-am-timestamp: last_updated
-      x-am-primary-key: album_id
       properties:
         album_id:
           type: integer
@@ -80,6 +78,10 @@ components:
           maxLength: 60
         support_rep_id:
           type: integer
+        last_updated:
+          type: string
+          format: date-time
+          x-am-version: timestamp
       required:
         - customer_id
         - first_name
@@ -165,7 +167,6 @@ components:
         customer_id:
           type: integer
         customer:
-          x-am-type: relation
           x-am-schema-object: customer
           x-am-parent-property: customer_id
         invoice_date:
@@ -186,17 +187,16 @@ components:
         billing_postal_code:
           type: string
           maxLength: 10
-        last_updated:
-          type: string
-          format: date-time
         line_items:
-          x-am-type: relation
           x-am-schema-object: invoice_line
           x-am-cardinality: 1:m
           x-am-child-property: invoice_id
         total:
           type: number
           format: float
+        version_stamp:
+          type: string
+          x-am-version: uuid
       required:
         - invoice_id
         - customer_id

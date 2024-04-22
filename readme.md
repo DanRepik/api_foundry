@@ -1,10 +1,20 @@
 # API-MAKER
 
-Welcome to API-Maker, an open-source tool designed for building and deploying RESTful services seamlessly utilizing an AWS Gateway API in conjunction with a Lambda function. Our project's primary objective is to offer a solution that demands minimal coding effort to query and manipulate data stored in relational databases.
+Welcome to API-Maker, an open-source tool designed for rapidly building and deploying RESTful services utilizing an AWS Gateway API in conjunction with a Lambda function. Our project's primary objective is to offer a solution that demands minimal coding effort to query and manipulate data stored in relational databases.
 
-API-Maker operates by building and executing SQL queries to perform its services, ensuring efficient data retrieval and manipulation.
+With API-Maker, developing RESTful API's is first focused on defining components and services in the form of an Open API specification.  Objects in this specification then can be enhanced by either;
 
-With API-Maker, developing APIs is simplified through adherence to OpenAPI standards, where components and paths defining the API are specified. By annotating schema component objects with database table configurations, API-Maker automatically generates CRUD services, including a robust query service. Moreover, specifying and annotating path operations facilitates the creation of services capable of executing custom SQL operations.
+* Schema component objects can be enhanced with database table configuration, allowing API-Maker to provide RESTful CRUD services on table records. 
+* Path operations can be enhanced with database connection and SQL configuration to provide service based on custom SQL.
+
+For data read operations using HTTP GET, API-Maker provides robust data selection capability reducing the need for building custom services. To achieve this API-Maker provides the following features;
+
+* Comparison oprands can be applied to a property when selecting data.  These operand such as; less than, between, and in, can be applied to any property for record selection.
+* Associations between component objects can be defined allowing retrieval of complex objects containing associated data in a single request.
+* Requesting applications can restrict the properties being returned.
+* Requesting applications can select the case convention (snake or lower camel) of the ressponse results.
+
+API-Maker is not a traditional object relational model (ORM) library but rather operates by generating and executing SQL queries to perform its services.  Generating operations this way keeps marshaling and unmarshaling objects to a minimum, ensuring efficient data retrieval and manipulation.
 
 Deploying APIs with API-Maker involves the following steps:
 
@@ -37,9 +47,34 @@ What api-maker provides is;
 
 * 
 
-API Services
+## Using API Services
 
-Selecting Results
+There are three types parameters that can be passed to API-Maker services.
+
+| Type     | Description                          | Methods          | Location                                |
+|----------|--------------------------------------|------------------|-----------------------------------------|
+| Query    | Used in selecting data.              | GET, PUT, DELETE | Request query string or path parameters |
+| Stor     | Values to be stored in the database. | PUT, POST        | Request body                            |
+| Metadata | Provide control of processing        | ALL              | Request query string                    |
+
+### Updating Data
+
+Updating data is done via PUT method requests.  If in the schema component object a property has been ehanced with a version type attribute
+then API-Maker restricts updates to single records.  Without a version property then normal record selection occurs allowing bulk updates 
+of records.
+
+## Query Parameters
+
+| Methon | Operation | Query Parameters | Store Parameters | Metadata Parameters |
+|--------|-----------|------------------|------------------|---------------------|
+| GET    | read      |
+| POST   | create    | Not accepted     | Required         |
+| PUT    | update    |
+| DELETE | delete    |
+
+Request parameters for services provided by API-Maker  
+
+### Selecting Data - GET
 
 The `_properties` metadata parameter enables the service requester to specify the desired properties in the response. This parameter is optional, and if not provided, the service result will include objects with all properties including relational properties selected by default.
 
@@ -54,32 +89,86 @@ Consider the following examples with the Chinnook invoice schema object;
 | invoice_id total | Returns just the invoice id and total |
 
 
-Metadata Parameters
+### Metadata Parameters
 
 | Name | Description |
 | _properties | Optional, allows selecting a subset of properties returned by the request.   
 A space delimited list of regular expressions |
 
 
-Open API Specification Extensions
+## Open API Specification Extensions
 
-Schema Component Objects
+### Schema Component Objects
 
-| Attribute | Description |
-|-------|--------|
-| x-am-database | The name of the database to use for operations on this component object.   |
-| x-am-engine | The type of database.  Must be one of 'postgres', 'oracle' or 'mysql' |
-| x-am-table | The table name to perform the operations on |
+By defining and adding API-Maker attibutes to schema component objects in the Open API specification document allows API-Maker to expose CRUD services for record manipulations on records in a database table.
+
+#### Schema Component Object Attributes
+
+These attributes map the componnent object to a database table.  
+
+| Attribute | Description | Usage |
+|-------|--------|---------|
+| x-am-database | The name of the database where the table is located.   | Required, value is used to access database configuration from the runtime secrets map. |
+| x-am-engine | The type of database being accessed. Determines SQL dilect to use.  | Required, must be one of 'postgres', 'oracle' or 'mysql' |
+| x-am-table | The table name to perform the operations on. | Optional, defaults to schema component object name if not provided.  Must be a valid table name |
+
+#### Schema Component Object Property Attributes
 
 
-Schema Component Object Properties
 
 | Attribute | Description |
 |-----------|-------------|
 | x-am-column-name | The database column name if different from the property name.  Optional |
+| x-am-primary-key | Designates that this property is the primary key for the object. |
+| x-am-version-type | Designates that the property is used versioning records. |
+
+#### Schema Component Object Associations
+
+API-Maker simplifies the retrieval of complex objects, including those containing nested objects or lists of objects, through the utilization of associations. These associations can be classified as either one-to-one or one-to-many and are specified within the properties of the schema component object.
+
+By default, API_maker services return a flat object. To retrieve objects associated with the association, the request must select those properties using the '_properties' metadata parameter.
+
+> A note on terminology regarding associations: When referring to objects in the association, `primary` represents the main object being returned. `Secondary` objects are objects attached either directly or as elements of a list attached to the primary object.
+
+To specify these associations, properties are added to the `primary` schema component object.  These properties constain attributes that specify the association using the following attributes:
+
+| Attribute             | Description                                          | Usage             |
+|-----------------------|------------------------------------------------------|-------------------|
+| x-am-schema-object    | The name of the secondary schema component object to select. | Required      |
+| x-am-cardinality      | The type of association, must be either '1:1' or '1:m',                      | Optional, '1:1' by default |
+| x-am-parent-property  | The name of the 'primary' property that identifies the selection key.  | Optional, defaults to `parent` primary key.  Normally needed for 1:1 associations. |
+| x-am-child-property   | The name of the property in the `secondary` object used as the selection key | Optional, defaults to primary key of  defaults to the child if not specified |
+
+##### One-to-One Associations
+
+When defining an association property for a one-to-one (1:1) association, the associated schema component can be included as a property of the object being returned.
+
+In the Chinook database, an example of this type of association can be found in the `invoice` table, where the `customer_id` serves as a foreign key referencing the customer record.
+
+In the schema component object model, this relationship can be specified, allowing the resultant invoice objects to have a `customer` property containing a customer object.
 
 
-Schema Component Object Relations
+Here's an example of how the `customer` property would be specified in the `invoice` schema component object;
+
+
+    invoice:
+      type: object
+      x-am-engine: postgres
+      x-am-database: chinook
+      properties:
+        invoice_id:
+          type: integer
+          x-am-primary-key: auto
+        customer_id:
+          type: integer
+        customer:
+          x-am-type: relation
+          x-am-schema-object: customer
+          x-am-parent-property: customer_id
+
+In this example the `customer` property type is specified as being a relation to the schema component object `customer'.  When fetching data API-Make will then use 
+
+With API-Maker 
 
 | Attribute | | Description |
 |-----------|-|-------------|

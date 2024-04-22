@@ -15,6 +15,9 @@ class TestTransactionalService():
 
   @pytest.mark.quick
   def test_transactional_service(self):
+    """
+    Integration test to check both 1:1 and 1:m associations
+    """
     install_secrets()
     os.environ["SECRETS_MAP"] = secrets_map
 

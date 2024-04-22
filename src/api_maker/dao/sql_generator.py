@@ -152,8 +152,11 @@ class SQLGenerator:
         }
 
         parts = value_str.split(":", 1)
-        operand = relational_types[parts[0] if len(parts) > 1 else "eq"]
-        value_str = parts[-1]
+        if parts[0] in relational_types:
+            operand = relational_types[parts[0] if len(parts) > 1 else "eq"]
+            value_str = parts[-1]
+        else:
+            operand = '='
 
         column = (
             f"{prefix}.{property.column_name}"
@@ -161,7 +164,7 @@ class SQLGenerator:
             else property.column_name
         )
         placeholder_name = (
-            f"{prefix}.{property.name}"
+            f"{prefix}_{property.name}"
             if prefix 
             else property.name
         )
@@ -210,10 +213,13 @@ class SQLGenerator:
         return sql, placeholders
 
     def selection_result_map(self) -> dict:
-        filters = self.operation.metadata_params.get("_properties", ".*").split()
+        if not self.__selection_result_map:
+            filters = self.operation.metadata_params.get("_properties", ".*").split()
 
-        # Filter and prefix keys for the current entity and regular expressions
-        return self.filter_and_prefix_keys(filters, self.schema_object.properties)
+            # Filter and prefix keys for the current entity and regular expressions
+            self.__selection_result_map = self.filter_and_prefix_keys(filters, self.schema_object.properties)
+
+        return self.__selection_result_map
     
     def marshal_record(self, record) -> dict:
 #        log.info(f"selection_results: {self.selection_results}")
@@ -269,3 +275,15 @@ class SQLGenerator:
                 return f"TO_TIME(:{param}, 'HH24:MI:SS.FF')"
             return f":{param}"
         return f"%({param})s"
+    
+    def version_generator(self, property: SchemaObjectProperty) -> str:
+        if property.version_type == "timestamp":
+            return "CURRENT_TIMESTAMP()"
+        if property.version_type == "serial":
+            return f"{property.column_name} + 1"
+
+        if property.engine == 'oracle':
+            return "SYS_GUID()"
+        if property.engine == 'mysql':
+            return "UUID()"
+        return "gen_random_uuid()"

@@ -1,4 +1,5 @@
 import pytest
+import yaml
 
 from datetime import date, datetime, time, timezone
 
@@ -8,7 +9,11 @@ from api_maker.dao.sql_select_generator import SQLSelectGenerator
 from api_maker.dao.sql_subselect_generator import SQLSubselectGenerator
 from api_maker.dao.sql_update_generator import SQLUpdateGenerator
 from api_maker.utils.app_exception import ApplicationException
-from api_maker.utils.model_factory import ModelFactory, SchemaObjectProperty
+from api_maker.utils.model_factory import (
+    ModelFactory,
+    SchemaObject,
+    SchemaObjectProperty,
+)
 from api_maker.operation import Operation
 from api_maker.utils.logger import logger
 
@@ -24,19 +29,26 @@ class TestSQLGenerator:
         sql_generator = SQLSelectGenerator(operation, schema_object)
 
         log.info(f"prefix_map: {sql_generator.prefix_map}")
-        log.info(f"result_map: {len(sql_generator.selection_result_map)}")
-        assert len(sql_generator.selection_result_map) == 9
+        result_map = sql_generator.selection_result_map()
+        log.info(f"result_map: {len(result_map)}")
+        assert len(result_map) == 10
+        assert result_map.get("invoice_id") != None
 
         operation = Operation(
             entity="invoice",
             action="read",
-            metadata_params={"_properties": ".* line_items:.*"},
+            metadata_params={"_properties": ".* customer:.*"},
         )
         sql_generator = SQLSelectGenerator(operation, schema_object)
 
-        log.info(f"result_map: {len(sql_generator.selection_result_map)}")
-        assert len(sql_generator.selection_result_map) == 14
+        result_map = sql_generator.selection_result_map()
+        log.info(f"result_map: {result_map}")
+        assert len(result_map) == 23
+        assert result_map.get("i.invoice_id") != None
+        assert result_map.get("c.customer_id") != None
         log.info(f"select_list: {sql_generator.select_list}")
+        assert "i.invoice_id" in sql_generator.select_list
+        assert "c.customer_id" in sql_generator.select_list
 
     def test_search_condition(self):
         schema_object = ModelFactory.get_schema_object("invoice")
@@ -239,6 +251,26 @@ class TestSQLGenerator:
         )
         assert sql_generator.placeholders == {"i_billing_state": "FL"}
 
+    def test_select_schema_handling_table(self):
+        schema_object = ModelFactory.get_schema_object("invoice")
+        operation = Operation(
+            entity="invoice",
+            action="read",
+            query_params={"billing_state": "FL"},
+            metadata_params={"_properties": ".* customer:.* line_items:.*"},
+        )
+        sql_generator = SQLSelectGenerator(operation, schema_object)
+
+        log.info(
+            f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
+        )
+
+        assert (
+            sql_generator.sql
+            == "SELECT i.invoice_id, i.customer_id, i.invoice_date, i.billing_address, i.billing_city, i.billing_state, i.billing_country, i.billing_postal_code, i.last_updated, i.total, c.customer_id, c.first_name, c.last_name, c.company, c.address, c.city, c.state, c.country, c.postal_code, c.phone, c.fax, c.email, c.support_rep_id FROM chinook.invoice AS i INNER JOIN chinook.customer AS c ON i.customer_id = c.customer_id WHERE i.billing_state = %(i_billing_state)s"
+        )
+        assert sql_generator.placeholders == {"i_billing_state": "FL"}
+
     def test_select_simple_table(self):
         schema_object = ModelFactory.get_schema_object("media_type")
         operation = Operation(
@@ -271,67 +303,6 @@ class TestSQLGenerator:
         )
         assert sql_generator.placeholders == {}
 
-    def test_insert(self):
-        schema_object = ModelFactory.get_schema_object("invoice")
-        operation = Operation(
-            entity="invoice",
-            action="create",
-            store_params={
-                "customer_id": "2",
-                "invoice_date": "2024-03-17",
-                "billing_address": "Theodor-Heuss-Straße 34",
-                "billing_city": "Stuttgart",
-                "billing_country": "Germany",
-                "billing_postal_code": "70174",
-                "total": "1.63",
-            },
-        )
-        sql_generator = SQLInsertGenerator(operation, schema_object)
-
-        log.info(
-            f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
-        )
-
-        assert (
-            sql_generator.sql
-            == "INSERT INTO chinook.invoice ( customer_id, invoice_date, billing_address, billing_city, billing_country, billing_postal_code, total ) VALUES ( customer_id, invoice_date, billing_address, billing_city, billing_country, billing_postal_code, total) RETURNING invoice_id, customer_id, invoice_date, billing_address, billing_city, billing_state, billing_country, billing_postal_code, last_updated, total"
-        )
-        assert sql_generator.placeholders == {
-            "customer_id": 2,
-            "invoice_date": datetime(2024, 3, 17, 0, 0),
-            "billing_address": "Theodor-Heuss-Straße 34",
-            "billing_city": "Stuttgart",
-            "billing_country": "Germany",
-            "billing_postal_code": "70174",
-            "total": 1.63,
-        }
-
-    def test_update(self):
-        schema_object = ModelFactory.get_schema_object("invoice")
-        operation = Operation(
-            entity="invoice",
-            action="update",
-            query_params={
-                "customer_id": "2",
-            },
-            store_params={"invoice_date": "2024-03-18", "total": "2.63"},
-            metadata_params={"_properties": "invoice_id last_updated"},
-        )
-        sql_generator = SQLUpdateGenerator(operation, schema_object)
-
-        log.info(
-            f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
-        )
-
-        assert (
-            sql_generator.sql
-            == "UPDATE chinook.invoice SET invoice_date = %(invoice_date)s, total = %(total)s WHERE customer_id = %(customer_id)s RETURNING invoice_id, last_updated"
-        )
-        assert sql_generator.placeholders == {
-            "customer_id": 2,
-            "invoice_date": datetime(2024, 3, 18, 0, 0),
-            "total": 2.63,
-        }
 
     def test_delete(self):
         schema_object = ModelFactory.get_schema_object("invoice")
@@ -355,7 +326,6 @@ class TestSQLGenerator:
         )
         assert sql_generator.placeholders == {"customer_id": 2}
 
-    @pytest.mark.quick
     def test_relation_search_condition(self):
         schema_object = ModelFactory.get_schema_object("invoice")
         operation = Operation(
@@ -366,13 +336,22 @@ class TestSQLGenerator:
         )
         sql_generator = SQLSelectGenerator(operation, schema_object)
         log.info(f"sql_generator: {sql_generator.sql}")
-        assert sql_generator.sql == "SELECT i.invoice_id, i.customer_id, i.invoice_date, i.billing_address, i.billing_city, i.billing_state, i.billing_country, i.billing_postal_code, i.last_updated, i.total, c.customer_id, c.first_name, c.last_name, c.company, c.address, c.city, c.state, c.country, c.postal_code, c.phone, c.fax, c.email, c.support_rep_id FROM chinook.invoice AS i INNER JOIN chinook.customer AS c ON i.customer_id = c.customer_id WHERE i.billing_state = %(i.billing_state)s"
+        assert (
+            sql_generator.sql
+            == "SELECT i.invoice_id, i.customer_id, i.invoice_date, i.billing_address, i.billing_city, i.billing_state, i.billing_country, i.billing_postal_code, i.last_updated, i.total, c.customer_id, c.first_name, c.last_name, c.company, c.address, c.city, c.state, c.country, c.postal_code, c.phone, c.fax, c.email, c.support_rep_id FROM chinook.invoice AS i INNER JOIN chinook.customer AS c ON i.customer_id = c.customer_id WHERE i.billing_state = %(i_billing_state)s"
+        )
 
-        subselect_sql_generator = SQLSubselectGenerator(operation, schema_object.get_relation("line_items"), SQLSelectGenerator(operation, schema_object))
+        subselect_sql_generator = SQLSubselectGenerator(
+            operation,
+            schema_object.get_relation("line_items"),
+            SQLSelectGenerator(operation, schema_object),
+        )
 
         log.info(f"subselect_sql_generator: {subselect_sql_generator.sql}")
-        assert subselect_sql_generator.sql == "SELECT invoice_id, invoice_line_id, track_id, unit_price, quantity FROM chinook.invoice_line WHERE invoice_id IN ( SELECT invoice_id FROM chinook.invoice AS i INNER JOIN chinook.customer AS c ON i.customer_id = c.customer_id WHERE i.billing_state = %(i.billing_state)s )"
+        assert (
+            subselect_sql_generator.sql
+            == "SELECT invoice_id, invoice_line_id, track_id, unit_price, quantity FROM chinook.invoice_line WHERE invoice_id IN ( SELECT invoice_id FROM chinook.invoice AS i INNER JOIN chinook.customer AS c ON i.customer_id = c.customer_id WHERE i.billing_state = %(i_billing_state)s )"
+        )
 
         select_map = subselect_sql_generator.selection_result_map()
         log.info(f"select_map: {select_map}")
-

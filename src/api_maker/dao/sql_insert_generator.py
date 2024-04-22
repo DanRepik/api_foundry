@@ -10,6 +10,15 @@ log = logger(__name__)
 class SQLInsertGenerator(SQLGenerator):
     def __init__(self, operation: Operation, schema_object: SchemaObject) -> None:
         super().__init__(operation, schema_object)
+        self.key_property = schema_object.primary_key
+        if self.key_property is not None:
+            if self.key_property.type == "auto":
+                if operation.store_params.get(self.key_property.column_name):
+                    raise ApplicationException(400, f"Primary key values cannot be inserted when key type is auto. schema_object: {schema_object.entity}")
+            elif self.key_property.type == "required": 
+                if not operation.store_params.get(self.key_property.column_name):
+                    raise ApplicationException(400, f"Primary key values must be provided when key type is required. schema_object: {schema_object.entity}")
+
 
     @property
     def sql(self) -> str:
@@ -36,13 +45,19 @@ class SQLInsertGenerator(SQLGenerator):
                 property = self.schema_object.properties[parts[0]]
             except KeyError:
                 raise ApplicationException(
-                    400, f"Search condition column not found {name}"
+                    400, f"Invalid property: {name}"
                 )
 
             log.info(f"name: {name}, value: {value}")
             columns.append(property.column_name)
             placeholders.append(property.name)
             self.store_placeholders[property.name] = property.convert_to_db_value(value)
+
+        if self.key_property:
+            if self.key_property.type == "sequence":
+                columns.append(self.key_property.column_name)
+                placeholders.append(f"nextval('{self.key_property.sequence_name}')")
+
 
         return f" ( {', '.join(columns)} ) VALUES ( {', '.join(placeholders)})"
 
