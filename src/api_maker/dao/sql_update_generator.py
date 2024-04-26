@@ -13,25 +13,25 @@ class SQLUpdateGenerator(SQLGenerator):
 
     @property
     def sql(self) -> str:
-        version_property = self.schema_object.version_property
-        log.info(f"version_property: {vars(version_property)}")
-        if not version_property:
+        concurrency_property = self.schema_object.concurrency_property
+        if not concurrency_property:
             return f"UPDATE {self.table_expression}{self.update_values}{self.search_condition} RETURNING {self.select_list}"
 
-        if not self.operation.query_params.get(version_property.name):
+        log.info(f"concurrency_property: {vars(concurrency_property)}")
+        if not self.operation.query_params.get(concurrency_property.name):
             raise ApplicationException(
                 400,
-                "For updating version managed schema objects the current version must be supplied as a query parameter." + 
-                f"  schema_object: {self.schema_object.entity}, property: {version_property.name}",
+                "For updating concurrency managed schema objects the current version must be supplied as a query parameter." + 
+                f"  schema_object: {self.schema_object.entity}, property: {concurrency_property.name}",
             )
-        if self.operation.store_params.get(version_property.name):
+        if self.operation.store_params.get(concurrency_property.name):
             raise ApplicationException(
                 400,
-                "For updating version managed schema objects the current version may not be supplied as a storage parameter." + 
-                f"  schema_object: {self.schema_object.entity}, property: {version_property.name}",
+                "For updating concurrency managed schema objects the current version may not be supplied as a storage parameter." + 
+                f"  schema_object: {self.schema_object.entity}, property: {concurrency_property.name}",
             )
 
-        return f"UPDATE {self.table_expression}{self.update_values}, {version_property.column_name} = {self.version_generator(version_property)} {self.search_condition} RETURNING {self.select_list}"
+        return f"UPDATE {self.table_expression}{self.update_values}, {concurrency_property.column_name} = {self.concurrency_generator(concurrency_property)} {self.search_condition} RETURNING {self.select_list}"
 
     @property
     def update_values(self) -> str:

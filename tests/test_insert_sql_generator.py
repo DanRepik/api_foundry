@@ -63,7 +63,7 @@ class TestInsertSQLGenerator:
                             "x-am-child-property": "invoice_id",
                         },
                         "total": {"type": "number", "format": "float"},
-                        "version_stamp": {"type": "string", "x-am-version": "uuid"},
+                        "version_stamp": {"type": "string", "x-am-concurrency-control": "uuid"},
                     },
                     "required": ["invoice_id", "customer_id", "invoice_date", "total"],
                 },
@@ -130,7 +130,7 @@ class TestInsertSQLGenerator:
                             "x-am-child-property": "invoice_id",
                         },
                         "total": {"type": "number", "format": "float"},
-                        "version_stamp": {"type": "string", "x-am-version": "uuid"},
+                        "version_stamp": {"type": "string", "x-am-concurrency-control": "uuid"},
                     },
                     "required": ["invoice_id", "customer_id", "invoice_date", "total"],
                 },
@@ -157,6 +157,7 @@ class TestInsertSQLGenerator:
         }
 
     def test_insert_bad_key(self):
+
         try:
             sql_generator = SQLInsertGenerator(
                 Operation(
@@ -179,9 +180,8 @@ class TestInsertSQLGenerator:
             )
             assert False, "Attempt to set primary key during insert did not fail"
         except ApplicationException as e:
-            pass
+            assert False
 
-    @pytest.mark.quick
     def test_insert_missing_required_key(self):
         try:
             SQLInsertGenerator(
@@ -196,7 +196,10 @@ class TestInsertSQLGenerator:
                         "x-am-engine": "postgres",
                         "x-am-database": "chinook",
                         "properties": {
-                            "genre_id": {"type": "integer", "x-am-primary-key": "required"},
+                            "genre_id": {
+                                "type": "integer",
+                                "x-am-primary-key": "required",
+                            },
                             "name": {"type": "string", "maxLength": 120},
                         },
                         "required": ["genre_id"],
@@ -207,7 +210,6 @@ class TestInsertSQLGenerator:
         except ApplicationException as e:
             pass
 
-    @pytest.mark.quick
     def test_insert_auto_key(self):
         try:
             sql_generator = SQLInsertGenerator(
@@ -233,7 +235,6 @@ class TestInsertSQLGenerator:
         except ApplicationException as e:
             pass
 
-    @pytest.mark.quick
     def test_insert_sequence(self):
         sql_generator = SQLInsertGenerator(
             Operation(
@@ -247,14 +248,152 @@ class TestInsertSQLGenerator:
                     "x-am-engine": "postgres",
                     "x-am-database": "chinook",
                     "properties": {
-                        "genre_id": {"type": "integer", "x-am-primary-key": "sequence", "x-am-squence-name": "test-sequence"},
+                        "genre_id": {
+                            "type": "integer",
+                            "x-am-primary-key": "sequence",
+                            "x-am-sequence-name": "test-sequence",
+                        },
                         "name": {"type": "string", "maxLength": 120},
                     },
                     "required": ["genre_id"],
                 },
             ),
         )
-    @pytest.mark.quick
+        log.info(
+            f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
+        )
+
+        assert (
+            sql_generator.sql
+            == "INSERT INTO chinook.genre ( name, genre_id ) VALUES ( %(name)s, nextval('test-sequence')) RETURNING genre_id, name"
+        )
+        assert sql_generator.placeholders == {"name": "Good genre"}
+
+    def test_insert_uuid_version_stamp(self):
+        try:
+            sql_generator = SQLInsertGenerator(
+                Operation(
+                    entity="genre",
+                    action="create",
+                    store_params={"name": "New genre"},
+                ),
+                SchemaObject(
+                    "genre",
+                    {
+                        "x-am-engine": "postgres",
+                        "x-am-database": "chinook",
+                        "properties": {
+                            "genre_id": {"type": "integer", "x-am-primary-key": "auto"},
+                            "name": {"type": "string", "maxLength": 120},
+                            "version_stamp": {"type": "string", "x-am-concurrency-control": "uuid"},
+                        },
+                        "required": ["genre_id"],
+                    },
+                ),
+            )
+            log.info(
+                f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
+            )
+            assert (
+                sql_generator.sql
+                == "INSERT INTO chinook.genre ( name, version_stamp ) VALUES ( %(name)s, gen_random_uuid()) RETURNING genre_id, name, version_stamp"
+            )
+            assert sql_generator.placeholders == {"name": "New genre"}
+        except ApplicationException as e:
+            assert False
+
+    def test_insert_uuid_version_stamp_with_param(self):
+        try:
+            SQLInsertGenerator(
+                Operation(
+                    entity="genre",
+                    action="create",
+                    store_params={"name": "New genre", "version_stamp": "test uuid"},
+                ),
+                SchemaObject(
+                    "genre",
+                    {
+                        "x-am-engine": "postgres",
+                        "x-am-database": "chinook",
+                        "properties": {
+                            "genre_id": {"type": "integer", "x-am-primary-key": "auto"},
+                            "name": {"type": "string", "maxLength": 120},
+                            "version_stamp": {"type": "string", "x-am-concurrency-control": "uuid"},
+                        },
+                        "required": ["genre_id"],
+                    },
+                ),
+            )
+            assert False, "Attempt to set primary key during insert did not fail"
+        except ApplicationException as e:
+            assert e.message == "Versioned properties can not be supplied a store parameters.  schema_object: genre, property: version_stamp"
+
+    def test_insert_serial_version_stamp(self):
+        try:
+            sql_generator = SQLInsertGenerator(
+                Operation(
+                    entity="genre",
+                    action="create",
+                    store_params={"name": "New genre"},
+                ),
+                SchemaObject(
+                    "genre",
+                    {
+                        "x-am-engine": "postgres",
+                        "x-am-database": "chinook",
+                        "properties": {
+                            "genre_id": {"type": "integer", "x-am-primary-key": "auto"},
+                            "name": {"type": "string", "maxLength": 120},
+                            "version_stamp": {"type": "string", "x-am-concurrency-control": "serial"},
+                        },
+                        "required": ["genre_id"],
+                    },
+                ),
+            )
+            log.info(
+                f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
+            )
+            assert (
+                sql_generator.sql
+                == "INSERT INTO chinook.genre ( name, version_stamp ) VALUES ( %(name)s, 1) RETURNING genre_id, name, version_stamp"
+            )
+            assert sql_generator.placeholders == {"name": "New genre"}
+        except ApplicationException as e:
+            assert False
+
+    def test_insert_timestamp_version_stamp(self):
+        try:
+            sql_generator = SQLInsertGenerator(
+                Operation(
+                    entity="genre",
+                    action="create",
+                    store_params={"name": "New genre"},
+                ),
+                SchemaObject(
+                    "genre",
+                    {
+                        "x-am-engine": "postgres",
+                        "x-am-database": "chinook",
+                        "properties": {
+                            "genre_id": {"type": "integer", "x-am-primary-key": "auto"},
+                            "name": {"type": "string", "maxLength": 120},
+                            "version_stamp": {"type": "string", "x-am-concurrency-control": "timestamp"},
+                        },
+                        "required": ["genre_id"],
+                    },
+                ),
+            )
+            log.info(
+                f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
+            )
+            assert (
+                sql_generator.sql
+                == "INSERT INTO chinook.genre ( name, version_stamp ) VALUES ( %(name)s, CURRENT_TIMESTAMP()) RETURNING genre_id, name, version_stamp"
+            )
+            assert sql_generator.placeholders == {"name": "New genre"}
+        except ApplicationException as e:
+            assert False, e.message
+
     def test_insert_sequence_missing_name(self):
         try:
             sql_generator = SQLInsertGenerator(
@@ -269,7 +408,10 @@ class TestInsertSQLGenerator:
                         "x-am-engine": "postgres",
                         "x-am-database": "chinook",
                         "properties": {
-                            "genre_id": {"type": "integer", "x-am-primary-key": "sequence"},
+                            "genre_id": {
+                                "type": "integer",
+                                "x-am-primary-key": "sequence",
+                            },
                             "name": {"type": "string", "maxLength": 120},
                         },
                         "required": ["genre_id"],
@@ -278,5 +420,7 @@ class TestInsertSQLGenerator:
             )
             assert False, "Primary key of sequence without a name did not fail"
         except ApplicationException as e:
-            assert e.message == "Sequence-based primary keys must have a sequence name. Schema object: genre, Property: genre_id"
-
+            assert (
+                e.message
+                == "Sequence-based primary keys must have a sequence name. Schema object: genre, Property: genre_id"
+            )

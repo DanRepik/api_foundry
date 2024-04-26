@@ -81,7 +81,7 @@ components:
         last_updated:
           type: string
           format: date-time
-          x-am-version: timestamp
+          x-am-concurrency-control: timestamp
       required:
         - customer_id
         - first_name
@@ -196,7 +196,7 @@ components:
           format: float
         version_stamp:
           type: string
-          x-am-version: uuid
+          x-am-concurrency-control: uuid
       required:
         - invoice_id
         - customer_id

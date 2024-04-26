@@ -52,14 +52,14 @@ class SchemaObjectProperty:
         self.column_type = properties.get("x-am-column-type", self.api_type)
         self.is_primary_key = properties.get("x-am-primary-key", False)
 
-        self.version_type = properties.get("x-am-version")
-        if self.version_type:
-            self.version_type = self.version_type.lower()
-            assert self.version_type in [
+        self.concurrency_control = properties.get("x-am-concurrency-control")
+        if self.concurrency_control:
+            self.concurrency_control = self.concurrency_control.lower()
+            assert self.concurrency_control in [
                 "uuid",
                 "timestamp",
                 "serial",
-            ], f"Unrecognized version type, schema object: {self.entity}, property: {name}, version_type: {self.version_type}"
+            ], f"Unrecognized version type, schema object: {self.entity}, property: {name}, version_type: {self.concurrency_control}"
 
     def convert_to_db_value(self, value: str) -> Optional[Any]:
         #        log.info(f"convert_to_db type: {self.type}, value:{value}, column_type: {self.column_type}")
@@ -100,15 +100,15 @@ class SchemaObjectProperty:
 class SchemaObjectKey(SchemaObjectProperty):
     def __init__(self, engine: str, entity: str, name: str, properties: Dict[str, Any]):
         super().__init__(engine, entity, name, properties)
-        self.type = properties.get("x-am-primary-key", "auto")
-        if self.type not in ["required", "auto", "sequence"]:
+        self.key_type = properties.get("x-am-primary-key", "auto")
+        if self.key_type not in ["required", "auto", "sequence"]:
             raise ApplicationException(
                 500,
                 f"Invalid primary key type must be one of required, auto, sequence.  schema_object: {self.entity}, property: {self.name}, type: {self.type}",
             )
 
-        self.sequence_name = properties.get("x-am-sequence-name") if self.type == "sequence" else None        
-        if self.type == "sequence" and not self.sequence_name:
+        self.sequence_name = properties.get("x-am-sequence-name") if self.key_type == "sequence" else None        
+        if self.key_type == "sequence" and not self.sequence_name:
             raise ApplicationException(
                 500,
                 f"Sequence-based primary keys must have a sequence name. Schema object: {self.entity}, Property: {self.name}",
@@ -130,7 +130,7 @@ class SchemaObject:
         self.properties = {}
         self.relations = {}
         self.primary_key = None
-        self.version_property = None
+        self.concurrency_property = None
         for property_name, prop in schema_object.get("properties", {}).items():
             assert (
                 prop != None
@@ -148,8 +148,8 @@ class SchemaObject:
                     self.primary_key = SchemaObjectKey(
                         self.engine, self.entity, property_name, prop
                     )
-                elif object_property.version_type:
-                    self.version_property = object_property
+                elif object_property.concurrency_control:
+                    self.concurrency_property = object_property
 
     #        log.info(f"relations: {self.relations}")
 

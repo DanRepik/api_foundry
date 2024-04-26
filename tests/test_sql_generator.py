@@ -50,16 +50,45 @@ class TestSQLGenerator:
         assert "i.invoice_id" in sql_generator.select_list
         assert "c.customer_id" in sql_generator.select_list
 
+    @pytest.mark.quick
     def test_search_condition(self):
-        schema_object = ModelFactory.get_schema_object("invoice")
-        operation = Operation(
-            entity="invoice",
-            action="read",
-            query_params={"invoice_id": "24", "line_items.unit_price": "gt:5"},
+        sql_generator = SQLSelectGenerator(
+            Operation(
+                entity="invoice",
+                action="read",
+                query_params={"invoice_id": "24", "total": "gt:5"},
+            ),
+            SchemaObject(
+                "invoice",
+                {
+                    "type": "object",
+                    "x-am-engine": "postgres",
+                    "x-am-database": "chinook",
+                    "properties": {
+                        "invoice_id": {"type": "integer", "x-am-primary-key": "auto"},
+                        "customer_id": {"type": "integer"},
+                        "invoice_date": {"type": "string", "format": "date-time"},
+                        "billing_address": {"type": "string", "maxLength": 70},
+                        "billing_city": {"type": "string", "maxLength": 40},
+                        "billing_state": {"type": "string", "maxLength": 40},
+                        "billing_country": {"type": "string", "maxLength": 40},
+                        "billing_postal_code": {"type": "string", "maxLength": 10},
+                        "total": {"type": "number", "format": "float"},
+                    },
+                    "required": ["invoice_id", "customer_id", "invoice_date", "total"],
+                },
+            ),
         )
 
-        sql_generator = SQLSelectGenerator(operation, schema_object)
-        log.info(f"search_condition: {sql_generator.search_condition}")
+        log.info(
+            f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
+        )
+
+        assert (
+            sql_generator.sql
+            == "SELECT invoice_id, customer_id, invoice_date, billing_address, billing_city, billing_state, billing_country, billing_postal_code, total FROM chinook.invoice WHERE invoice_id = %(invoice_id)s AND total > %(total)s"
+        )
+        assert sql_generator.placeholders == {"invoice_id": 24, "total": 5.0}
 
     def test_search_value_assignment_type_relations(self):
         schema_object = ModelFactory.get_schema_object("invoice")
@@ -247,7 +276,7 @@ class TestSQLGenerator:
 
         assert (
             sql_generator.sql
-            == "SELECT i.invoice_id, i.customer_id, i.invoice_date, i.billing_address, i.billing_city, i.billing_state, i.billing_country, i.billing_postal_code, i.last_updated, i.total, c.customer_id, c.first_name, c.last_name, c.company, c.address, c.city, c.state, c.country, c.postal_code, c.phone, c.fax, c.email, c.support_rep_id FROM chinook.invoice AS i INNER JOIN chinook.customer AS c ON i.customer_id = c.customer_id WHERE i.billing_state = %(i_billing_state)s"
+            == "SELECT i.invoice_id, i.customer_id, i.invoice_date, i.billing_address, i.billing_city, i.billing_state, i.billing_country, i.billing_postal_code, i.total, i.version_stamp, c.customer_id, c.first_name, c.last_name, c.company, c.address, c.city, c.state, c.country, c.postal_code, c.phone, c.fax, c.email, c.support_rep_id, c.last_updated FROM chinook.invoice AS i INNER JOIN chinook.customer AS c ON i.customer_id = c.customer_id WHERE i.billing_state = %(i_billing_state)s"
         )
         assert sql_generator.placeholders == {"i_billing_state": "FL"}
 
@@ -267,41 +296,74 @@ class TestSQLGenerator:
 
         assert (
             sql_generator.sql
-            == "SELECT i.invoice_id, i.customer_id, i.invoice_date, i.billing_address, i.billing_city, i.billing_state, i.billing_country, i.billing_postal_code, i.last_updated, i.total, c.customer_id, c.first_name, c.last_name, c.company, c.address, c.city, c.state, c.country, c.postal_code, c.phone, c.fax, c.email, c.support_rep_id FROM chinook.invoice AS i INNER JOIN chinook.customer AS c ON i.customer_id = c.customer_id WHERE i.billing_state = %(i_billing_state)s"
+            == "SELECT i.invoice_id, i.customer_id, i.invoice_date, i.billing_address, i.billing_city, i.billing_state, i.billing_country, i.billing_postal_code, i.total, i.version_stamp, c.customer_id, c.first_name, c.last_name, c.company, c.address, c.city, c.state, c.country, c.postal_code, c.phone, c.fax, c.email, c.support_rep_id, c.last_updated FROM chinook.invoice AS i INNER JOIN chinook.customer AS c ON i.customer_id = c.customer_id WHERE i.billing_state = %(i_billing_state)s"
         )
         assert sql_generator.placeholders == {"i_billing_state": "FL"}
 
     def test_select_simple_table(self):
-        schema_object = ModelFactory.get_schema_object("media_type")
-        operation = Operation(
-            entity="media_type", action="read", query_params={"media_type_id": "23"}
-        )
-        sql_generator = SQLSelectGenerator(operation, schema_object)
+        try:
+            sql_generator = SQLSelectGenerator(
+                Operation(
+                    entity="genre",
+                    action="read",
+                    query_params={"name": "Bill"}
+                ),
+                SchemaObject(
+                    "genre",
+                    {
+                        "x-am-engine": "postgres",
+                        "x-am-database": "chinook",
+                        "properties": {
+                            "genre_id": {"type": "integer", "x-am-primary-key": "auto"},
+                            "name": {"type": "string", "maxLength": 120},
+                        },
+                        "required": ["genre_id"],
+                    },
+                ),
+            )
+            log.info(
+                f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
+            )
 
-        log.info(
-            f"sql-x: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
-        )
+            assert sql_generator.sql == "SELECT genre_id, name FROM chinook.genre WHERE name = %(name)s"
+            assert sql_generator.placeholders == {'name': 'Bill'}
+        except ApplicationException as e:
+            assert False, e.message
 
-        assert (
-            sql_generator.sql
-            == "SELECT media_type_id, name FROM chinook.MetaType WHERE media_type_id = %(media_type_id)s"
-        )
-        assert sql_generator.placeholders == {"media_type_id": 23}
 
     def test_select_single_table_no_conditions(self):
-        schema_object = ModelFactory.get_schema_object("invoice")
-        operation = Operation(entity="invoice", action="read")
-        sql_generator = SQLSelectGenerator(operation, schema_object)
+        try:
+            sql_generator = SQLSelectGenerator(
+                Operation(
+                    entity="genre",
+                    action="read"
+                ),
+                SchemaObject(
+                    "genre",
+                    {
+                        "x-am-engine": "postgres",
+                        "x-am-database": "chinook",
+                        "properties": {
+                            "genre_id": {"type": "integer", "x-am-primary-key": "auto"},
+                            "name": {"type": "string", "maxLength": 120},
+                        },
+                        "required": ["genre_id"],
+                    },
+                ),
+            )
+            log.info(
+                f"sql-x: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
+            )
 
-        log.info(
-            f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
-        )
+            assert (
+                sql_generator.sql
+                == "SELECT genre_id, name FROM chinook.genre"
+            )
+            assert sql_generator.placeholders == ()
 
-        assert (
-            sql_generator.sql
-            == "SELECT invoice_id, customer_id, invoice_date, billing_address, billing_city, billing_state, billing_country, billing_postal_code, last_updated, total FROM chinook.invoice"
-        )
-        assert sql_generator.placeholders == {}
+            assert False
+        except ApplicationException as e:
+            assert False, e.message
 
 
     def test_delete(self):

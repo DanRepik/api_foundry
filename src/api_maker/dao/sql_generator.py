@@ -276,10 +276,10 @@ class SQLGenerator:
             return f":{param}"
         return f"%({param})s"
     
-    def version_generator(self, property: SchemaObjectProperty) -> str:
-        if property.version_type == "timestamp":
+    def concurrency_generator(self, property: SchemaObjectProperty) -> str:
+        if property.concurrency_control == "timestamp":
             return "CURRENT_TIMESTAMP()"
-        if property.version_type == "serial":
+        if property.concurrency_control == "serial":
             return f"{property.column_name} + 1"
 
         if property.engine == 'oracle':
