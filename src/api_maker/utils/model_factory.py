@@ -170,31 +170,21 @@ class SchemaObject:
 
 
 class ModelFactory:
-    __document = None
-
     @classmethod
-    def get_schema_object(cls, entity: str) -> SchemaObject:
-        return SchemaObject(
-            entity,
-            cls.__get_document_spec()
-            .get("components", {})
-            .get("schemas", {})
-            .get(entity.lower().replace("_", "-")),
-        )
-
-    @classmethod
-    def get_operation(cls, entity: str, operation: str) -> Any:
-        return cls.__get_document_spec().get("paths", {}).get(entity, {}).get(operation)
-
-    @classmethod
-    def __get_document_spec(cls) -> Dict[str, Any]:
-        if not cls.__document:
-            with open(os.environ["API_SPEC"], "r") as yaml_file:
+    def load_spec(cls, api_spec_path: str = os.environ["API_SPEC"]):
+        cls.__schemas = dict()
+        if api_spec_path:
+            with open(api_spec_path, "r") as yaml_file:
                 cls.__document = yaml.safe_load(yaml_file)
-            components = cls.__document.get("components", {})
-            schemas = components.get("schemas", {})
-            components["schemas"] = {
-                key.lower().replace("_", "-"): value for key, value in schemas.items()
-            }
-        #        log.info(f"entities: {cls.__document.get('components', {}).get('schemas', {}).keys()}")
-        return cls.__document
+
+            schemas = cls.__document.get("components", {}).get("schemas", {})
+            for name, schema in schemas.items():
+                cls.__schemas[name.lower().replace("_", "-")] = schema
+
+        log.info(f"schemas: {cls.__schemas.keys()}")
+
+    @classmethod
+    def get_schema_object(cls, name: str) -> SchemaObject:
+        return SchemaObject(name, cls.__schemas[name.lower().replace("_", "-")])
+    
+

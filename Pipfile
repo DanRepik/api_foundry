@@ -14,6 +14,7 @@ psycopg2-binary = "*"
 oracledb = "*"
 
 [dev-packages]
+pytest-cov = "*"
 pytest = "*"
 boto3 = "*"
 ipykernel = "*"

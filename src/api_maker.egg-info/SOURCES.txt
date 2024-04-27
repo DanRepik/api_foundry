@@ -31,6 +31,8 @@ src/api_maker/utils/open_api_model.py
 tests/test_adapter.py
 tests/test_connection_factory.py
 tests/test_gateway_adapter.py
+tests/test_insert_sql_generator.py
 tests/test_model_factory.py
 tests/test_sql_generator.py
 tests/test_transactional_service.py
+tests/test_update_sql_generator.py

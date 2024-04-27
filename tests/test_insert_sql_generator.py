@@ -23,7 +23,7 @@ log = logger(__name__)
 class TestInsertSQLGenerator:
 
     def test_insert(self):
-
+        ModelFactory.load_spec()
         sql_generator = SQLInsertGenerator(
             Operation(
                 entity="invoice",
@@ -63,7 +63,10 @@ class TestInsertSQLGenerator:
                             "x-am-child-property": "invoice_id",
                         },
                         "total": {"type": "number", "format": "float"},
-                        "version_stamp": {"type": "string", "x-am-concurrency-control": "uuid"},
+                        "version_stamp": {
+                            "type": "string",
+                            "x-am-concurrency-control": "uuid",
+                        },
                     },
                     "required": ["invoice_id", "customer_id", "invoice_date", "total"],
                 },
@@ -76,7 +79,7 @@ class TestInsertSQLGenerator:
 
         assert (
             sql_generator.sql
-            == "INSERT INTO chinook.invoice ( customer_id, invoice_date, billing_address, billing_city, billing_country, billing_postal_code, total ) VALUES ( customer_id, invoice_date, billing_address, billing_city, billing_country, billing_postal_code, total) RETURNING invoice_id, customer_id, invoice_date, billing_address, billing_city, billing_state, billing_country, billing_postal_code, total, version_stamp"
+            == "INSERT INTO chinook.invoice ( customer_id, invoice_date, billing_address, billing_city, billing_country, billing_postal_code, total, version_stamp ) VALUES ( %(customer_id)s, %(invoice_date)s, %(billing_address)s, %(billing_city)s, %(billing_country)s, %(billing_postal_code)s, %(total)s, gen_random_uuid()) RETURNING invoice_id, customer_id, invoice_date, billing_address, billing_city, billing_state, billing_country, billing_postal_code, total, version_stamp"
         )
 
         assert sql_generator.placeholders == {
@@ -90,6 +93,7 @@ class TestInsertSQLGenerator:
         }
 
     def test_insert_property_selection(self):
+        ModelFactory.load_spec()
         sql_generator = SQLInsertGenerator(
             Operation(
                 entity="invoice",
@@ -130,7 +134,10 @@ class TestInsertSQLGenerator:
                             "x-am-child-property": "invoice_id",
                         },
                         "total": {"type": "number", "format": "float"},
-                        "version_stamp": {"type": "string", "x-am-concurrency-control": "uuid"},
+                        "version_stamp": {
+                            "type": "string",
+                            "x-am-concurrency-control": "uuid",
+                        },
                     },
                     "required": ["invoice_id", "customer_id", "invoice_date", "total"],
                 },
@@ -143,7 +150,7 @@ class TestInsertSQLGenerator:
 
         assert (
             sql_generator.sql
-            == "INSERT INTO chinook.invoice ( customer_id, invoice_date, billing_address, billing_city, billing_country, billing_postal_code, total ) VALUES ( customer_id, invoice_date, billing_address, billing_city, billing_country, billing_postal_code, total) RETURNING customer_id, invoice_date"
+            == "INSERT INTO chinook.invoice ( customer_id, invoice_date, billing_address, billing_city, billing_country, billing_postal_code, total, version_stamp ) VALUES ( customer_id, invoice_date, billing_address, billing_city, billing_country, billing_postal_code, total, gen_random_uuid()) RETURNING customer_id, invoice_date"
         )
 
         assert sql_generator.placeholders == {
@@ -159,6 +166,7 @@ class TestInsertSQLGenerator:
     def test_insert_bad_key(self):
 
         try:
+            ModelFactory.load_spec()
             sql_generator = SQLInsertGenerator(
                 Operation(
                     entity="genre",
@@ -180,7 +188,10 @@ class TestInsertSQLGenerator:
             )
             assert False, "Attempt to set primary key during insert did not fail"
         except ApplicationException as e:
-            assert False
+            assert (
+                e.message
+                == "Primary key values cannot be inserted when key type is auto. schema_object: genre"
+            )
 
     def test_insert_missing_required_key(self):
         try:
@@ -285,7 +296,10 @@ class TestInsertSQLGenerator:
                         "properties": {
                             "genre_id": {"type": "integer", "x-am-primary-key": "auto"},
                             "name": {"type": "string", "maxLength": 120},
-                            "version_stamp": {"type": "string", "x-am-concurrency-control": "uuid"},
+                            "version_stamp": {
+                                "type": "string",
+                                "x-am-concurrency-control": "uuid",
+                            },
                         },
                         "required": ["genre_id"],
                     },
@@ -318,7 +332,10 @@ class TestInsertSQLGenerator:
                         "properties": {
                             "genre_id": {"type": "integer", "x-am-primary-key": "auto"},
                             "name": {"type": "string", "maxLength": 120},
-                            "version_stamp": {"type": "string", "x-am-concurrency-control": "uuid"},
+                            "version_stamp": {
+                                "type": "string",
+                                "x-am-concurrency-control": "uuid",
+                            },
                         },
                         "required": ["genre_id"],
                     },
@@ -326,7 +343,10 @@ class TestInsertSQLGenerator:
             )
             assert False, "Attempt to set primary key during insert did not fail"
         except ApplicationException as e:
-            assert e.message == "Versioned properties can not be supplied a store parameters.  schema_object: genre, property: version_stamp"
+            assert (
+                e.message
+                == "Versioned properties can not be supplied a store parameters.  schema_object: genre, property: version_stamp"
+            )
 
     def test_insert_serial_version_stamp(self):
         try:
@@ -344,7 +364,10 @@ class TestInsertSQLGenerator:
                         "properties": {
                             "genre_id": {"type": "integer", "x-am-primary-key": "auto"},
                             "name": {"type": "string", "maxLength": 120},
-                            "version_stamp": {"type": "string", "x-am-concurrency-control": "serial"},
+                            "version_stamp": {
+                                "type": "string",
+                                "x-am-concurrency-control": "serial",
+                            },
                         },
                         "required": ["genre_id"],
                     },
@@ -377,7 +400,10 @@ class TestInsertSQLGenerator:
                         "properties": {
                             "genre_id": {"type": "integer", "x-am-primary-key": "auto"},
                             "name": {"type": "string", "maxLength": 120},
-                            "version_stamp": {"type": "string", "x-am-concurrency-control": "timestamp"},
+                            "version_stamp": {
+                                "type": "string",
+                                "x-am-concurrency-control": "timestamp",
+                            },
                         },
                         "required": ["genre_id"],
                     },
