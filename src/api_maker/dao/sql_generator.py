@@ -1,4 +1,5 @@
 import re
+from datetime import datetime, date
 
 from typing import Any
 from api_maker.utils.app_exception import ApplicationException
@@ -24,7 +25,7 @@ class SQLGenerator:
     @property
     def sql(self) -> str:
         raise NotImplementedError
-    
+
     @property
     def selection_results(self):
         if not self.__selection_result_map:
@@ -34,7 +35,7 @@ class SQLGenerator:
     def __single_table(self):
         if len(self.prefix_map) == 1 or self.operation.action == "create":
             return True
-        
+
         if ":" in self.operation.metadata_params.get("_properties", ""):
             return False
 
@@ -46,7 +47,7 @@ class SQLGenerator:
 
     @property
     def placeholders(self) -> dict:
-#        log.info(f"search placeholders: {self.search_placeholders}")
+        #        log.info(f"search placeholders: {self.search_placeholders}")
         return {**self.search_placeholders, **self.store_placeholders}
 
     def __get_prefix_map(self, schema_object: SchemaObject):
@@ -61,7 +62,7 @@ class SQLGenerator:
 
         log.info(f"prefix_map: {result}")
         return result
-    
+
     @property
     def select_list_columns(self) -> list[str]:
         if not self.__select_list_columns:
@@ -73,18 +74,11 @@ class SQLGenerator:
         if not self.__select_list:
             self.__select_list = ", ".join(self.select_list_columns)
         return self.__select_list
-    
-    @property
-    def result_fields(self) -> dict[str, SchemaObjectProperty]:
-        result = {}
-        for column in self.select_list_columns:
-            result[column] = self.selection_results[column]
-        return result;
 
     @property
     def table_expression(self) -> str:
         return self.schema_object.table_name
-    
+
     @property
     def search_condition(self) -> str:
         log.info(f"query_params: {self.operation.query_params}")
@@ -94,7 +88,9 @@ class SQLGenerator:
 
         for name, value in self.operation.query_params.items():
             if "." in name:
-                raise ApplicationException(400, "Selection on relations is not supported")
+                raise ApplicationException(
+                    400, "Selection on relations is not supported"
+                )
 
             try:
                 property = self.schema_object.properties[name]
@@ -109,33 +105,8 @@ class SQLGenerator:
 
         return f" WHERE {' AND '.join(conditions)}" if len(conditions) > 0 else ""
 
-    def relation_search_condition(self, name: str) -> str:
-        placeholders = {}
-        conditions = []
-
-        for name, value in self.operation.query_params.items():
-            parts = name.split(".")
-
-            try:
-                if len(parts) > 1:
-                    relation = self.schema_object.relations[parts[0]]
-                    if relation.name == name:
-                        property = relation.schema_object.properties[parts[1]]
-                        prefix = self.prefix_map[parts[0]]
-
-                        assignment, holders = self.search_value_assignment(property, value, prefix)
-                        conditions.append(assignment)
-                        placeholders.update(holders)
-            except KeyError:
-                raise ApplicationException(
-                    500, f"Search condition column not found {name}"
-                )
-
-        return f" WHERE {' AND '.join(conditions)}" if len(conditions) > 0 else ""
-
-
     def search_value_assignment(
-        self, property: SchemaObjectProperty, value_str, prefix: str|None = None
+        self, property: SchemaObjectProperty, value, prefix: str | None = None
     ) -> tuple[str, dict]:
 
         operand = "="
@@ -151,23 +122,22 @@ class SQLGenerator:
             "not-between": "not-between",
         }
 
-        parts = value_str.split(":", 1)
-        if parts[0] in relational_types:
-            operand = relational_types[parts[0] if len(parts) > 1 else "eq"]
-            value_str = parts[-1]
+        if isinstance(value, str):
+            parts = value.split("::", 1)
+            if parts[0] in relational_types:
+                operand = relational_types[parts[0] if len(parts) > 1 else "eq"]
+                value_str = parts[-1]
+            else:
+                value_str = value
+        elif isinstance(value, datetime):
+            value_str = datetime.isoformat(value)
+        elif isinstance(value, date):
+            value_str = date.isoformat(value)
         else:
-            operand = '='
+            value_str = str(value)
 
-        column = (
-            f"{prefix}.{property.column_name}"
-            if prefix 
-            else property.column_name
-        )
-        placeholder_name = (
-            f"{prefix}_{property.name}"
-            if prefix 
-            else property.name
-        )
+        column = f"{prefix}.{property.column_name}" if prefix else property.column_name
+        placeholder_name = f"{prefix}_{property.name}" if prefix else property.name
 
         if operand in ["between", "not-between"]:
             value_set = value_str.split(",")
@@ -217,12 +187,14 @@ class SQLGenerator:
             filters = self.operation.metadata_params.get("_properties", ".*").split()
 
             # Filter and prefix keys for the current entity and regular expressions
-            self.__selection_result_map = self.filter_and_prefix_keys(filters, self.schema_object.properties)
+            self.__selection_result_map = self.filter_and_prefix_keys(
+                filters, self.schema_object.properties
+            )
 
         return self.__selection_result_map
-    
+
     def marshal_record(self, record) -> dict:
-#        log.info(f"selection_results: {self.selection_results}")
+        #        log.info(f"selection_results: {self.selection_results}")
         result = {}
         for name, value in record.items():
             property = self.selection_results[name]
@@ -231,7 +203,7 @@ class SQLGenerator:
         return result
 
     def filter_and_prefix_keys(
-        self, regex_list: list[str], properties: dict, prefix: str|None = None
+        self, regex_list: list[str], properties: dict, prefix: str | None = None
     ):
         """
         Accepts a prefix string, list of regular expressions, and a dictionary.
@@ -275,15 +247,15 @@ class SQLGenerator:
                 return f"TO_TIME(:{param}, 'HH24:MI:SS.FF')"
             return f":{param}"
         return f"%({param})s"
-    
+
     def concurrency_generator(self, property: SchemaObjectProperty) -> str:
         if property.concurrency_control == "timestamp":
-            return "CURRENT_TIMESTAMP()"
+            return "CURRENT_TIMESTAMP"
         if property.concurrency_control == "serial":
             return f"{property.column_name} + 1"
 
-        if property.engine == 'oracle':
+        if property.engine == "oracle":
             return "SYS_GUID()"
-        if property.engine == 'mysql':
+        if property.engine == "mysql":
             return "UUID()"
         return "gen_random_uuid()"

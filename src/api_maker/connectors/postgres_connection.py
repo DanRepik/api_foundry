@@ -26,7 +26,7 @@ class PostgresCursor(Cursor):
         """
         from psycopg2 import Error, IntegrityError, ProgrammingError
 
-#        log.info(f"sql: {sql}, parameters: {parameters}")
+        log.info(f"sql: {sql}, parameters: {parameters}")
 
         try:
             # Execute the SQL statement with parameters
@@ -62,6 +62,9 @@ class PostgresConnection(Connection):
 
     def close(self):
         self.__connection.close()
+
+    def commit(self):
+        self.__connection.commit()
 
     def get_connection(self):
         """

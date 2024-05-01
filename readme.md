@@ -118,7 +118,7 @@ https://bobsrecords/employee?hire_date=gt::2024-01-01
 
 When using range operands that require multiple values ('in', 'between', 'not-in', and 'not-between'), those values are passed as a comma-delimited list.
 
-For example, to request employees hired in 2023:
+For example, to request employees hired in 2023;
 
 ```
 https://bobsrecords.com/employee?hire_date=between::2024-01-01,2024-12-31

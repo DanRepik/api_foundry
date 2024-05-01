@@ -2,7 +2,7 @@ from api_maker.dao.sql_generator import SQLGenerator
 from api_maker.dao.sql_select_generator import SQLSelectGenerator
 from api_maker.operation import Operation
 from api_maker.utils.logger import logger
-from api_maker.utils.model_factory import SchemaObject, SchemaObjectRelation
+from api_maker.utils.model_factory import SchemaObject, SchemaObjectAssociation
 
 log = logger(__name__)
 
@@ -12,7 +12,7 @@ class SQLSubselectGenerator(SQLSelectGenerator):
     def __init__(
         self,
         operation: Operation,
-        relation: SchemaObjectRelation,
+        relation: SchemaObjectAssociation,
         parent_generator: SQLGenerator,
     ) -> None:
         super().__init__(operation, relation.child_schema_object)
@@ -52,6 +52,7 @@ class SQLSubselectGenerator(SQLSelectGenerator):
 
     @property
     def sql(self) -> str:
+        log.info(f"parent search_condition: {self.parent_generator.search_condition}")
         sql = (
             f"SELECT {self.select_list} "
             + f"FROM {self.relation.child_schema_object.table_name} "

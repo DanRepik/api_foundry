@@ -44,7 +44,7 @@ class OperationDAO(DAO):
             return SQLDeleteGenerator(self.operation, self.schema_object)
         
         raise ApplicationException(400, f"Invalid operation action: {self.operation.action}")
-
+    
     def execute(self, cursor: Cursor) -> list[dict]:
         """
         Execute the database operation based on the provided cursor.
@@ -73,6 +73,10 @@ class OperationDAO(DAO):
             subselect_generator = SQLSubselectGenerator(self.operation, relation, self.sql_generator)
             log.info(f"subselect_sql: {subselect_generator.sql}")
             child_set = self.__fetch_record_set(subselect_generator, cursor)
+
+            for parent in parent_set:
+                parent[name] = []
+
             log.info(f"child_set: {child_set}")
 
             if len(child_set) == 0:
@@ -89,16 +93,11 @@ class OperationDAO(DAO):
                 parent_id = child[relation.child_property.name]
                 parent = parents.get(parent_id)
                 if parent:
-                    parent_attr = parent.get(name)
-                    if not parent_attr:
-                        parent_attr = list()
-                        parent[name] = parent_attr
-
-                    parent_attr.append(child)
+                    parent[name].append(child)
 
     def __fetch_record_set(self, generator: SQLGenerator, cursor: Cursor) -> list[dict]:
         result = []
-        record_set = cursor.execute(generator.sql, generator.search_placeholders, generator.select_list_columns)
+        record_set = cursor.execute(generator.sql, generator.placeholders, generator.select_list_columns)
         for record in record_set:
             object = generator.marshal_record(record)
             log.info(f"object: {object}")

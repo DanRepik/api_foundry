@@ -53,6 +53,17 @@ def install_secrets():
             }
         ),
     )
+    create_secret_if_not_exists(
+        "oracle/chinook",
+        json.dumps(
+            {
+                "dbname": "XEPDB1",
+                "username": "system",
+                "password": "system",
+                "host": "localhost",
+            }
+        ),
+    )
 
 
 class TestSQLGenerator:
@@ -64,4 +75,3 @@ class TestSQLGenerator:
 
         assert connection is not None
         log.info(connection)
-        assert False

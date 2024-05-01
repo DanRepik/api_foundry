@@ -11,5 +11,5 @@ class TestModelFactory():
         log.info(f"relations: {schema.relations}")
         log.info(f"properties: {schema.properties}")
         log.info(f"table_name: {schema.table_name}")
-        assert schema.table_name == "chinook.invoice"
+        assert schema.table_name == "invoice"
 

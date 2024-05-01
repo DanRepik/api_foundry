@@ -8,7 +8,7 @@ from api_maker.utils.logger import logger
 log = logger(__name__)
 
 
-class SchemaObjectRelation:
+class SchemaObjectAssociation:
     def __init__(self, entity: str, name: str, properties: Dict[str, Any]):
         assert all(arg is not None for arg in (entity, name, properties))
         self.entity = entity
@@ -25,19 +25,17 @@ class SchemaObjectRelation:
         self.child = properties.get("x-am-child-property", None)
 
     @property
-    def child_property(self):
+    def child_property(self) -> Any:
         if self.child:
             return self.child_schema_object.get_property(self.child)
-        else:
-            return self.child_schema_object.primary_key
+        return self.child_schema_object.primary_key
 
     @property
-    def parent_property(self):
+    def parent_property(self)  -> Any:
         parent_schema_object = ModelFactory.get_schema_object(self.entity)
         if self.parent:
             return parent_schema_object.get_property(self.parent)
-        else:
-            return parent_schema_object.primary_key
+        return parent_schema_object.primary_key
 
 
 class SchemaObjectProperty:
@@ -136,7 +134,7 @@ class SchemaObject:
                 prop != None
             ), f"Property is none entity: {self.entity}, property: {property_name}"
             if prop.get("x-am-schema-object", None):
-                self.relations[property_name] = SchemaObjectRelation(
+                self.relations[property_name] = SchemaObjectAssociation(
                     self.entity, property_name, prop
                 )
             else:
@@ -155,12 +153,13 @@ class SchemaObject:
 
     @property
     def table_name(self) -> str:
-        return f"{self.__schema_object.get('x-am-database')}.{self.__schema_object.get('x-am-table', self.entity)}"
+        schema = self.__schema_object.get('x-am-schema')
+        return (f"{schema}." if schema else "") + f"{self.__schema_object.get('x-am-table', self.entity)}"
 
     def get_property(self, property_name: str) -> Optional[SchemaObjectProperty]:
         return self.properties.get(property_name)
 
-    def get_relation(self, property_name: str) -> SchemaObjectRelation:
+    def get_relation(self, property_name: str) -> SchemaObjectAssociation:
         try:
             return self.relations[property_name]
         except:

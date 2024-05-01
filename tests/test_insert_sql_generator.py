@@ -63,7 +63,7 @@ class TestInsertSQLGenerator:
                             "x-am-child-property": "invoice_id",
                         },
                         "total": {"type": "number", "format": "float"},
-                        "version_stamp": {
+                        "last_updated": {
                             "type": "string",
                             "x-am-concurrency-control": "uuid",
                         },
@@ -79,7 +79,7 @@ class TestInsertSQLGenerator:
 
         assert (
             sql_generator.sql
-            == "INSERT INTO chinook.invoice ( customer_id, invoice_date, billing_address, billing_city, billing_country, billing_postal_code, total, version_stamp ) VALUES ( %(customer_id)s, %(invoice_date)s, %(billing_address)s, %(billing_city)s, %(billing_country)s, %(billing_postal_code)s, %(total)s, gen_random_uuid()) RETURNING invoice_id, customer_id, invoice_date, billing_address, billing_city, billing_state, billing_country, billing_postal_code, total, version_stamp"
+            == "INSERT INTO invoice ( customer_id, invoice_date, billing_address, billing_city, billing_country, billing_postal_code, total, last_updated ) VALUES ( %(customer_id)s, %(invoice_date)s, %(billing_address)s, %(billing_city)s, %(billing_country)s, %(billing_postal_code)s, %(total)s, gen_random_uuid()) RETURNING invoice_id, customer_id, invoice_date, billing_address, billing_city, billing_state, billing_country, billing_postal_code, total, last_updated"
         )
 
         assert sql_generator.placeholders == {
@@ -134,7 +134,7 @@ class TestInsertSQLGenerator:
                             "x-am-child-property": "invoice_id",
                         },
                         "total": {"type": "number", "format": "float"},
-                        "version_stamp": {
+                        "last_updated": {
                             "type": "string",
                             "x-am-concurrency-control": "uuid",
                         },
@@ -150,7 +150,7 @@ class TestInsertSQLGenerator:
 
         assert (
             sql_generator.sql
-            == "INSERT INTO chinook.invoice ( customer_id, invoice_date, billing_address, billing_city, billing_country, billing_postal_code, total, version_stamp ) VALUES ( customer_id, invoice_date, billing_address, billing_city, billing_country, billing_postal_code, total, gen_random_uuid()) RETURNING customer_id, invoice_date"
+            == "INSERT INTO invoice ( customer_id, invoice_date, billing_address, billing_city, billing_country, billing_postal_code, total, last_updated ) VALUES ( %(customer_id)s, %(invoice_date)s, %(billing_address)s, %(billing_city)s, %(billing_country)s, %(billing_postal_code)s, %(total)s, gen_random_uuid()) RETURNING customer_id, invoice_date"
         )
 
         assert sql_generator.placeholders == {
@@ -276,11 +276,11 @@ class TestInsertSQLGenerator:
 
         assert (
             sql_generator.sql
-            == "INSERT INTO chinook.genre ( name, genre_id ) VALUES ( %(name)s, nextval('test-sequence')) RETURNING genre_id, name"
+            == "INSERT INTO genre ( name, genre_id ) VALUES ( %(name)s, nextval('test-sequence')) RETURNING genre_id, name"
         )
         assert sql_generator.placeholders == {"name": "Good genre"}
 
-    def test_insert_uuid_version_stamp(self):
+    def test_insert_uuid_last_updated(self):
         try:
             sql_generator = SQLInsertGenerator(
                 Operation(
@@ -296,7 +296,7 @@ class TestInsertSQLGenerator:
                         "properties": {
                             "genre_id": {"type": "integer", "x-am-primary-key": "auto"},
                             "name": {"type": "string", "maxLength": 120},
-                            "version_stamp": {
+                            "last_updated": {
                                 "type": "string",
                                 "x-am-concurrency-control": "uuid",
                             },
@@ -310,19 +310,19 @@ class TestInsertSQLGenerator:
             )
             assert (
                 sql_generator.sql
-                == "INSERT INTO chinook.genre ( name, version_stamp ) VALUES ( %(name)s, gen_random_uuid()) RETURNING genre_id, name, version_stamp"
+                == "INSERT INTO genre ( name, last_updated ) VALUES ( %(name)s, gen_random_uuid()) RETURNING genre_id, name, last_updated"
             )
             assert sql_generator.placeholders == {"name": "New genre"}
         except ApplicationException as e:
             assert False
 
-    def test_insert_uuid_version_stamp_with_param(self):
+    def test_insert_uuid_last_updated_with_param(self):
         try:
             SQLInsertGenerator(
                 Operation(
                     entity="genre",
                     action="create",
-                    store_params={"name": "New genre", "version_stamp": "test uuid"},
+                    store_params={"name": "New genre", "last_updated": "test uuid"},
                 ),
                 SchemaObject(
                     "genre",
@@ -332,7 +332,7 @@ class TestInsertSQLGenerator:
                         "properties": {
                             "genre_id": {"type": "integer", "x-am-primary-key": "auto"},
                             "name": {"type": "string", "maxLength": 120},
-                            "version_stamp": {
+                            "last_updated": {
                                 "type": "string",
                                 "x-am-concurrency-control": "uuid",
                             },
@@ -345,10 +345,10 @@ class TestInsertSQLGenerator:
         except ApplicationException as e:
             assert (
                 e.message
-                == "Versioned properties can not be supplied a store parameters.  schema_object: genre, property: version_stamp"
+                == "Versioned properties can not be supplied a store parameters.  schema_object: genre, property: last_updated"
             )
 
-    def test_insert_serial_version_stamp(self):
+    def test_insert_serial_last_updated(self):
         try:
             sql_generator = SQLInsertGenerator(
                 Operation(
@@ -364,7 +364,7 @@ class TestInsertSQLGenerator:
                         "properties": {
                             "genre_id": {"type": "integer", "x-am-primary-key": "auto"},
                             "name": {"type": "string", "maxLength": 120},
-                            "version_stamp": {
+                            "last_updated": {
                                 "type": "string",
                                 "x-am-concurrency-control": "serial",
                             },
@@ -378,13 +378,13 @@ class TestInsertSQLGenerator:
             )
             assert (
                 sql_generator.sql
-                == "INSERT INTO chinook.genre ( name, version_stamp ) VALUES ( %(name)s, 1) RETURNING genre_id, name, version_stamp"
+                == "INSERT INTO genre ( name, last_updated ) VALUES ( %(name)s, 1) RETURNING genre_id, name, last_updated"
             )
             assert sql_generator.placeholders == {"name": "New genre"}
         except ApplicationException as e:
             assert False
 
-    def test_insert_timestamp_version_stamp(self):
+    def test_insert_timestamp_last_updated(self):
         try:
             sql_generator = SQLInsertGenerator(
                 Operation(
@@ -400,7 +400,7 @@ class TestInsertSQLGenerator:
                         "properties": {
                             "genre_id": {"type": "integer", "x-am-primary-key": "auto"},
                             "name": {"type": "string", "maxLength": 120},
-                            "version_stamp": {
+                            "last_updated": {
                                 "type": "string",
                                 "x-am-concurrency-control": "timestamp",
                             },
@@ -414,7 +414,7 @@ class TestInsertSQLGenerator:
             )
             assert (
                 sql_generator.sql
-                == "INSERT INTO chinook.genre ( name, version_stamp ) VALUES ( %(name)s, CURRENT_TIMESTAMP()) RETURNING genre_id, name, version_stamp"
+                == "INSERT INTO genre ( name, last_updated ) VALUES ( %(name)s, CURRENT_TIMESTAMP) RETURNING genre_id, name, last_updated"
             )
             assert sql_generator.placeholders == {"name": "New genre"}
         except ApplicationException as e:

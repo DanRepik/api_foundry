@@ -53,7 +53,7 @@ class SQLInsertGenerator(SQLGenerator):
             try:
                 if len(parts) > 1:
                     raise ApplicationException(
-                        400, f"Properties can not be set on related objects {name}"
+                        400, f"Properties can not be set on associated objects {name}"
                     )
 
                 property = self.schema_object.properties[parts[0]]

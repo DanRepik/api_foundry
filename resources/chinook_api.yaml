@@ -78,10 +78,9 @@ components:
           maxLength: 60
         support_rep_id:
           type: integer
-        last_updated:
+        version_stamp:
           type: string
-          format: date-time
-          x-am-concurrency-control: timestamp
+          x-am-concurrency-control: uuid
       required:
         - customer_id
         - first_name
@@ -194,9 +193,10 @@ components:
         total:
           type: number
           format: float
-        version_stamp:
+        last_updated:
           type: string
-          x-am-concurrency-control: uuid
+          format: date-time
+          x-am-concurrency-control: timestamp
       required:
         - invoice_id
         - customer_id

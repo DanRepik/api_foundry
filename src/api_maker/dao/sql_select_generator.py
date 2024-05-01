@@ -2,7 +2,11 @@ from api_maker.dao.sql_generator import SQLGenerator
 from api_maker.operation import Operation
 from api_maker.utils.app_exception import ApplicationException
 from api_maker.utils.logger import logger
-from api_maker.utils.model_factory import ModelFactory, SchemaObject, SchemaObjectRelation
+from api_maker.utils.model_factory import (
+    ModelFactory,
+    SchemaObject,
+    SchemaObjectAssociation,
+)
 
 log = logger(__name__)
 
@@ -14,6 +18,12 @@ class SQLSelectGenerator(SQLGenerator):
     @property
     def sql(self) -> str:
         return f"SELECT {self.select_list} FROM {self.table_expression}{self.search_condition}"
+
+    @property
+    def select_list(self) -> str:
+        if self.operation.metadata_params.get("_count", False):
+            return "count(*)"
+        return super().select_list
 
     @property
     def search_condition(self) -> str:
@@ -28,18 +38,24 @@ class SQLSelectGenerator(SQLGenerator):
                 if len(parts) > 1:
                     relation = self.schema_object.relations[parts[0]]
                     if relation.cardinality != "1:1":
-                        continue
-                    property = relation.schema_object.properties[parts[1]]
+                        raise ApplicationException(
+                            400,
+                            f"Queries using properties in 1:m associationed is not supported. schema object: {self.schema_object.entity}, property: {name}",
+                        )
+                    property = relation.child_schema_object.properties[parts[1]]
                     prefix = self.prefix_map[parts[0]]
                 else:
                     property = self.schema_object.properties[parts[0]]
                     prefix = self.prefix_map["$default$"]
             except KeyError:
                 raise ApplicationException(
-                    500, f"Search condition column not found {name}"
+                    500,
+                    f"Invalid query parameter, property not found. schema object: {self.schema_object.entity}, property: {name}",
                 )
 
-            assignment, holders = self.search_value_assignment(property, value, prefix if not self.single_table else None)
+            assignment, holders = self.search_value_assignment(
+                property, value, prefix if not self.single_table else None
+            )
             conditions.append(assignment)
             self.search_placeholders.update(holders)
 
@@ -69,18 +85,15 @@ class SQLSelectGenerator(SQLGenerator):
         if self.single_table:
             return super().selection_result_map()
 
-        filter_str = self.operation.metadata_params.get("_properties", "")
+        filter_str = self.operation.metadata_params.get("_properties", ".*")
         self.__select_list_map = {}
-
-        if not filter_str:
-            filter_str = ".*"
 
         for relation, reg_exs in self.get_regex_map(filter_str).items():
             # Extract the schema object for the current entity
             relation_property = self.schema_object.relations.get(relation)
 
             if relation_property:
-                if relation_property.cardinality != '1:1':
+                if relation_property.cardinality != "1:1":
                     continue
 
                 # Use a default value if relation_property is None
@@ -119,7 +132,7 @@ class SQLSelectGenerator(SQLGenerator):
         object_set = {}
         for name, value in record.items():
             property = self.selection_results[name]
-            parts = name.split('.')
+            parts = name.split(".")
             component = parts[0] if len(parts) > 1 else self.prefix_map["$default$"]
             object = object_set.get(component, {})
             if not object:
@@ -132,4 +145,3 @@ class SQLSelectGenerator(SQLGenerator):
                 result[name] = object_set[prefix]
 
         return result
-

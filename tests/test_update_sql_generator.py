@@ -27,7 +27,7 @@ class TestSQLGenerator:
             Operation(
                 entity="invoice",
                 action="update",
-                query_params={"customer_id": "2", "version_stamp": "this is a guid"},
+                query_params={"customer_id": "2", "last_updated": "this is a guid"},
                 store_params={"invoice_date": "2024-03-18", "total": "2.63"},
             ),
             SchemaObject(
@@ -55,7 +55,7 @@ class TestSQLGenerator:
                             "x-am-child-property": "invoice_id",
                         },
                         "total": {"type": "number", "format": "float"},
-                        "version_stamp": {"type": "string", "x-am-concurrency-control": "uuid"},
+                        "last_updated": {"type": "string", "x-am-concurrency-control": "uuid"},
                     },
                     "required": ["invoice_id", "customer_id", "invoice_date", "total"],
                 },
@@ -68,11 +68,11 @@ class TestSQLGenerator:
 
         assert (
             sql_generator.sql
-            == "UPDATE chinook.invoice SET invoice_date = %(invoice_date)s, total = %(total)s, version_stamp = gen_random_uuid()  WHERE customer_id = %(customer_id)s AND version_stamp = %(version_stamp)s RETURNING invoice_id, customer_id, invoice_date, billing_address, billing_city, billing_state, billing_country, billing_postal_code, total, version_stamp"
+            == "UPDATE invoice SET invoice_date = %(invoice_date)s, total = %(total)s, last_updated = gen_random_uuid()  WHERE customer_id = %(customer_id)s AND last_updated = %(last_updated)s RETURNING invoice_id, customer_id, invoice_date, billing_address, billing_city, billing_state, billing_country, billing_postal_code, total, last_updated"
         )
         assert sql_generator.placeholders == {
             "customer_id": 2,
-            "version_stamp": "this is a guid",
+            "last_updated": "this is a guid",
             "invoice_date": datetime(2024, 3, 18, 0, 0),
             "total": 2.63,
         }
@@ -126,7 +126,7 @@ class TestSQLGenerator:
 
         assert (
             sql_generator.sql
-            == "UPDATE chinook.invoice SET invoice_date = %(invoice_date)s, total = %(total)s, last_updated = CURRENT_TIMESTAMP()  WHERE customer_id = %(customer_id)s AND last_updated = %(last_updated)s RETURNING invoice_id, customer_id, invoice_date, billing_address, billing_city, billing_state, billing_country, billing_postal_code, total, last_updated"
+            == "UPDATE invoice SET invoice_date = %(invoice_date)s, total = %(total)s, last_updated = CURRENT_TIMESTAMP()  WHERE customer_id = %(customer_id)s AND last_updated = %(last_updated)s RETURNING invoice_id, customer_id, invoice_date, billing_address, billing_city, billing_state, billing_country, billing_postal_code, total, last_updated"
         )
         assert sql_generator.placeholders == {
             "customer_id": 2,
@@ -166,7 +166,7 @@ class TestSQLGenerator:
             store_params={
                 "invoice_date": "2024-03-18",
                 "total": "2.63",
-                "version_stamp": "this is not allowed",
+                "last_updated": "this is not allowed",
             },
             metadata_params={"_properties": "invoice_id last_updated"},
         )
