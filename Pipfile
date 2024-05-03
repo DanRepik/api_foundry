@@ -13,6 +13,7 @@ oracledb = "*"
 [dev-packages]
 black = "*"
 fake8 ="*"
+pre-commit = "*"
 pytest-cov = "*"
 pytest = "*"
 boto3 = "*"
