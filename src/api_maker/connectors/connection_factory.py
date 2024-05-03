@@ -8,6 +8,7 @@ log = logger(__name__)
 
 __secrets_map = None
 
+
 def secrets_map() -> dict:
     global __secrets_map
     if not __secrets_map:
@@ -18,10 +19,12 @@ def secrets_map() -> dict:
 
 def connection_factory(engine: str, database: str) -> Connection:
     """
-    Factory function to create a database connector based on the specified engine and schema.
+    Factory function to create a database connector based on the
+    specified engine and schema.
 
     Args:
-    - engine (str): The database engine type ('postgres', 'oracle', or 'mysql').
+    - engine (str): The database engine type
+            ('postgres', 'oracle', or 'mysql').
     - schema (str): The schema for the database.
 
     Returns:
@@ -35,10 +38,10 @@ def connection_factory(engine: str, database: str) -> Connection:
     if secret_name:
         if engine == "postgres":
             from .postgres_connection import PostgresConnection
+
             return PostgresConnection(db_secret_name=secret_name)
         # Add support for other engines here if needed in the future
         else:
             raise ValueError(f"Unsupported database engine: {engine}")
     else:
         raise ValueError(f"Secret not found for database: {database}")
-

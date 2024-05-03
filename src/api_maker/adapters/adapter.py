@@ -1,5 +1,4 @@
 import abc
-import json
 
 from api_maker.operation import Operation
 from api_maker.utils.logger import logger
@@ -7,18 +6,20 @@ from api_maker.services.service import Service
 
 log = logger(__name__)
 
-class Adapter(metaclass=abc.ABCMeta):
 
+class Adapter(metaclass=abc.ABCMeta):
     @classmethod
     def __subclasshook__(cls, __subclass: type) -> bool:
-        return (hasattr(__subclass, 'marshal')
-                and callable(__subclass.marshal)
-                and hasattr(__subclass, 'umarshal')
-                and callable(__subclass.unmarshal))
+        return (
+            hasattr(__subclass, "marshal")
+            and callable(__subclass.marshal)
+            and hasattr(__subclass, "umarshal")
+            and callable(__subclass.unmarshal)
+        )
 
     def __init__(self, service: Service) -> None:
         self.service = service
-        
+
     def unmarshal(self, event) -> Operation:
         """
         Unmarshal the event in a tuple for processing
@@ -27,7 +28,7 @@ class Adapter(metaclass=abc.ABCMeta):
         - event (dict): Lambda event object.
 
         Returns:
-        - Operation containing the entity, action, and parameters 
+        - Operation containing the entity, action, and parameters
         """
         raise NotImplementedError
 

@@ -1,7 +1,7 @@
 import os
 import yaml
 from typing import Any, Dict, Optional
-from datetime import datetime, date, time
+from datetime import datetime
 from api_maker.utils.app_exception import ApplicationException
 from api_maker.utils.logger import logger
 
@@ -17,7 +17,10 @@ class SchemaObjectAssociation:
         assert self.cardinality in [
             "1:1",
             "1:m",
-        ], f"Cardinality incorrect name: {self.name}, cardinality: {self.cardinality}"
+        ], (
+            f"Cardinality incorrect name: {self.name}, "
+            + f"cardinality: {self.cardinality}"
+        )
         self.child_schema_object = ModelFactory.get_schema_object(
             properties["x-am-schema-object"]
         )
@@ -31,7 +34,7 @@ class SchemaObjectAssociation:
         return self.child_schema_object.primary_key
 
     @property
-    def parent_property(self)  -> Any:
+    def parent_property(self) -> Any:
         parent_schema_object = ModelFactory.get_schema_object(self.entity)
         if self.parent:
             return parent_schema_object.get_property(self.parent)
@@ -39,8 +42,12 @@ class SchemaObjectAssociation:
 
 
 class SchemaObjectProperty:
-    def __init__(self, engine: str, entity: str, name: str, properties: Dict[str, Any]):
-        assert all(arg is not None for arg in (engine, entity, name, properties))
+    def __init__(
+        self, engine: str, entity: str, name: str, properties: Dict[str, Any]
+    ):
+        assert all(
+            arg is not None for arg in (engine, entity, name, properties)
+        )
         self.engine = engine
         self.entity = entity
         self.name = name
@@ -57,10 +64,12 @@ class SchemaObjectProperty:
                 "uuid",
                 "timestamp",
                 "serial",
-            ], f"Unrecognized version type, schema object: {self.entity}, property: {name}, version_type: {self.concurrency_control}"
+            ], (
+                "Unrecognized version type, schema object: {self.entity}, "
+                + f"property: {name}, version_type: {self.concurrency_control}"
+            )
 
     def convert_to_db_value(self, value: str) -> Optional[Any]:
-        #        log.info(f"convert_to_db type: {self.type}, value:{value}, column_type: {self.column_type}")
         if value is None:
             return None
         conversion_mapping = {
@@ -69,16 +78,18 @@ class SchemaObjectProperty:
             "float": float,
             "integer": int,
             "boolean": lambda x: x.lower() == "true",
-            "date": lambda x: datetime.strptime(x, "%Y-%m-%d").date() if x else None,
+            "date": lambda x: datetime.strptime(x, "%Y-%m-%d").date()
+            if x
+            else None,
             "date-time": lambda x: datetime.fromisoformat(x) if x else None,
-            "time": lambda x: datetime.strptime(x, "%H:%M:%S").time() if x else None,
+            "time": lambda x: datetime.strptime(x, "%H:%M:%S").time()
+            if x
+            else None,
         }
         conversion_func = conversion_mapping.get(self.column_type, lambda x: x)
         return conversion_func(value)
 
     def convert_to_api_value(self, value) -> Optional[Any]:
-        #        log.info(f"self: {vars(self)}")
-        #        log.info(f"convert_to_api type: {self.api_type}, value:{value}, type: {type(value)}, column_type: {self.column_type}")
         if value is None:
             return None
         conversion_mapping = {
@@ -96,20 +107,29 @@ class SchemaObjectProperty:
 
 
 class SchemaObjectKey(SchemaObjectProperty):
-    def __init__(self, engine: str, entity: str, name: str, properties: Dict[str, Any]):
+    def __init__(
+        self, engine: str, entity: str, name: str, properties: Dict[str, Any]
+    ):
         super().__init__(engine, entity, name, properties)
         self.key_type = properties.get("x-am-primary-key", "auto")
         if self.key_type not in ["required", "auto", "sequence"]:
             raise ApplicationException(
                 500,
-                f"Invalid primary key type must be one of required, auto, sequence.  schema_object: {self.entity}, property: {self.name}, type: {self.type}",
+                "Invalid primary key type must be one of required, "
+                + f"auto, sequence.  schema_object: {self.entity}, "
+                + f"property: {self.name}, type: {self.type}",
             )
 
-        self.sequence_name = properties.get("x-am-sequence-name") if self.key_type == "sequence" else None        
+        self.sequence_name = (
+            properties.get("x-am-sequence-name")
+            if self.key_type == "sequence"
+            else None
+        )
         if self.key_type == "sequence" and not self.sequence_name:
             raise ApplicationException(
                 500,
-                f"Sequence-based primary keys must have a sequence name. Schema object: {self.entity}, Property: {self.name}",
+                "Sequence-based primary keys must have a sequence "
+                + f"name. Schema object: {self.entity}, Property: {self.name}",
             )
 
 
@@ -130,9 +150,10 @@ class SchemaObject:
         self.primary_key = None
         self.concurrency_property = None
         for property_name, prop in schema_object.get("properties", {}).items():
-            assert (
-                prop != None
-            ), f"Property is none entity: {self.entity}, property: {property_name}"
+            assert prop is not None, (
+                f"Property is none entity: {self.entity}, "
+                + f"property: {property_name}"
+            )
             if prop.get("x-am-schema-object", None):
                 self.relations[property_name] = SchemaObjectAssociation(
                     self.entity, property_name, prop
@@ -153,18 +174,24 @@ class SchemaObject:
 
     @property
     def table_name(self) -> str:
-        schema = self.__schema_object.get('x-am-schema')
-        return (f"{schema}." if schema else "") + f"{self.__schema_object.get('x-am-table', self.entity)}"
+        schema = self.__schema_object.get("x-am-schema")
+        return (
+            f"{schema}." if schema else ""
+        ) + f"{self.__schema_object.get('x-am-table', self.entity)}"
 
-    def get_property(self, property_name: str) -> Optional[SchemaObjectProperty]:
+    def get_property(
+        self, property_name: str
+    ) -> Optional[SchemaObjectProperty]:
         return self.properties.get(property_name)
 
     def get_relation(self, property_name: str) -> SchemaObjectAssociation:
         try:
             return self.relations[property_name]
-        except:
+        except Exception:
             raise ApplicationException(
-                500, "Unknown relation {property_name}, check api spec.subselect sql:"
+                500,
+                "Unknown relation {property_name}, "
+                + "check api spec.subselect sql:",
             )
 
 
@@ -184,6 +211,6 @@ class ModelFactory:
 
     @classmethod
     def get_schema_object(cls, name: str) -> SchemaObject:
-        return SchemaObject(name, cls.__schemas[name.lower().replace("_", "-")])
-    
-
+        return SchemaObject(
+            name, cls.__schemas[name.lower().replace("_", "-")]
+        )

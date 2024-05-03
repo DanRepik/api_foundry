@@ -1,4 +1,3 @@
-
 class ApplicationException(Exception):
     """Custom exception class for application errors."""
 
@@ -7,7 +6,8 @@ class ApplicationException(Exception):
         Initialize the ApplicationException.
 
         Args:
-        - status_code (int): The HTTP status code associated with the exception.
+        - status_code (int): The HTTP status code associated with the
+            exception.
         - message (str): The error message.
         """
         super().__init__(message)
@@ -16,5 +16,7 @@ class ApplicationException(Exception):
 
     def __str__(self):
         """Return a string representation of the exception."""
-        return f"ApplicationException(status_code={self.status_code}, message='{self.message}')"
-
+        return (
+            f"ApplicationException(status_code={self.status_code}, "
+            + f"message='{self.message}')"
+        )

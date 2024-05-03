@@ -7,14 +7,14 @@ from api_maker.operation import Operation
 log = logger(__name__)
 
 actions_map = {
-    "GET": 'read',
-    "POST": 'create',
-    "PUT": 'update',
-    "DELETE": 'delete'
+    "GET": "read",
+    "POST": "create",
+    "PUT": "update",
+    "DELETE": "delete",
 }
 
-class GatewayAdapter(Adapter):
 
+class GatewayAdapter(Adapter):
     def marshal(self, result: list[dict]):
         """
         Marshal the result into a event response
@@ -25,9 +25,7 @@ class GatewayAdapter(Adapter):
         Returns:
         - the event response
         """
-        log.info(f"marshalling")
         return super().marshal(result)
-
 
     def unmarshal(self, event):
         """
@@ -39,31 +37,36 @@ class GatewayAdapter(Adapter):
         Returns:
         - tuple: Tuple containing data, query and metadata parameters.
         """
-        log.info(f"unmarshalling")
+        entity = event.get("resource").split("/")[1]
+        action = actions_map.get(event.get("httpMethod").upper(), "read")
 
-        entity = event.get('resource').split('/')[1]
-        action = actions_map.get(event.get('httpMethod').upper(), "read")
-        
         event_params = {}
 
         path_parameters = self._convert_parameters(event.get("pathParameters"))
         if path_parameters is not None:
             event_params.update(path_parameters)
 
-        queryStringParameters = self._convert_parameters(event.get("queryStringParameters"))
+        queryStringParameters = self._convert_parameters(
+            event.get("queryStringParameters")
+        )
         if queryStringParameters is not None:
             event_params.update(queryStringParameters)
         log.info(f"event_params: {event_params}")
 
         query_params, metadata_params = self.split_params(event_params)
-        
+
         store_params = {}
         body = event.get("body")
         if body is not None and len(body) > 0:
             store_params = json.loads(body)
 
-        return Operation(entity=entity, action=action, store_params=store_params, query_params=query_params, metadata_params=metadata_params)
-
+        return Operation(
+            entity=entity,
+            action=action,
+            store_params=store_params,
+            query_params=query_params,
+            metadata_params=metadata_params,
+        )
 
     def _convert_parameters(self, parameters):
         """
@@ -98,14 +101,14 @@ class GatewayAdapter(Adapter):
 
         Returns:
         - tuple: A tuple containing two dictionaries.
-                The first dictionary contains metadata_params, 
+                The first dictionary contains metadata_params,
                 and the second dictionary query_params.
         """
         query_params = {}
         metadata_params = {}
 
         for key, value in parameters.items():
-            if key.startswith('_'):
+            if key.startswith("_"):
                 metadata_params[key] = value
             else:
                 query_params[key] = value

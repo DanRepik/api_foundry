@@ -4,12 +4,14 @@ from api_maker.utils.logger import logger
 # Initialize the logger
 log = logger(__name__)
 
-class PostgresCursor(Cursor):
 
+class PostgresCursor(Cursor):
     def __init__(self, cursor):
         self.__cursor = cursor
 
-    def execute(self, sql: str, parameters: dict, result_columns: list[str]) -> list:
+    def execute(
+        self, sql: str, parameters: dict, result_columns: list[str]
+    ) -> list:
         """
         Execute SQL statements on the PostgreSQL database.
 
@@ -35,7 +37,9 @@ class PostgresCursor(Cursor):
             result = []
             for record in self.__cursor:
                 # Convert record tuple to dictionary using result_columns
-                result.append({col: value for col, value in zip(result_columns, record)})
+                result.append(
+                    {col: value for col, value in zip(result_columns, record)}
+                )
 
             return result
         except IntegrityError as err:
@@ -71,7 +75,8 @@ class PostgresConnection(Connection):
         Get a connection to the PostgreSQL database.
 
         Parameters:
-        - schema (str, optional): The database schema to set for the connection.
+        - schema (str, optional): The database schema to set for the
+            connection.
 
         Returns:
         - connection: A connection to the PostgreSQL database.
@@ -85,10 +90,19 @@ class PostgresConnection(Connection):
         port = self.db_config.get("port", 5432)
         search_path = self.db_config.get("search_path", None)
 
-        log.info(f"dbname={dbname}, user={user}, host={host}, port={port}, search_path={search_path}")
+        log.info(
+            f"dbname={dbname}, user={user}, host={host},"
+            + f" port={port}, search_path={search_path}"
+        )
 
         # Create a connection to the PostgreSQL database
         return connect(
-            dbname=dbname, user=user, password=password, host=host, port=port,
-            options="-c search_path={0}".format(search_path) if search_path else None
+            dbname=dbname,
+            user=user,
+            password=password,
+            host=host,
+            port=port,
+            options="-c search_path={0}".format(search_path)
+            if search_path
+            else None,
         )

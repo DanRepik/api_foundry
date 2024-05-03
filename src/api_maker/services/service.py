@@ -9,20 +9,17 @@ log = logger(__name__)
 
 
 class Service:
-
-    def execute(self, operation: Operation ) -> list[dict]:
+    def execute(self, operation: Operation) -> list[dict]:
         raise NotImplementedError
 
 
 class ServiceAdapter(Service):
-    def execute(self, operation): 
+    def execute(self, operation):
         super().execute(operation)
 
 
 class MutationPublisher(ServiceAdapter):
-
     def execute(self, operation):
-
         result = super().execute(operation)
         self.publish_notification(operation)
         return result
@@ -54,7 +51,9 @@ class MutationPublisher(ServiceAdapter):
             )
             log.info(f"publish msg id {msg_id}")
 
-    def __client(client_type, region: str = os.environ.get("AWS_REGION", "us-east-1")):
+    def __client(
+        client_type, region: str = os.environ.get("AWS_REGION", "us-east-1")
+    ):
         import boto3
 
         session = boto3.session.Session()

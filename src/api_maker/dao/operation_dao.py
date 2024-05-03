@@ -13,14 +13,16 @@ from api_maker.dao.sql_generator import SQLGenerator
 
 log = logger(__name__)
 
+
 class OperationDAO(DAO):
     """
-    A class to handle database operations based on the provided Operation object.
+    A class to handle database operations based on the provided
+    Operation object.
 
     Attributes:
         operation (Operation): The operation to perform.
     """
-    
+
     def __init__(self, operation: Operation) -> None:
         """
         Initialize the OperationDAO with the provided Operation object.
@@ -30,7 +32,9 @@ class OperationDAO(DAO):
         """
         super().__init__()
         self.operation = operation
-        self.schema_object = ModelFactory.get_schema_object(self.operation.entity)
+        self.schema_object = ModelFactory.get_schema_object(
+            self.operation.entity
+        )
         self.sql_generator = self.__sql_generator()
 
     def __sql_generator(self) -> SQLGenerator:
@@ -42,9 +46,11 @@ class OperationDAO(DAO):
             return SQLUpdateGenerator(self.operation, self.schema_object)
         elif self.operation.action == "delete":
             return SQLDeleteGenerator(self.operation, self.schema_object)
-        
-        raise ApplicationException(400, f"Invalid operation action: {self.operation.action}")
-    
+
+        raise ApplicationException(
+            400, f"Invalid operation action: {self.operation.action}"
+        )
+
     def execute(self, cursor: Cursor) -> list[dict]:
         """
         Execute the database operation based on the provided cursor.
@@ -53,7 +59,8 @@ class OperationDAO(DAO):
             cursor (Cursor): The database cursor.
 
         Returns:
-            list[dict]: A list of dictionaries containing the results of the operation.
+            list[dict]: A list of dictionaries containing the results
+            of the operation.
         """
 
         result = self.__fetch_record_set(self.sql_generator, cursor)
@@ -63,14 +70,15 @@ class OperationDAO(DAO):
 
         return result
 
-
     def __fetch_many(self, parent_set: list[dict], cursor: Cursor):
         for name, relation in self.schema_object.relations.items():
             log.info(f"checking relation: {name}, relation: {vars(relation)}")
             if relation.cardinality != "1:m":
                 continue
 
-            subselect_generator = SQLSubselectGenerator(self.operation, relation, self.sql_generator)
+            subselect_generator = SQLSubselectGenerator(
+                self.operation, relation, self.sql_generator
+            )
             log.info(f"subselect_sql: {subselect_generator.sql}")
             child_set = self.__fetch_record_set(subselect_generator, cursor)
 
@@ -95,13 +103,18 @@ class OperationDAO(DAO):
                 if parent:
                     parent[name].append(child)
 
-    def __fetch_record_set(self, generator: SQLGenerator, cursor: Cursor) -> list[dict]:
+    def __fetch_record_set(
+        self, generator: SQLGenerator, cursor: Cursor
+    ) -> list[dict]:
         result = []
-        record_set = cursor.execute(generator.sql, generator.placeholders, generator.select_list_columns)
+        record_set = cursor.execute(
+            generator.sql,
+            generator.placeholders,
+            generator.select_list_columns,
+        )
         for record in record_set:
             object = generator.marshal_record(record)
             log.info(f"object: {object}")
             result.append(object)
 
         return result
-
