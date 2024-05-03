@@ -1,10 +1,12 @@
 # API-MAKER
 
+> Note: this project is currently in development and has no functional releases at this time.  Please check back.
+
 Welcome to API-Maker, an open-source tool designed for rapidly building and deploying RESTful services utilizing an AWS Gateway API in conjunction with a Lambda function. Our project's primary objective is to offer a solution that demands minimal coding effort to query and manipulate data stored in relational databases.
 
 With API-Maker, developing RESTful API's is first focused on defining components and services in the form of an Open API specification.  Objects in this specification then can be enhanced by either;
 
-* Schema component objects can be enhanced with database table configuration, allowing API-Maker to provide RESTful CRUD services on table records. 
+* Schema component objects can be enhanced with database table configuration, allowing API-Maker to provide RESTful CRUD services on table records.
 * Path operations can be enhanced with database connection and SQL configuration to provide service based on custom SQL.
 
 For data read operations using HTTP GET, API-Maker provides robust data selection capability reducing the need for building custom services. To achieve this API-Maker provides the following features;
@@ -35,13 +37,13 @@ Annotations on component schema objects enable seamless operations on database t
 - Supporting auto-generated primary keys.
 - Establishing associations with other component schema objects to enable parent-child retrievals.
 
-Annotations to the OpenAPI specification document provides the means of mapping from API elements to database resources.  
+Annotations to the OpenAPI specification document provides the means of mapping from API elements to database resources.
 
 This is done via two primary methods.
 
 * Component Schema Objects to Database Tables - These objects can be mapped to database tables.  When this mapping is available api-maker will build supporting CRUD services.
 
-* Path Operations to Custom SQL - This method allows attaching custom SQL to a specific operation. 
+* Path Operations to Custom SQL - This method allows attaching custom SQL to a specific operation.
 
 
 ## Using API Services
@@ -94,7 +96,7 @@ Multiple request parameters can be submitted. For example, to further restrict t
 https://bobsrecords/customer?state=FL&support_rep_id=4
 ```
 
-When the component schema object has a one-to-one association with another component schema object, requests can also search on properties of the associated object. 
+When the component schema object has a one-to-one association with another component schema object, requests can also search on properties of the associated object.
 
 For example, in the Chinook invoice schema object, where the customer property is a one-to-one associated object, invoices for customers in Florida can be selected with the following URL:
 
@@ -129,7 +131,7 @@ https://bobsrecords.com/employee?hire_date=between::2024-01-01,2024-12-31
 ### Updating Data
 
 Updating data is done via PUT method requests.  If in the schema component object a property has been ehanced with a version type attribute
-then API-Maker restricts updates to single records.  Without a version property then normal record selection occurs allowing bulk updates 
+then API-Maker restricts updates to single records.  Without a version property then normal record selection occurs allowing bulk updates
 of records.
 
 
@@ -142,7 +144,7 @@ of records.
 | PUT    | update    |
 | DELETE | delete    |
 
-Request parameters for services provided by API-Maker  
+Request parameters for services provided by API-Maker
 
 ### Selecting Data - GET
 
@@ -152,7 +154,7 @@ When utilized, the `_properties` parameter should be a string comprising a delim
 
 Consider the following examples with the Chinnook invoice schema object;
 
-| _properties | Description| 
+| _properties | Description|
 |-------------|------------|
 | .*          | Returns all invoice properties |
 | .* line_items | Returns all invoice properties and the line_items associated with the invoice |
@@ -162,7 +164,7 @@ Consider the following examples with the Chinnook invoice schema object;
 ### Metadata Parameters
 
 | Name | Description |
-| _properties | Optional, allows selecting a subset of properties returned by the request.   
+| _properties | Optional, allows selecting a subset of properties returned by the request.
 A space delimited list of regular expressions |
 
 
@@ -191,7 +193,7 @@ To accomplish this, attention must be given to several configuration aspects:
 
 #### Schema Component Object Attributes
 
-These attributes map the componnent object to a database table.  
+These attributes map the componnent object to a database table.
 
 | Attribute | Description | Usage |
 |-------|--------|---------|
@@ -251,16 +253,16 @@ Here's an example of how the `customer` property would be specified in the `invo
           x-am-schema-object: customer
           x-am-parent-property: customer_id
 
-In this example the `customer` property type is specified as being a relation to the schema component object `customer'.  When fetching data API-Make will then use 
+In this example the `customer` property type is specified as being a relation to the schema component object `customer'.  When fetching data API-Make will then use
 
-With API-Maker 
+With API-Maker
 
 | Attribute | | Description |
 |-----------|-|-------------|
 | x-am-schema | Required | The name of the schema component object to use as the source of the relation. |
 | x-am-cardinality | Optional | Can be either single or multiple, defaults to single |
 | x-am-parent-property | Required | The name of the sibling property to use as the selection key in the relation |
-| x-am-child-property | Optional | 
+| x-am-child-property | Optional |
 
 # Services
 
@@ -270,7 +272,7 @@ When interacting with these services there are three catagories of data being su
 
 **Query Parameters** - These parameters are generally passed in the request query string or path parameters.  With query string values relational expressions can be applied to filter sets of records.  These parameters can be applied to GET, PUT, and DELETE methods.
 
-Fundanmental relational expressions are supported when selecting records using a query string.  When passing a query string parameter the value can be prefixed with an relational operator separated by a ':'.  For example a parameter of 'laditude=lt:30' would select records those records with a laditude of less than 30. The supported operations are lt, le, eq, ne, ge, gt, in, between, not-in, not-between. 
+Fundanmental relational expressions are supported when selecting records using a query string.  When passing a query string parameter the value can be prefixed with an relational operator separated by a ':'.  For example a parameter of 'laditude=lt:30' would select records those records with a laditude of less than 30. The supported operations are lt, le, eq, ne, ge, gt, in, between, not-in, not-between.
 
 **Store Parameters** - These parameters are always passed in the request body in JSON format and represent data to be stored.  These parameters are only accepted only by POST and PUT methods.
 
@@ -298,4 +300,3 @@ Fundanmental relational expressions are supported when selecting records using a
 ## PUT - Record Modification
 
 ## DELETE - Record Deletion
-
