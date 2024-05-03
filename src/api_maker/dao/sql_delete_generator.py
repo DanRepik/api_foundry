@@ -13,4 +13,14 @@ class SQLDeleteGenerator(SQLGenerator):
 
     @property
     def sql(self) -> str:
+        concurrency_property = self.schema_object.concurrency_property
+        if concurrency_property and not self.operation.query_params.get(
+            concurrency_property.name
+        ):
+            raise ApplicationException(
+                400,
+                "Missing required concurrency management property."
+                + f"  schema_object: {self.schema_object.entity}, property: {concurrency_property.name}",
+            )
+
         return f"DELETE FROM {self.table_expression}{self.search_condition} RETURNING {self.select_list}"

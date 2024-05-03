@@ -118,6 +118,7 @@ class TestSQLGenerator:
 
             log.info(f"sql: {sql_generator.sql}")
             assert False
+
         except ApplicationException as e:
             assert (
                 e.message
@@ -495,14 +496,15 @@ class TestSQLGenerator:
             assert False, e.message
 
     def test_delete(self):
-        schema_object = ModelFactory.get_schema_object("invoice")
+        ModelFactory.load_spec()
+        schema_object = ModelFactory.get_schema_object("playlist_track")
         operation = Operation(
-            entity="invoice",
+            entity="playlist_track",
             action="delete",
             query_params={
-                "customer_id": "2",
+                "playlist_id": "2",
             },
-            metadata_params={"_properties": "invoice_id"},
+            metadata_params={"_properties": "track_id"},
         )
         sql_generator = SQLDeleteGenerator(operation, schema_object)
 
@@ -512,9 +514,9 @@ class TestSQLGenerator:
 
         assert (
             sql_generator.sql
-            == "DELETE FROM invoice WHERE customer_id = %(customer_id)s RETURNING invoice_id"
+            == "DELETE FROM playlist_track WHERE playlist_id = %(playlist_id)s RETURNING track_id"
         )
-        assert sql_generator.placeholders == {"customer_id": 2}
+        assert sql_generator.placeholders == {"playlist_id": 2}
 
     def test_relation_search_condition(self):
         ModelFactory.load_spec()

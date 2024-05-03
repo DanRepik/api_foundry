@@ -15,7 +15,6 @@ src/api_maker/connectors/oracle_connector.py
 src/api_maker/connectors/postgres_connection.py
 src/api_maker/dao/dao.py
 src/api_maker/dao/operation_dao.py
-src/api_maker/dao/postgres_dao.py
 src/api_maker/dao/sql_delete_generator.py
 src/api_maker/dao/sql_generator.py
 src/api_maker/dao/sql_insert_generator.py
@@ -27,7 +26,6 @@ src/api_maker/services/transactional_service.py
 src/api_maker/utils/app_exception.py
 src/api_maker/utils/logger.py
 src/api_maker/utils/model_factory.py
-src/api_maker/utils/open_api_model.py
 tests/test_adapter.py
 tests/test_connection_factory.py
 tests/test_gateway_adapter.py

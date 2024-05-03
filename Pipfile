@@ -5,19 +5,22 @@ name = "pypi"
 
 [packages]
 api-maker = {file = ".", editable = true}
-pytest = "*"
-build = "*"
-twine = "*"
 boto3 = "*"
 pyyaml = "*"
 psycopg2-binary = "*"
 oracledb = "*"
 
 [dev-packages]
+black = "*"
+fake8 ="*"
 pytest-cov = "*"
 pytest = "*"
 boto3 = "*"
 ipykernel = "*"
+build = "*"
+setuptools = "*"
+wheel = "*"
+twine = "*"
 
 [requires]
 python_version = "3.12"

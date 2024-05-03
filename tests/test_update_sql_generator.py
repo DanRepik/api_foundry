@@ -20,7 +20,7 @@ from api_maker.utils.logger import logger
 log = logger(__name__)
 
 
-class TestSQLGenerator:
+class TestUpdateSQLGenerator:
 
     def test_update_uuid(self):
         sql_generator = SQLUpdateGenerator(
@@ -78,6 +78,7 @@ class TestSQLGenerator:
         }
 
     def test_update_timestamp(self):
+        ModelFactory.load_spec()
         sql_generator = SQLUpdateGenerator(
             Operation(
                 entity="invoice",
@@ -88,36 +89,7 @@ class TestSQLGenerator:
                 },
                 store_params={"invoice_date": "2024-03-18", "total": "2.63"},
             ),
-            SchemaObject(
-                "invoice",
-                {
-                    "type": "object",
-                    "x-am-engine": "postgres",
-                    "x-am-database": "chinook",
-                    "properties": {
-                        "invoice_id": {"type": "integer", "x-am-primary-key": "auto"},
-                        "customer_id": {"type": "integer"},
-                        "customer": {
-                            "x-am-schema-object": "customer",
-                            "x-am-parent-property": "customer_id",
-                        },
-                        "invoice_date": {"type": "string", "format": "date-time"},
-                        "billing_address": {"type": "string", "maxLength": 70},
-                        "billing_city": {"type": "string", "maxLength": 40},
-                        "billing_state": {"type": "string", "maxLength": 40},
-                        "billing_country": {"type": "string", "maxLength": 40},
-                        "billing_postal_code": {"type": "string", "maxLength": 10},
-                        "line_items": {
-                            "x-am-schema-object": "invoice_line",
-                            "x-am-cardinality": "1:m",
-                            "x-am-child-property": "invoice_id",
-                        },
-                        "total": {"type": "number", "format": "float"},
-                        "last_updated": {"type": "string", "x-am-concurrency-control": "timestamp"},
-                    },
-                    "required": ["invoice_id", "customer_id", "invoice_date", "total"],
-                },
-            ),
+            ModelFactory.get_schema_object("invoice")
         )
 
         log.info(
@@ -126,11 +98,11 @@ class TestSQLGenerator:
 
         assert (
             sql_generator.sql
-            == "UPDATE invoice SET invoice_date = %(invoice_date)s, total = %(total)s, last_updated = CURRENT_TIMESTAMP()  WHERE customer_id = %(customer_id)s AND last_updated = %(last_updated)s RETURNING invoice_id, customer_id, invoice_date, billing_address, billing_city, billing_state, billing_country, billing_postal_code, total, last_updated"
+            == "UPDATE invoice SET invoice_date = %(invoice_date)s, total = %(total)s, last_updated = CURRENT_TIMESTAMP  WHERE customer_id = %(customer_id)s AND last_updated = %(last_updated)s RETURNING invoice_id, customer_id, invoice_date, billing_address, billing_city, billing_state, billing_country, billing_postal_code, total, last_updated"
         )
         assert sql_generator.placeholders == {
             "customer_id": 2,
-            "last_updated": "2024-04-20T16:20:00",
+            "last_updated": datetime(2024, 4, 20, 16, 20, 0),
             "invoice_date": datetime(2024, 3, 18, 0, 0),
             "total": 2.63,
         }

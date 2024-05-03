@@ -3,8 +3,8 @@ Name: api_maker
 Version: 0.1.0
 Summary: Rest Builder is a python package that builds RESTful api services from Open API (v3) model data.
 Author-email: Daniel Repik <danrepik@icloud.com>
-Project-URL: Documentation, https://localhost
-Project-URL: Source, https://localhost
+Project-URL: Documentation, https://github.com/DanRepik/api-maker
+Project-URL: Source, https://github.com/DanRepik/api-maker
 Classifier: Programming Language :: Python :: 3.9
 Classifier: Operating System :: OS Independent
 Requires-Python: >=3.9

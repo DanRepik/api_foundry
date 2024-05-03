@@ -21,14 +21,14 @@ class SQLUpdateGenerator(SQLGenerator):
         if not self.operation.query_params.get(concurrency_property.name):
             raise ApplicationException(
                 400,
-                "For updating concurrency managed schema objects the current version must be supplied as a query parameter." + 
-                f"  schema_object: {self.schema_object.entity}, property: {concurrency_property.name}",
+                "Missing required concurrency management property."
+                + f"  schema_object: {self.schema_object.entity}, property: {concurrency_property.name}",
             )
         if self.operation.store_params.get(concurrency_property.name):
             raise ApplicationException(
                 400,
-                "For updating concurrency managed schema objects the current version may not be supplied as a storage parameter." + 
-                f"  schema_object: {self.schema_object.entity}, property: {concurrency_property.name}",
+                "For updating concurrency managed schema objects the current version may not be supplied as a storage parameter."
+                + f"  schema_object: {self.schema_object.entity}, property: {concurrency_property.name}",
             )
 
         return f"UPDATE {self.table_expression}{self.update_values}, {concurrency_property.column_name} = {self.concurrency_generator(concurrency_property)} {self.search_condition} RETURNING {self.select_list}"

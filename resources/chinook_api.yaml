@@ -231,11 +231,9 @@ components:
       type: object
       x-am-engine: postgres
       x-am-database: chinook
-      x-am-table: MetaType
       properties:
         media_type_id:
           type: integer
-          x-am-primary-key: auto
         name:
           type: string
           maxLength: 120
@@ -260,7 +258,6 @@ components:
       type: object
       x-am-engine: postgres
       x-am-database: chinook
-      x-am-table: PlaylistTrack
       properties:
         playlist_id:
           type: integer
