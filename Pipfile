@@ -12,16 +12,15 @@ oracledb = "*"
 
 [dev-packages]
 black = "*"
+boto3 = "*"
+build = "*"
 fake8 ="*"
-pre-commit = "*"
+ipykernel = "*"
 pytest-cov = "*"
 pytest = "*"
-boto3 = "*"
-ipykernel = "*"
-build = "*"
 setuptools = "*"
-wheel = "*"
 twine = "*"
+wheel = "*"
 
 [requires]
 python_version = "3.12"
