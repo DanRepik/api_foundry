@@ -1,0 +1,4 @@
+oracledb~=2.1
+psycopg2-binary~=2.9
+pyyaml~=6.0
+-e /Users/clydedanielrepik/workspace/api_maker
