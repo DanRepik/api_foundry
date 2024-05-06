@@ -8,7 +8,6 @@ log = logger(__name__)
 
 
 class SQLSubselectGenerator(SQLSelectGenerator):
-
     def __init__(
         self,
         operation: Operation,
@@ -21,7 +20,9 @@ class SQLSubselectGenerator(SQLSelectGenerator):
 
     def selection_result_map(self) -> dict:
         filter_str = self.operation.metadata_params.get("_properties", "")
-        result = {self.relation.child_property.name: self.relation.child_property}
+        result = {
+            self.relation.child_property.name: self.relation.child_property
+        }
 
         log.info(f"Building map; {self.get_regex_map(filter_str)}")
         for relation_name, reg_exs in self.get_regex_map(filter_str).items():
@@ -52,7 +53,9 @@ class SQLSubselectGenerator(SQLSelectGenerator):
 
     @property
     def sql(self) -> str:
-        log.info(f"parent search_condition: {self.parent_generator.search_condition}")
+        log.info(
+            f"parent search_condition: {self.parent_generator.search_condition}"
+        )
         sql = (
             f"SELECT {self.select_list} "
             + f"FROM {self.relation.child_schema_object.table_name} "

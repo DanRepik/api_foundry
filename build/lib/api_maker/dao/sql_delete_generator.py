@@ -8,7 +8,9 @@ log = logger(__name__)
 
 
 class SQLDeleteGenerator(SQLGenerator):
-    def __init__(self, operation: Operation, schema_object: SchemaObject) -> None:
+    def __init__(
+        self, operation: Operation, schema_object: SchemaObject
+    ) -> None:
         super().__init__(operation, schema_object)
 
     @property

@@ -11,7 +11,9 @@ log = logger(__name__)
 
 
 class SQLGenerator:
-    def __init__(self, operation: Operation, schema_object: SchemaObject) -> None:
+    def __init__(
+        self, operation: Operation, schema_object: SchemaObject
+    ) -> None:
         self.operation = operation
         self.schema_object = schema_object
         self.prefix_map = self.__get_prefix_map(schema_object)
@@ -103,12 +105,13 @@ class SQLGenerator:
             conditions.append(assignment)
             self.search_placeholders.update(holders)
 
-        return f" WHERE {' AND '.join(conditions)}" if len(conditions) > 0 else ""
+        return (
+            f" WHERE {' AND '.join(conditions)}" if len(conditions) > 0 else ""
+        )
 
     def search_value_assignment(
         self, property: SchemaObjectProperty, value, prefix: str | None = None
     ) -> tuple[str, dict]:
-
         operand = "="
         relational_types = {
             "lt": "<",
@@ -125,7 +128,9 @@ class SQLGenerator:
         if isinstance(value, str):
             parts = value.split("::", 1)
             if parts[0] in relational_types:
-                operand = relational_types[parts[0] if len(parts) > 1 else "eq"]
+                operand = relational_types[
+                    parts[0] if len(parts) > 1 else "eq"
+                ]
                 value_str = parts[-1]
             else:
                 value_str = value
@@ -136,13 +141,21 @@ class SQLGenerator:
         else:
             value_str = str(value)
 
-        column = f"{prefix}.{property.column_name}" if prefix else property.column_name
-        placeholder_name = f"{prefix}_{property.name}" if prefix else property.name
+        column = (
+            f"{prefix}.{property.column_name}"
+            if prefix
+            else property.column_name
+        )
+        placeholder_name = (
+            f"{prefix}_{property.name}" if prefix else property.name
+        )
 
         if operand in ["between", "not-between"]:
             value_set = value_str.split(",")
             placeholder_name = (
-                property.name if self.single_table else f"{prefix}_{property.name}"
+                property.name
+                if self.single_table
+                else f"{prefix}_{property.name}"
             )
             sql = (
                 "NOT "
@@ -153,8 +166,12 @@ class SQLGenerator:
                 + f"AND {self.placeholder(property, f'{placeholder_name}_2')}"
             )
             placeholders = {
-                f"{placeholder_name}_1": property.convert_to_db_value(value_set[0]),
-                f"{placeholder_name}_2": property.convert_to_db_value(value_set[1]),
+                f"{placeholder_name}_1": property.convert_to_db_value(
+                    value_set[0]
+                ),
+                f"{placeholder_name}_2": property.convert_to_db_value(
+                    value_set[1]
+                ),
             }
 
         elif operand in ["in", "not-in"]:
@@ -184,7 +201,9 @@ class SQLGenerator:
 
     def selection_result_map(self) -> dict:
         if not self.__selection_result_map:
-            filters = self.operation.metadata_params.get("_properties", ".*").split()
+            filters = self.operation.metadata_params.get(
+                "_properties", ".*"
+            ).split()
 
             # Filter and prefix keys for the current entity and regular expressions
             self.__selection_result_map = self.filter_and_prefix_keys(
@@ -203,7 +222,10 @@ class SQLGenerator:
         return result
 
     def filter_and_prefix_keys(
-        self, regex_list: list[str], properties: dict, prefix: str | None = None
+        self,
+        regex_list: list[str],
+        properties: dict,
+        prefix: str | None = None,
     ):
         """
         Accepts a prefix string, list of regular expressions, and a dictionary.
@@ -242,7 +264,9 @@ class SQLGenerator:
             if property.column_type == "date":
                 return f"TO_DATE(:{param}, 'YYYY-MM-DD')"
             elif property.column_type == "datetime":
-                return f"TO_TIMESTAMP(:{param}, 'YYYY-MM-DD\"T\"HH24:MI:SS.FF')"
+                return (
+                    f"TO_TIMESTAMP(:{param}, 'YYYY-MM-DD\"T\"HH24:MI:SS.FF')"
+                )
             elif property.column_type == "time":
                 return f"TO_TIME(:{param}, 'HH24:MI:SS.FF')"
             return f":{param}"

@@ -19,11 +19,11 @@ def hash_folder(self, folder_path, include_regex=None, exclude_regex=None):
             # Check if the file should be included based on the include regex
             if include_pattern and not include_pattern.match(file):
                 continue
-            
+
             # Check if the file should be excluded based on the exclude regex
             if exclude_pattern and exclude_pattern.match(file):
                 continue
-            
+
             with open(file_path, 'rb') as f:
                 # Update the folder hash with the hash of the file contents
                 file_hash = hashlib.sha256()
@@ -39,16 +39,16 @@ def write_hash(working_dir, hash_value: str):
     try:
         with open(file_path, 'w') as file:
             file.write(hash_value)
-    
+
         if log.isEnabledFor(DEBUG):
             log.debug(f"Hash value written: {file_path}.")
-    
+
     except Exception as e:
         log.warn(f"Error writing to {file_path}: {str(e)}")
 
 def read_hash(working_dir) -> str:
     file_path = os.path.join(working_dir, '.hash')
-    
+
     try:
         with open(file_path, 'r') as file:
             hash_value = file.read().strip()
@@ -56,5 +56,5 @@ def read_hash(working_dir) -> str:
     except Exception as e:
         if log.isEnabledFor(DEBUG):
             log.info(f"Hash file not found: {file_path}")
-    
+
         return None

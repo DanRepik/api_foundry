@@ -12,7 +12,9 @@ log = logger(__name__)
 
 
 class SQLSelectGenerator(SQLGenerator):
-    def __init__(self, operation: Operation, schema_object: SchemaObject) -> None:
+    def __init__(
+        self, operation: Operation, schema_object: SchemaObject
+    ) -> None:
         super().__init__(operation, schema_object)
 
     @property
@@ -27,7 +29,6 @@ class SQLSelectGenerator(SQLGenerator):
 
     @property
     def search_condition(self) -> str:
-
         self.search_placeholders = {}
         conditions = []
 
@@ -42,7 +43,9 @@ class SQLSelectGenerator(SQLGenerator):
                             400,
                             f"Queries using properties in 1:m associationed is not supported. schema object: {self.schema_object.entity}, property: {name}",
                         )
-                    property = relation.child_schema_object.properties[parts[1]]
+                    property = relation.child_schema_object.properties[
+                        parts[1]
+                    ]
                     prefix = self.prefix_map[parts[0]]
                 else:
                     property = self.schema_object.properties[parts[0]]
@@ -59,7 +62,9 @@ class SQLSelectGenerator(SQLGenerator):
             conditions.append(assignment)
             self.search_placeholders.update(holders)
 
-        return f" WHERE {' AND '.join(conditions)}" if len(conditions) > 0 else ""
+        return (
+            f" WHERE {' AND '.join(conditions)}" if len(conditions) > 0 else ""
+        )
 
     @property
     def table_expression(self) -> str:
@@ -71,9 +76,7 @@ class SQLSelectGenerator(SQLGenerator):
         for name, relation in self.schema_object.relations.items():
             child_prefix = self.prefix_map[relation.name]
             if relation.cardinality == "1:1":
-                table_expression = (
-                    f"{relation.child_schema_object.table_name} AS {child_prefix}"
-                )
+                table_expression = f"{relation.child_schema_object.table_name} AS {child_prefix}"
                 joins.append(
                     f"INNER JOIN {table_expression} ON {parent_prefix}.{relation.parent_property.column_name} = {child_prefix}.{relation.child_property.column_name}"
                 )
@@ -133,7 +136,9 @@ class SQLSelectGenerator(SQLGenerator):
         for name, value in record.items():
             property = self.selection_results[name]
             parts = name.split(".")
-            component = parts[0] if len(parts) > 1 else self.prefix_map["$default$"]
+            component = (
+                parts[0] if len(parts) > 1 else self.prefix_map["$default$"]
+            )
             object = object_set.get(component, {})
             if not object:
                 object_set[component] = object

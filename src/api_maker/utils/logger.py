@@ -14,6 +14,7 @@ WARN = logging.WARN
 INFO = logging.INFO
 DEBUG = logging.DEBUG
 
+
 def logger(name=None):
     """
     Function to create a logger with a specified name or default name.

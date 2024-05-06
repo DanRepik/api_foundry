@@ -8,7 +8,9 @@ log = logger(__name__)
 
 
 class SQLUpdateGenerator(SQLGenerator):
-    def __init__(self, operation: Operation, schema_object: SchemaObject) -> None:
+    def __init__(
+        self, operation: Operation, schema_object: SchemaObject
+    ) -> None:
         super().__init__(operation, schema_object)
 
     @property
@@ -53,7 +55,11 @@ class SQLUpdateGenerator(SQLGenerator):
             placeholder = property.name
             column_name = property.column_name
 
-            columns.append(f"{column_name} = {self.placeholder(property, placeholder)}")
-            self.store_placeholders[placeholder] = property.convert_to_db_value(value)
+            columns.append(
+                f"{column_name} = {self.placeholder(property, placeholder)}"
+            )
+            self.store_placeholders[
+                placeholder
+            ] = property.convert_to_db_value(value)
 
         return f" SET {', '.join(columns)}"

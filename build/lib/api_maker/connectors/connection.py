@@ -12,7 +12,9 @@ db_config_map = dict()
 
 
 class Cursor:
-    def execute(self, sql: str, params: dict, result_columns: list[str]) -> list[tuple]:
+    def execute(
+        self, sql: str, params: dict, result_columns: list[str]
+    ) -> list[tuple]:
         raise NotImplementedError
 
     def close(self):
@@ -98,7 +100,9 @@ class Connection:
 
         # Get the secret value from AWS Secrets Manager
         log.info(f"db_secret_name: {db_secret_name}")
-        log.info(f"credentials: {vars(boto3.DEFAULT_SESSION.get_credentials())}")
+        log.info(
+            f"credentials: {vars(boto3.DEFAULT_SESSION.get_credentials())}"
+        )
         db_secret = secretsmanager.describe_secret(SecretId=db_secret_name)
         db_secret = secretsmanager.get_secret_value(SecretId=db_secret_name)
         log.debug(f"loading secret name: {db_secret}")

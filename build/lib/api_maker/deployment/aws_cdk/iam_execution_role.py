@@ -11,6 +11,7 @@ from ..lib.common import make_name, make_tags, make_id, make_resource
 
 log = logger(__name__)
 
+
 class LambdaExecutionRole(Construct):
     role: IamRole
 
@@ -32,7 +33,7 @@ class LambdaExecutionRole(Construct):
         self.attach_policy_to_role(
             scope,
             "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
-            "lambdaBasicExecPolicyAtch"
+            "lambdaBasicExecPolicyAtch",
         )
 
         self.attach_policy_to_role(
@@ -67,7 +68,7 @@ class LambdaExecutionRole(Construct):
                             "edgelambda.amazonaws.com",
                         ]
                     },
-                    "Effect": "Allow"
+                    "Effect": "Allow",
                 }
             ],
         }
@@ -78,7 +79,7 @@ class LambdaExecutionRole(Construct):
             make_id(scope, f"{id}-role"),
             name=make_resource(scope, id),
             assume_role_policy=json.dumps(assume_role_policy),
-            tags=make_tags(scope, id)
+            tags=make_tags(scope, id),
         )
 
     def attach_policy_to_role(
@@ -94,7 +95,7 @@ class LambdaExecutionRole(Construct):
         """
         if log.isEnabledFor(INFO):
             log.info(f"Creating policy attachment: policy_arg: {policy_arn}")
-    
+
         IamRolePolicyAttachment(
             scope,
             make_id(scope, policy_name),
@@ -108,146 +109,159 @@ class LambdaExecutionRole(Construct):
             make_id(scope, f"{id}-role-policy"),
             role=self.role.id,
             name=make_resource(scope, f"{id}-role-policy"),
-            policy=json.dumps({
-                "Version": '2012-10-17',
-                "Statement": [
+            policy=json.dumps(
                 {
-                    "Sid": 'AllowLambdaFunctionInvocation',
-                    "Effect": 'Allow',
-                    "Action": ['lambda:InvokeFunction'],
-                    "Resource": ['*'],
-                },
-                {
-                    # lambda@edge
-                    "Sid": "AllowEdgeFunction",
-                    "Effect": "Allow",
-                    "Action": ["lambda:EnableReplication*", "lambda:GetFunction", "iam:CreateServiceLinkedRole"],
-                    "Resource": ["*"],
-                },
-                {
-                    "Sid": 'AllowWsManagementInvocation',
-                    "Effect": 'Allow',
-                    "Action": ['execute-api:Invoke', 'execute-api:ManageConnections'],
-                    "Resource": ['arn:aws:execute-api:*:*:*/*'],
-                },
-                {
-                    "Sid": 'Logs',
-                    "Effect": 'Allow',
-                    "Action": [
-                    'logs:CreateLogGroup',
-                    'logs:CreateLogStream',
-                    'logs:DescribeLogGroups',
-                    'logs:DescribeLogStreams',
-                    'logs:PutLogEvents',
-                    'logs:GetLogEvents',
-                    'logs:FilterLogEvents',
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "AllowLambdaFunctionInvocation",
+                            "Effect": "Allow",
+                            "Action": ["lambda:InvokeFunction"],
+                            "Resource": ["*"],
+                        },
+                        {
+                            # lambda@edge
+                            "Sid": "AllowEdgeFunction",
+                            "Effect": "Allow",
+                            "Action": [
+                                "lambda:EnableReplication*",
+                                "lambda:GetFunction",
+                                "iam:CreateServiceLinkedRole",
+                            ],
+                            "Resource": ["*"],
+                        },
+                        {
+                            "Sid": "AllowWsManagementInvocation",
+                            "Effect": "Allow",
+                            "Action": [
+                                "execute-api:Invoke",
+                                "execute-api:ManageConnections",
+                            ],
+                            "Resource": ["arn:aws:execute-api:*:*:*/*"],
+                        },
+                        {
+                            "Sid": "Logs",
+                            "Effect": "Allow",
+                            "Action": [
+                                "logs:CreateLogGroup",
+                                "logs:CreateLogStream",
+                                "logs:DescribeLogGroups",
+                                "logs:DescribeLogStreams",
+                                "logs:PutLogEvents",
+                                "logs:GetLogEvents",
+                                "logs:FilterLogEvents",
+                            ],
+                            "Resource": "arn:aws:logs:*:*:*",
+                        },
+                        {
+                            "Sid": "StateMachines",
+                            "Effect": "Allow",
+                            "Action": [
+                                "states:DescribeStateMachine",
+                                "states:StartExecution",
+                                "states:SendTaskSuccess",
+                                "states:SendTaskFailure",
+                                "states:ListExecution",
+                                "states:DescribeExecution",
+                                "states:DescribeStateMachineForExecution",
+                                "states:GetExecutionHistory",
+                                "states:SendTaskHeartbeat",
+                                "states:GetActivityTask",
+                            ],
+                            "Resource": "arn:aws:states:*:*:*:*",
+                        },
+                        {
+                            "Sid": "AllowAccessObjectsToS3",
+                            "Effect": "Allow",
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:PutObject",
+                                "s3:DeleteObject",
+                            ],
+                            "Resource": "*",
+                        },
+                        {
+                            "Sid": "AllowSqsAccess",
+                            "Effect": "Allow",
+                            "Action": [
+                                "sqs:DeleteMessage",
+                                "sqs:GetQueueAttributes",
+                                "sqs:GetQueueUrl",
+                                "sqs:ReceiveMessage",
+                            ],
+                            "Resource": "*",
+                        },
+                        {
+                            "Sid": "AllowAssumeRole",
+                            "Effect": "Allow",
+                            "Action": "sts:AssumeRole",
+                            "Resource": "*",
+                        },
+                        {
+                            "Sid": "DDB",
+                            "Effect": "Allow",
+                            "Action": [
+                                "dynamodb:BatchGet*",
+                                "dynamodb:BatchGetItem",
+                                "dynamodb:BatchWriteItem",
+                                "dynamodb:ConditionCheckItem",
+                                "dynamodb:DescribeTable",
+                                "dynamodb:GetRecords",
+                                "dynamodb:DeleteItem",
+                                "dynamodb:DescribeTable",
+                                "dynamodb:DescribeStream",
+                                "dynamodb:DescribeGlobalTable",
+                                "dynamodb:GetShardIterator",
+                                "dynamodb:ListStreams",
+                                "dynamodb:Query",
+                                "dynamodb:PutItem",
+                                "dynamodb:GetItem",
+                                "dynamodb:UpdateItem",
+                                "dynamodb:Scan",
+                            ],
+                            "Resource": "*",
+                        },
+                        {
+                            "Sid": "AllowVPCAccess",
+                            "Effect": "Allow",
+                            "Action": [
+                                "ec2:CreateNetworkInterface",
+                                "ec2:DescribeNetworkInterfaces",
+                                "ec2:DeleteNetworkInterface",
+                                "ec2:AssignPrivateIpAddresses",
+                                "ec2:UnassignPrivateIpAddresses",
+                            ],
+                            "Resource": "*",
+                        },
+                        {
+                            "Sid": "TextractAccess",
+                            "Effect": "Allow",
+                            "Action": "textract:*",
+                            "Resource": "*",
+                        },
+                        {
+                            "Sid": "secretsmanager",
+                            "Effect": "Allow",
+                            "Action": "secretsmanager:GetSecretValue",
+                            "Resource": ["*"],
+                        },
+                        {
+                            "Sid": "sns",
+                            "Effect": "Allow",
+                            "Action": "sns:*",
+                            "Resource": ["*"],
+                        },
+                        {
+                            "Sid": "ssm",
+                            "Effect": "Allow",
+                            "Action": [
+                                "ssm:GetParametersByPath",
+                                "ssm:GetParameter",
+                                "kms:Decrypt",
+                            ],
+                            "Resource": ["*"],
+                        },
                     ],
-                    "Resource": 'arn:aws:logs:*:*:*',
-                },
-                {
-                    "Sid": 'StateMachines',
-                    "Effect": 'Allow',
-                    "Action": [
-                    'states:DescribeStateMachine',
-                    'states:StartExecution',
-                    'states:SendTaskSuccess',
-                    'states:SendTaskFailure',
-                    'states:ListExecution',
-                    'states:DescribeExecution',
-                    'states:DescribeStateMachineForExecution',
-                    'states:GetExecutionHistory',
-                    'states:SendTaskHeartbeat',
-                    'states:GetActivityTask',
-                    ],
-                    "Resource": 'arn:aws:states:*:*:*:*',
-                },
-                {
-                    "Sid": 'AllowAccessObjectsToS3',
-                    "Effect": 'Allow',
-                    "Action": ['s3:GetObject', 's3:PutObject', 's3:DeleteObject'],
-                    "Resource": '*',
-                },
-                {
-                    "Sid": 'AllowSqsAccess',
-                    "Effect": 'Allow',
-                    "Action": [
-                    'sqs:DeleteMessage',
-                    'sqs:GetQueueAttributes',
-                    'sqs:GetQueueUrl',
-                    'sqs:ReceiveMessage',
-                    ],
-                    "Resource": '*',
-                },
-                {
-                    "Sid": 'AllowAssumeRole',
-                    "Effect": 'Allow',
-                    "Action": 'sts:AssumeRole',
-                    "Resource": '*',
-                },
-                {
-                    "Sid": 'DDB',
-                    "Effect": 'Allow',
-                    "Action": [
-                    'dynamodb:BatchGet*',
-                    'dynamodb:BatchGetItem',
-                    'dynamodb:BatchWriteItem',
-                    'dynamodb:ConditionCheckItem',
-                    'dynamodb:DescribeTable',
-                    'dynamodb:GetRecords',
-                    'dynamodb:DeleteItem',
-                    'dynamodb:DescribeTable',
-                    'dynamodb:DescribeStream',
-                    'dynamodb:DescribeGlobalTable',
-                    'dynamodb:GetShardIterator',
-                    'dynamodb:ListStreams',
-                    'dynamodb:Query',
-                    'dynamodb:PutItem',
-                    'dynamodb:GetItem',
-                    'dynamodb:UpdateItem',
-                    'dynamodb:Scan',
-                    ],
-                    "Resource": '*',
-                },
-                {
-                    'Sid': 'AllowVPCAccess',
-                    'Effect': 'Allow',
-                    'Action': [
-                    'ec2:CreateNetworkInterface',
-                    'ec2:DescribeNetworkInterfaces',
-                    'ec2:DeleteNetworkInterface',
-                    'ec2:AssignPrivateIpAddresses',
-                    'ec2:UnassignPrivateIpAddresses'
-                    ],
-                    'Resource': '*'
-                },
-                {
-                    "Sid": 'TextractAccess',
-                    "Effect": 'Allow',
-                    "Action": 'textract:*',
-                    "Resource": '*',
-                },
-                {
-                    "Sid": 'secretsmanager',
-                    "Effect": 'Allow',
-                    "Action": 'secretsmanager:GetSecretValue',
-                    "Resource": ['*'],
-                },
-                {
-                    "Sid": 'sns',
-                    "Effect": 'Allow',
-                    "Action": 'sns:*',
-                    "Resource": ['*'],
-                },
-                {
-                    "Sid": 'ssm',
-                    "Effect": 'Allow',
-                    "Action": [
-                    'ssm:GetParametersByPath',
-                    'ssm:GetParameter',
-                    'kms:Decrypt'
-                    ],
-                    "Resource": ['*'],
-                },
-                ]
-            })
+                }
+            ),
         )

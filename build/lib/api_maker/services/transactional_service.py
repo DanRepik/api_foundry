@@ -13,7 +13,6 @@ log = logger(__name__)
 
 
 class TransactionalService(ServiceAdapter):
-
     def execute(self, operation: Operation):
         schema_object = ModelFactory.get_schema_object(operation.entity)
         connection = connection_factory(

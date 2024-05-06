@@ -32,5 +32,6 @@ def logger(name=None):
     # Returning a logger object with the specified name or the root logger
     return logging.getLogger(name)
 
+
 INFO = logging.INFO
 DEBUG = logging.DEBUG
