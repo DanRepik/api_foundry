@@ -8,6 +8,7 @@ import pulumi
 import pulumi_aws as aws
 
 from api_maker.utils.logger import logger, DEBUG
+from hash_comparator import HashComparator
 
 log = logger(__name__)
 
@@ -107,6 +108,9 @@ class LambdaDeployment:
 
 lambda_deployment = LambdaDeployment(
     id="api-maker",
+    sources={
+        "api_maker": "/Users/clydedanielrepik/workspace/api_maker/src/api_maker"
+    },
     requirements=[
         "oracledb~=2.1",
         "psycopg2-binary~=2.9",
