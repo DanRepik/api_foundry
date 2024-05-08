@@ -41,11 +41,11 @@ class HashComparator:
             for file in sorted(files):
                 file_path = os.path.join(root, file)
 
-                # Check if the file should be included based on the include regex
+                # Check if the file should be included
                 if include_pattern and not include_pattern.match(file):
                     continue
 
-                # Check if the file should be excluded based on the exclude regex
+                # Check if the file should be excluded
                 if exclude_pattern and exclude_pattern.match(file):
                     continue
 
@@ -61,16 +61,26 @@ class HashComparator:
         """
         Read the hash value from a file.
         """
+        if log.isEnabledFor(DEBUG):
+            log.debug(f"reading hash: {file_path}")
+
         if not os.path.exists(file_path):
             return None
-        with open(file_path, "r") as f:
-            return f.read().strip()
+        try:
+            with open(os.path.join(file_path, ".hash"), "r") as f:
+                return f.read().strip()
+        except FileNotFoundError:
+            log.debug(f"hash file not found: {file_path}")
+            return None
 
     def write(self, hash_value, file_path):
         """
         Write the hash value to a file.
         """
-        with open(file_path, "w") as f:
+        if log.isEnabledFor(DEBUG):
+            log.debug(f"writing hash: {file_path}")
+
+        with open(os.path.join(file_path, ".hash"), "w") as f:
             f.write(hash_value)
 
     def compare(self, hash_value1, hash_value2):
