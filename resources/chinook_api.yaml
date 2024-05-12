@@ -1,6 +1,10 @@
+openapi: 3.1.0
+info:
+  title: Chinook RestAPI
+  version: 1.0.0
 components:
   schemas:
-    Album:
+    album:
       type: object
       x-am-engine: postgres
       x-am-database: chinook
@@ -20,8 +24,7 @@ components:
         - album_id
         - title
         - artist_id
-      
-    Artist:
+    artist:
       type: object
       x-am-engine: postgres
       x-am-database: chinook
@@ -34,11 +37,11 @@ components:
           maxLength: 120
       required:
         - artist_id
-      
-    Customer:
+    customer:
       type: object
       x-am-engine: postgres
       x-am-database: chinook
+      x-am-concurrency-control: version_stamp
       properties:
         customer_id:
           type: integer
@@ -80,13 +83,11 @@ components:
           type: integer
         version_stamp:
           type: string
-          x-am-concurrency-control: uuid
       required:
         - customer_id
         - first_name
         - last_name
         - email
-      
     Employee:
       type: object
       x-am-engine: postgres
@@ -140,7 +141,6 @@ components:
         - employee_id
         - last_name
         - first_name
-      
     Genre:
       type: object
       x-am-engine: postgres
@@ -154,11 +154,11 @@ components:
           maxLength: 120
       required:
         - genre_id
-      
     invoice:
       type: object
       x-am-engine: postgres
       x-am-database: chinook
+      x-am-concurrency-control: last_updated
       properties:
         invoice_id:
           type: integer
@@ -166,7 +166,7 @@ components:
         customer_id:
           type: integer
         customer:
-          x-am-schema-object: customer
+          $ref: '#/components/schemas/customer'
           x-am-parent-property: customer_id
         invoice_date:
           type: string
@@ -187,22 +187,21 @@ components:
           type: string
           maxLength: 10
         line_items:
-          x-am-schema-object: invoice_line
-          x-am-cardinality: 1:m
-          x-am-child-property: invoice_id
+          type: array
+          items:
+            $ref: "#/components/schemas/invoice_line"
+            x-am-child-property: invoice_id
         total:
           type: number
           format: float
         last_updated:
           type: string
           format: date-time
-          x-am-concurrency-control: timestamp
       required:
         - invoice_id
         - customer_id
         - invoice_date
         - total
-      
     invoice_line:
       type: object
       x-am-engine: postgres
@@ -226,7 +225,6 @@ components:
         - track_id
         - unit_price
         - quantity
-      
     media_type:
       type: object
       x-am-engine: postgres
@@ -239,7 +237,6 @@ components:
           maxLength: 120
       required:
         - media_type_id
-      
     playlist:
       type: object
       x-am-engine: postgres
@@ -253,7 +250,6 @@ components:
           maxLength: 120
       required:
         - playlist_id
-      
     playlist_track:
       type: object
       x-am-engine: postgres
@@ -267,7 +263,6 @@ components:
       required:
         - playlist_id
         - track_id
-      
     track:
       type: object
       x-am-engine: postgres

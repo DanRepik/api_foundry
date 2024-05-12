@@ -15,22 +15,6 @@ log = logger(__name__)
 
 
 class LambdaDeployment:
-<<<<<<< HEAD
-    def __init__(self, id: str, requirements: list[str], working_dir: str):
-        base_dir = os.path.join(working_dir, f"{id}-lambda")
-        self.staging = os.path.join(base_dir, "staging")
-        if not os.path.exists(self.staging):
-            os.makedirs(self.staging)
-        self.libs = os.path.join(base_dir, "staging")
-        if not os.path.exists(self.libs):
-            os.makedirs(self.libs)
-
-        if requirements:
-            self.write_requirements(requirements)
-
-        self.build_archive()
-
-=======
     def __init__(
         self,
         id: str,
@@ -63,7 +47,6 @@ class LambdaDeployment:
 
     def create_execution_role(self):
         log.debug("creating execution role")
->>>>>>> Daily checkpoint
         assume_role = aws.iam.get_policy_document(
             statements=[
                 aws.iam.GetPolicyDocumentStatementArgs(
@@ -85,33 +68,6 @@ class LambdaDeployment:
             assume_role_policy=assume_role.json,
         )
 
-<<<<<<< HEAD
-    def build_archive(self, requirements: list[str]):
-        # Define the Lambda function code
-        lambda_code = """
-    def lambda_handler(event, context):
-        # Your Lambda function code here
-        return 'Hello from Lambda!'
-    """
-
-        # Write the Lambda function code to a file
-        with open("lambda_function.py", "w") as f:
-            f.write(lambda_code)
-
-        # Create a ZIP archive of the Lambda function code and requirements
-        with ZipFile("lambda_function.zip", "w") as zipf:
-            zipf.write("lambda_function.py")
-            zipf.write("requirements.txt")
-            for folder_name, _, filenames in os.walk("requests"):
-                for filename in filenames:
-                    file_path = os.path.join(folder_name, filename)
-                    zipf.write(file_path, os.path.relpath(file_path, "."))
-
-        # Clean up
-        shutil.rmtree("requests")
-        os.remove("lambda_function.py")
-        os.remove("requirements.txt")
-=======
     def create_lambda_function(self, hash):
         log.debug("creating lambda function")
         self._lambda = aws.lambda_.Function(
@@ -173,7 +129,6 @@ class LambdaDeployment:
             log.info(
                 f"Folder copied from {source_folder} to {destination_folder}"
             )
->>>>>>> Daily checkpoint
 
     def write_requirements(self):
         if log.isEnabledFor(DEBUG):
@@ -203,12 +158,6 @@ class LambdaDeployment:
                 "--python-version",
                 "3.9",
                 "-r",
-<<<<<<< HEAD
-                f"{self.staging}/requirements.txt",
-            ]
-        )
-
-=======
                 os.path.join(self._staging, "requirements.txt"),
             ]
         )
@@ -234,7 +183,6 @@ class LambdaDeployment:
                 shutil.rmtree(item_path)
         log.info(f"All files and folders removed from {folder_path}")
 
->>>>>>> Daily checkpoint
 
 api_maker_source = "/Users/clydedanielrepik/workspace/api_maker/src/api_maker"
 lambda_deployment = LambdaDeployment(

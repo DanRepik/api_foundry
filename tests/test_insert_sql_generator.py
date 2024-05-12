@@ -21,8 +21,91 @@ log = logger(__name__)
 
 
 class TestInsertSQLGenerator:
+    def test_insert_uuid(self):
+        ModelFactory.load_spec()
+        sql_generator = SQLInsertGenerator(
+            Operation(
+                entity="invoice",
+                action="create",
+                store_params={
+                    "customer_id": "2",
+                    "invoice_date": "2024-03-17",
+                    "billing_address": "Theodor-Heuss-Straße 34",
+                    "billing_city": "Stuttgart",
+                    "billing_country": "Germany",
+                    "billing_postal_code": "70174",
+                    "total": "1.63",
+                },
+            ),
+            SchemaObject(
+                "invoice",
+                {
+                    "type": "object",
+                    "x-am-engine": "postgres",
+                    "x-am-database": "chinook",
+                    "x-am-concurrency-control": "version_stamp",
+                    "properties": {
+                        "invoice_id": {
+                            "type": "integer",
+                            "x-am-primary-key": "auto",
+                        },
+                        "customer_id": {"type": "integer"},
+                        "customer": {
+                            "$ref": "#/components/schemas/customer",
+                            "x-am-parent-property": "customer_id",
+                        },
+                        "invoice_date": {
+                            "type": "string",
+                            "format": "date-time",
+                        },
+                        "billing_address": {"type": "string", "maxLength": 70},
+                        "billing_city": {"type": "string", "maxLength": 40},
+                        "billing_state": {"type": "string", "maxLength": 40},
+                        "billing_country": {"type": "string", "maxLength": 40},
+                        "billing_postal_code": {
+                            "type": "string",
+                            "maxLength": 10,
+                        },
+                        "line_items": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/components/schemas/invoice_line",
+                                "x-am-child-property": "invoice_id",
+                            },
+                        },
+                        "total": {"type": "number", "format": "float"},
+                        "version_stamp": {"type": "string"},
+                    },
+                    "required": [
+                        "invoice_id",
+                        "customer_id",
+                        "invoice_date",
+                        "total",
+                    ],
+                },
+            ),
+        )
 
-    def test_insert(self):
+        log.info(
+            f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
+        )
+
+        assert (
+            sql_generator.sql
+            == "INSERT INTO invoice ( customer_id, invoice_date, billing_address, billing_city, billing_country, billing_postal_code, total, version_stamp ) VALUES ( %(customer_id)s, %(invoice_date)s, %(billing_address)s, %(billing_city)s, %(billing_country)s, %(billing_postal_code)s, %(total)s, gen_random_uuid()) RETURNING invoice_id, customer_id, invoice_date, billing_address, billing_city, billing_state, billing_country, billing_postal_code, total, version_stamp"
+        )
+
+        assert sql_generator.placeholders == {
+            "customer_id": 2,
+            "invoice_date": datetime(2024, 3, 17, 0, 0),
+            "billing_address": "Theodor-Heuss-Straße 34",
+            "billing_city": "Stuttgart",
+            "billing_country": "Germany",
+            "billing_postal_code": "70174",
+            "total": 1.63,
+        }
+
+    def test_insert_no_cc(self):
         ModelFactory.load_spec()
         sql_generator = SQLInsertGenerator(
             Operation(
@@ -45,30 +128,42 @@ class TestInsertSQLGenerator:
                     "x-am-engine": "postgres",
                     "x-am-database": "chinook",
                     "properties": {
-                        "invoice_id": {"type": "integer", "x-am-primary-key": "auto"},
+                        "invoice_id": {
+                            "type": "integer",
+                            "x-am-primary-key": "auto",
+                        },
                         "customer_id": {"type": "integer"},
                         "customer": {
-                            "x-am-schema-object": "customer",
+                            "$ref": "#/components/schemas/customer",
                             "x-am-parent-property": "customer_id",
                         },
-                        "invoice_date": {"type": "string", "format": "date-time"},
+                        "invoice_date": {
+                            "type": "string",
+                            "format": "date-time",
+                        },
                         "billing_address": {"type": "string", "maxLength": 70},
                         "billing_city": {"type": "string", "maxLength": 40},
                         "billing_state": {"type": "string", "maxLength": 40},
                         "billing_country": {"type": "string", "maxLength": 40},
-                        "billing_postal_code": {"type": "string", "maxLength": 10},
+                        "billing_postal_code": {
+                            "type": "string",
+                            "maxLength": 10,
+                        },
                         "line_items": {
-                            "x-am-schema-object": "invoice_line",
-                            "x-am-cardinality": "1:m",
-                            "x-am-child-property": "invoice_id",
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/components/schemas/invoice_line",
+                                "x-am-child-property": "invoice_id",
+                            },
                         },
                         "total": {"type": "number", "format": "float"},
-                        "last_updated": {
-                            "type": "string",
-                            "x-am-concurrency-control": "uuid",
-                        },
                     },
-                    "required": ["invoice_id", "customer_id", "invoice_date", "total"],
+                    "required": [
+                        "invoice_id",
+                        "customer_id",
+                        "invoice_date",
+                        "total",
+                    ],
                 },
             ),
         )
@@ -79,7 +174,7 @@ class TestInsertSQLGenerator:
 
         assert (
             sql_generator.sql
-            == "INSERT INTO invoice ( customer_id, invoice_date, billing_address, billing_city, billing_country, billing_postal_code, total, last_updated ) VALUES ( %(customer_id)s, %(invoice_date)s, %(billing_address)s, %(billing_city)s, %(billing_country)s, %(billing_postal_code)s, %(total)s, gen_random_uuid()) RETURNING invoice_id, customer_id, invoice_date, billing_address, billing_city, billing_state, billing_country, billing_postal_code, total, last_updated"
+            == "INSERT INTO invoice ( customer_id, invoice_date, billing_address, billing_city, billing_country, billing_postal_code, total ) VALUES ( %(customer_id)s, %(invoice_date)s, %(billing_address)s, %(billing_city)s, %(billing_country)s, %(billing_postal_code)s, %(total)s) RETURNING invoice_id, customer_id, invoice_date, billing_address, billing_city, billing_state, billing_country, billing_postal_code, total"
         )
 
         assert sql_generator.placeholders == {
@@ -115,31 +210,45 @@ class TestInsertSQLGenerator:
                     "type": "object",
                     "x-am-engine": "postgres",
                     "x-am-database": "chinook",
+                    "x-am-concurrency-control": "last_updated",
                     "properties": {
-                        "invoice_id": {"type": "integer", "x-am-primary-key": "auto"},
+                        "invoice_id": {
+                            "type": "integer",
+                            "x-am-primary-key": "auto",
+                        },
                         "customer_id": {"type": "integer"},
                         "customer": {
-                            "x-am-schema-object": "customer",
+                            "$ref": "#/components/schemas/customer",
                             "x-am-parent-property": "customer_id",
                         },
-                        "invoice_date": {"type": "string", "format": "date-time"},
+                        "invoice_date": {
+                            "type": "string",
+                            "format": "date-time",
+                        },
                         "billing_address": {"type": "string", "maxLength": 70},
                         "billing_city": {"type": "string", "maxLength": 40},
                         "billing_state": {"type": "string", "maxLength": 40},
                         "billing_country": {"type": "string", "maxLength": 40},
-                        "billing_postal_code": {"type": "string", "maxLength": 10},
+                        "billing_postal_code": {
+                            "type": "string",
+                            "maxLength": 10,
+                        },
                         "line_items": {
-                            "x-am-schema-object": "invoice_line",
-                            "x-am-cardinality": "1:m",
-                            "x-am-child-property": "invoice_id",
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/components/schemas/invoice_line",
+                                "x-am-child-property": "invoice_id",
+                            },
                         },
                         "total": {"type": "number", "format": "float"},
-                        "last_updated": {
-                            "type": "string",
-                            "x-am-concurrency-control": "uuid",
-                        },
+                        "last_updated": {"type": "string"},
                     },
-                    "required": ["invoice_id", "customer_id", "invoice_date", "total"],
+                    "required": [
+                        "invoice_id",
+                        "customer_id",
+                        "invoice_date",
+                        "total",
+                    ],
                 },
             ),
         )
@@ -164,7 +273,6 @@ class TestInsertSQLGenerator:
         }
 
     def test_insert_bad_key(self):
-
         try:
             ModelFactory.load_spec()
             sql_generator = SQLInsertGenerator(
@@ -179,14 +287,19 @@ class TestInsertSQLGenerator:
                         "x-am-engine": "postgres",
                         "x-am-database": "chinook",
                         "properties": {
-                            "genre_id": {"type": "integer", "x-am-primary-key": "auto"},
+                            "genre_id": {
+                                "type": "integer",
+                                "x-am-primary-key": "auto",
+                            },
                             "name": {"type": "string", "maxLength": 120},
                         },
                         "required": ["genre_id"],
                     },
                 ),
             )
-            assert False, "Attempt to set primary key during insert did not fail"
+            assert (
+                False
+            ), "Attempt to set primary key during insert did not fail"
         except ApplicationException as e:
             assert (
                 e.message
@@ -217,7 +330,9 @@ class TestInsertSQLGenerator:
                     },
                 ),
             )
-            assert False, "Attempt to insert without a required key did not fail"
+            assert (
+                False
+            ), "Attempt to insert without a required key did not fail"
         except ApplicationException as e:
             pass
 
@@ -235,14 +350,19 @@ class TestInsertSQLGenerator:
                         "x-am-engine": "postgres",
                         "x-am-database": "chinook",
                         "properties": {
-                            "genre_id": {"type": "integer", "x-am-primary-key": "auto"},
+                            "genre_id": {
+                                "type": "integer",
+                                "x-am-primary-key": "auto",
+                            },
                             "name": {"type": "string", "maxLength": 120},
                         },
                         "required": ["genre_id"],
                     },
                 ),
             )
-            assert False, "Attempt to set primary key during insert did not fail"
+            assert (
+                False
+            ), "Attempt to set primary key during insert did not fail"
         except ApplicationException as e:
             pass
 
@@ -280,7 +400,7 @@ class TestInsertSQLGenerator:
         )
         assert sql_generator.placeholders == {"name": "Good genre"}
 
-    def test_insert_uuid_last_updated(self):
+    def test_insert_timestamp(self):
         try:
             sql_generator = SQLInsertGenerator(
                 Operation(
@@ -293,12 +413,16 @@ class TestInsertSQLGenerator:
                     {
                         "x-am-engine": "postgres",
                         "x-am-database": "chinook",
+                        "x-am-concurrency-control": "last_updated",
                         "properties": {
-                            "genre_id": {"type": "integer", "x-am-primary-key": "auto"},
+                            "genre_id": {
+                                "type": "integer",
+                                "x-am-primary-key": "auto",
+                            },
                             "name": {"type": "string", "maxLength": 120},
                             "last_updated": {
                                 "type": "string",
-                                "x-am-concurrency-control": "uuid",
+                                "format": "date-time",
                             },
                         },
                         "required": ["genre_id"],
@@ -310,45 +434,53 @@ class TestInsertSQLGenerator:
             )
             assert (
                 sql_generator.sql
-                == "INSERT INTO genre ( name, last_updated ) VALUES ( %(name)s, gen_random_uuid()) RETURNING genre_id, name, last_updated"
+                == "INSERT INTO genre ( name, last_updated ) VALUES ( %(name)s, CURRENT_TIMESTAMP) RETURNING genre_id, name, last_updated"
             )
             assert sql_generator.placeholders == {"name": "New genre"}
         except ApplicationException as e:
             assert False
 
-    def test_insert_uuid_last_updated_with_param(self):
+    def test_insert_cc_with_param(self):
         try:
             SQLInsertGenerator(
                 Operation(
                     entity="genre",
                     action="create",
-                    store_params={"name": "New genre", "last_updated": "test uuid"},
+                    store_params={
+                        "name": "New genre",
+                        "last_updated": "test uuid",
+                    },
                 ),
                 SchemaObject(
                     "genre",
                     {
                         "x-am-engine": "postgres",
                         "x-am-database": "chinook",
+                        "x-am-concurrency-control": "last_updated",
                         "properties": {
-                            "genre_id": {"type": "integer", "x-am-primary-key": "auto"},
+                            "genre_id": {
+                                "type": "integer",
+                                "x-am-primary-key": "auto",
+                            },
                             "name": {"type": "string", "maxLength": 120},
                             "last_updated": {
                                 "type": "string",
-                                "x-am-concurrency-control": "uuid",
                             },
                         },
                         "required": ["genre_id"],
                     },
                 ),
             )
-            assert False, "Attempt to set primary key during insert did not fail"
+            assert (
+                False
+            ), "Attempt to set primary key during insert did not fail"
         except ApplicationException as e:
             assert (
                 e.message
-                == "Versioned properties can not be supplied a store parameters.  schema_object: genre, property: last_updated"
+                == "Versioned properties can not be supplied a store parameters. schema_object: genre, property: last_updated"
             )
 
-    def test_insert_serial_last_updated(self):
+    def test_insert_serial(self):
         try:
             sql_generator = SQLInsertGenerator(
                 Operation(
@@ -361,12 +493,15 @@ class TestInsertSQLGenerator:
                     {
                         "x-am-engine": "postgres",
                         "x-am-database": "chinook",
+                        "x-am-concurrency-control": "last_updated",
                         "properties": {
-                            "genre_id": {"type": "integer", "x-am-primary-key": "auto"},
+                            "genre_id": {
+                                "type": "integer",
+                                "x-am-primary-key": "auto",
+                            },
                             "name": {"type": "string", "maxLength": 120},
                             "last_updated": {
-                                "type": "string",
-                                "x-am-concurrency-control": "serial",
+                                "type": "integer",
                             },
                         },
                         "required": ["genre_id"],
@@ -383,42 +518,6 @@ class TestInsertSQLGenerator:
             assert sql_generator.placeholders == {"name": "New genre"}
         except ApplicationException as e:
             assert False
-
-    def test_insert_timestamp_last_updated(self):
-        try:
-            sql_generator = SQLInsertGenerator(
-                Operation(
-                    entity="genre",
-                    action="create",
-                    store_params={"name": "New genre"},
-                ),
-                SchemaObject(
-                    "genre",
-                    {
-                        "x-am-engine": "postgres",
-                        "x-am-database": "chinook",
-                        "properties": {
-                            "genre_id": {"type": "integer", "x-am-primary-key": "auto"},
-                            "name": {"type": "string", "maxLength": 120},
-                            "last_updated": {
-                                "type": "string",
-                                "x-am-concurrency-control": "timestamp",
-                            },
-                        },
-                        "required": ["genre_id"],
-                    },
-                ),
-            )
-            log.info(
-                f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
-            )
-            assert (
-                sql_generator.sql
-                == "INSERT INTO genre ( name, last_updated ) VALUES ( %(name)s, CURRENT_TIMESTAMP) RETURNING genre_id, name, last_updated"
-            )
-            assert sql_generator.placeholders == {"name": "New genre"}
-        except ApplicationException as e:
-            assert False, e.message
 
     def test_insert_sequence_missing_name(self):
         try:

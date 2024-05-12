@@ -8,21 +8,53 @@ from api_maker.utils.logger import logger
 log = logger(__name__)
 
 
-class SchemaObjectAssociation:
+class OpenAPIElement:
+    def __init__(self, properties: dict):
+        self.properties = properties
+        self.title = self.properties.get("title", None)
+        self.description = self.properties.get("description", None)
+        self.required = self.properties.get("required", None)
+        self.type = self.properties.get("type", None)
+
+    def resolve_reference(self, reference: str) -> dict:
+        """
+        Resolves the reference in the OpenAPI specification and returns the referenced element.
+
+        Args:
+            openapi_spec (dict): The OpenAPI specification document as a Python dictionary.
+            reference (str): The reference string to resolve (e.g., '#/components/schemas/SchemaA').
+
+        Returns:
+            object: The referenced element from the OpenAPI specification.
+        """
+        components = reference.split("/")
+        current_element = ModelFactory.document
+
+        # Iterate over each component to traverse the specification
+        for component in components:
+            if component == "#":
+                continue
+            elif component in current_element:
+                # Move to the next element
+                current_element = current_element[component]
+            else:
+                raise ApplicationException(
+                    500, f"Reference not found: {reference}"
+                )
+
+        return current_element
+
+
+class SchemaObjectAssociation(OpenAPIElement):
     def __init__(self, entity: str, name: str, properties: Dict[str, Any]):
+        super().__init__(properties)
         assert all(arg is not None for arg in (entity, name, properties))
         self.entity = entity
         self.name = name
-        self.cardinality = properties.get("x-am-cardinality", "1:1")
-        assert self.cardinality in [
-            "1:1",
-            "1:m",
-        ], (
-            f"Cardinality incorrect name: {self.name}, "
-            + f"cardinality: {self.cardinality}"
-        )
+
+        log.info(f"properties: {properties}")
         self.child_schema_object = ModelFactory.get_schema_object(
-            properties["x-am-schema-object"]
+            properties["$ref"].split("/")[-1]
         )
         self.parent = properties.get("x-am-parent-property", None)
         self.child = properties.get("x-am-child-property", None)
@@ -41,10 +73,11 @@ class SchemaObjectAssociation:
         return parent_schema_object.primary_key
 
 
-class SchemaObjectProperty:
+class SchemaObjectProperty(OpenAPIElement):
     def __init__(
         self, engine: str, entity: str, name: str, properties: Dict[str, Any]
     ):
+        super().__init__(properties)
         assert all(
             arg is not None for arg in (engine, entity, name, properties)
         )
@@ -56,6 +89,9 @@ class SchemaObjectProperty:
         self.api_type = properties.get("format", self.type)
         self.column_type = properties.get("x-am-column-type", self.api_type)
         self.is_primary_key = properties.get("x-am-primary-key", False)
+        self.min_length = properties.get("minLength", None)
+        self.max_length = properties.get("maxLength", None)
+        self.pattern = properties.get("pattern", None)
 
         self.concurrency_control = properties.get("x-am-concurrency-control")
         if self.concurrency_control:
@@ -133,11 +169,12 @@ class SchemaObjectKey(SchemaObjectProperty):
             )
 
 
-class SchemaObject:
+class SchemaObject(OpenAPIElement):
     def __init__(self, entity: str, schema_object: Dict[str, Any]):
+        super().__init__(schema_object)
         assert all(arg is not None for arg in (entity, schema_object))
         self.entity = entity
-        self.__schema_object = schema_object
+        self.schema_object = schema_object
         self.engine = schema_object.get("x-am-engine", "").lower()
         assert self.engine in [
             "postgres",
@@ -148,15 +185,35 @@ class SchemaObject:
         self.properties = {}
         self.relations = {}
         self.primary_key = None
-        self.concurrency_property = None
         for property_name, prop in schema_object.get("properties", {}).items():
             assert prop is not None, (
                 f"Property is none entity: {self.entity}, "
                 + f"property: {property_name}"
             )
-            if prop.get("x-am-schema-object", None):
+
+            type = (
+                prop.get("type")
+                if "type" in prop
+                else (
+                    self.resolve_reference(prop.get("$ref")).get("type")
+                    if "$ref" in prop
+                    else None
+                )
+            )
+            if not type:
+                raise ApplicationException(
+                    500,
+                    f"Cannot resolve type, object_schema: {entity}, property: {property_name}",
+                )
+
+            if type in ["object", "array"]:
                 self.relations[property_name] = SchemaObjectAssociation(
-                    self.entity, property_name, prop
+                    self.entity,
+                    property_name,
+                    {
+                        **(prop if type == "object" else prop["items"]),
+                        "type": type,
+                    },
                 )
             else:
                 object_property = SchemaObjectProperty(
@@ -167,17 +224,28 @@ class SchemaObject:
                     self.primary_key = SchemaObjectKey(
                         self.engine, self.entity, property_name, prop
                     )
-                elif object_property.concurrency_control:
-                    self.concurrency_property = object_property
 
-    #        log.info(f"relations: {self.relations}")
+        self.concurrency_property = None
+        concurrency_prop_name = schema_object.get(
+            "x-am-concurrency-control", None
+        )
+        if concurrency_prop_name:
+            try:
+                self.concurrency_property = self.properties[
+                    concurrency_prop_name
+                ]
+            except KeyError:
+                raise ApplicationException(
+                    500,
+                    f"Concurrency control property does not exist. schema_object: {entity}, property: {concurrency_prop_name}",
+                )
 
     @property
     def table_name(self) -> str:
-        schema = self.__schema_object.get("x-am-schema")
+        schema = self.schema_object.get("x-am-schema")
         return (
             f"{schema}." if schema else ""
-        ) + f"{self.__schema_object.get('x-am-table', self.entity)}"
+        ) + f"{self.schema_object.get('x-am-table', self.entity)}"
 
     def get_property(
         self, property_name: str
@@ -198,19 +266,23 @@ class SchemaObject:
 class ModelFactory:
     @classmethod
     def load_spec(cls, api_spec_path: str = os.environ["API_SPEC"]):
-        cls.__schemas = dict()
+        cls.schema_objects = dict()
         if api_spec_path:
             with open(api_spec_path, "r") as yaml_file:
-                cls.__document = yaml.safe_load(yaml_file)
+                cls.document = yaml.safe_load(yaml_file)
 
-            schemas = cls.__document.get("components", {}).get("schemas", {})
+            schemas = cls.document.get("components", {}).get("schemas", {})
             for name, schema in schemas.items():
-                cls.__schemas[name.lower().replace("_", "-")] = schema
+                cls.schema_objects[name.lower().replace("_", "-")] = schema
 
-        log.info(f"schemas: {cls.__schemas.keys()}")
+        log.info(f"schemas: {cls.schema_objects.keys()}")
 
     @classmethod
     def get_schema_object(cls, name: str) -> SchemaObject:
         return SchemaObject(
-            name, cls.__schemas[name.lower().replace("_", "-")]
+            name, cls.schema_objects[name.lower().replace("_", "-")]
         )
+
+    @classmethod
+    def get_schema_names(cls) -> list[str]:
+        return list(cls.schema_objects.keys())

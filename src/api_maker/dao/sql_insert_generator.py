@@ -60,7 +60,7 @@ class SQLInsertGenerator(SQLGenerator):
                 + f"property: {self.concurrency_property.name}",
             )
         return (
-            f"INSERT INTO {self.table_expression}{self.insert_values} "
+            f"INSERT INTO {self.table_expression}{self.insert_values}"
             + f" RETURNING {self.select_list}"
         )
 
@@ -104,7 +104,7 @@ class SQLInsertGenerator(SQLGenerator):
 
         if self.concurrency_property:
             columns.append(self.concurrency_property.column_name)
-            if self.concurrency_property.concurrency_control == "serial":
+            if self.concurrency_property.type == "integer":
                 placeholders.append("1")
             else:
                 placeholders.append(

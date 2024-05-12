@@ -21,13 +21,16 @@ log = logger(__name__)
 
 
 class TestUpdateSQLGenerator:
-
     def test_update_uuid(self):
+        ModelFactory.load_spec()
         sql_generator = SQLUpdateGenerator(
             Operation(
                 entity="invoice",
                 action="update",
-                query_params={"customer_id": "2", "last_updated": "this is a guid"},
+                query_params={
+                    "customer_id": "2",
+                    "last_updated": "this is a guid",
+                },
                 store_params={"invoice_date": "2024-03-18", "total": "2.63"},
             ),
             SchemaObject(
@@ -36,28 +39,45 @@ class TestUpdateSQLGenerator:
                     "type": "object",
                     "x-am-engine": "postgres",
                     "x-am-database": "chinook",
+                    "x-am-concurrency-control": "last_updated",
                     "properties": {
-                        "invoice_id": {"type": "integer", "x-am-primary-key": "auto"},
+                        "invoice_id": {
+                            "type": "integer",
+                            "x-am-primary-key": "auto",
+                        },
                         "customer_id": {"type": "integer"},
                         "customer": {
-                            "x-am-schema-object": "customer",
+                            "$ref": "#/components/schemas/customer",
                             "x-am-parent-property": "customer_id",
                         },
-                        "invoice_date": {"type": "string", "format": "date-time"},
+                        "invoice_date": {
+                            "type": "string",
+                            "format": "date-time",
+                        },
                         "billing_address": {"type": "string", "maxLength": 70},
                         "billing_city": {"type": "string", "maxLength": 40},
                         "billing_state": {"type": "string", "maxLength": 40},
                         "billing_country": {"type": "string", "maxLength": 40},
-                        "billing_postal_code": {"type": "string", "maxLength": 10},
+                        "billing_postal_code": {
+                            "type": "string",
+                            "maxLength": 10,
+                        },
                         "line_items": {
-                            "x-am-schema-object": "invoice_line",
-                            "x-am-cardinality": "1:m",
-                            "x-am-child-property": "invoice_id",
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/components/schemas/invoice_line",
+                                "x-am-child-property": "invoice_id",
+                            },
                         },
                         "total": {"type": "number", "format": "float"},
-                        "last_updated": {"type": "string", "x-am-concurrency-control": "uuid"},
+                        "last_updated": {"type": "string"},
                     },
-                    "required": ["invoice_id", "customer_id", "invoice_date", "total"],
+                    "required": [
+                        "invoice_id",
+                        "customer_id",
+                        "invoice_date",
+                        "total",
+                    ],
                 },
             ),
         )
@@ -89,7 +109,7 @@ class TestUpdateSQLGenerator:
                 },
                 store_params={"invoice_date": "2024-03-18", "total": "2.63"},
             ),
-            ModelFactory.get_schema_object("invoice")
+            ModelFactory.get_schema_object("invoice"),
         )
 
         log.info(
