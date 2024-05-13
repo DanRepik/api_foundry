@@ -257,7 +257,6 @@ components:
       properties:
         playlist_id:
           type: integer
-          x-am-primary-key: auto
         track_id:
           type: integer
       required:

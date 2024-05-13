@@ -15,7 +15,10 @@ class TestGatewayDoc:
             authentication_invoke_arn="authentication invoke", enable_cors=True
         )
 
-        api_doc = gateway_doc.api_doc
-        log.debug(f"self._api_doc {json.dumps(gateway_doc.api_doc, indent=4)}")
+        with open("./test.yaml", "w") as file:
+            file.write(yaml.dump(gateway_doc.api_doc, indent=4))
+
+        #        api_doc = gateway_doc.api_doc
+        #        log.debug(f"self._api_doc { yaml.dump(gateway_doc.api_doc, indent=4)}")
 
         assert False

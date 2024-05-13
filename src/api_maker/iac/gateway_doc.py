@@ -13,14 +13,10 @@ log = logger(__name__)
 
 
 class GatewapDocument:
-    def __init__(
-        self, *, authentication_invoke_arn: str, enable_cors: bool = False
-    ):
+    def __init__(self, *, authentication_invoke_arn: str, enable_cors: bool = False):
         document = ModelFactory.document
 
-        self.api_doc = dict(
-            self.remove_custom_attributes(copy.deepcopy(document))
-        )
+        self.api_doc = dict(self.remove_custom_attributes(copy.deepcopy(document)))
         if authentication_invoke_arn:
             self.add_custom_authentication(authentication_invoke_arn)
         if enable_cors:
@@ -177,7 +173,7 @@ class GatewapDocument:
         if len(regex_pattern) == 0:
             regex_pattern = ".*"
 
-        return f"^(({regex_pattern})|lt::|le::|eq::|ne::|ge::|gt::|between::({regex_pattern}),|not-between::({regex_pattern}),|in::(({regex_pattern}),)*)$"
+        return f'"^(({regex_pattern})|lt::|le::|eq::|ne::|ge::|gt::|between::({regex_pattern}),|not-between::({regex_pattern}),|in::(({regex_pattern}),)*)$"'
 
     def generate_query_parameters(self, schema_object: SchemaObject):
         parameters = []
@@ -198,23 +194,32 @@ class GatewapDocument:
             parameters.append(parameter)
         return parameters
 
-    def generate_crud_operations(
-        self, schema_name, schema_object: SchemaObject
-    ):
+    def __list_of_schema(self, schema_name: str):
+        return {
+            "application/json": {
+                "schema": {
+                    "type": "array",
+                    "items": {"$ref": f"#/components/schemas/{schema_name}"},
+                }
+            }
+        }
+
+    def generate_crud_operations(self, schema_name, schema_object: SchemaObject):
         path = f"/{schema_name.lower()}"
         self.generate_create_operation(path, schema_name, schema_object)
-        self.generate_get_operation(path, schema_name, schema_object)
-
-    #        if schema_object.concurrency_property:
-    #            self.generate_update_with_cc_operation(path, schema_name, schema_object)
-    #        else:
-    #            self.generate_update_by_id_operation(path, schema_name, schema_object)
-    #            self.generate_update_many_operation(path, schema_name, schema_object)
-    #        self.generate_delete_operation(path, schema_name, schema_object)
+        self.generate_get_by_id_operation(path, schema_name, schema_object)
+        self.generate_get_many_operation(path, schema_name, schema_object)
+        self.generate_update_by_id_operation(path, schema_name, schema_object)
+        self.generate_update_with_cc_operation(path, schema_name, schema_object)
+        self.generate_update_many_operation(path, schema_name, schema_object)
+        self.generate_delete_operation(path, schema_name, schema_object)
 
     def generate_create_operation(
         self, path: str, schema_name: str, schema_object: SchemaObject
     ):
+        log.info(
+            f"schema_name: {schema_name}, schema_object: {schema_object.schema_object}"
+        )
         self.add_operation(
             path,
             "post",
@@ -236,13 +241,14 @@ class GatewapDocument:
                 },
                 "responses": {
                     "201": {
-                        "description": f"{schema_name} created successfully"
+                        "description": f"{schema_name} created successfully",
+                        "content": self.__list_of_schema(schema_name),
                     }
                 },
             },
         )
 
-    def generate_get_operation(
+    def generate_get_many_operation(
         self, path: str, schema_name: str, schema_object: SchemaObject
     ):
         self.add_operation(
@@ -253,17 +259,8 @@ class GatewapDocument:
                 "parameters": self.generate_query_parameters(schema_object),
                 "responses": {
                     "200": {
-                        "description": "A list of schema objects.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": f"#/components/schemas/{schema_name}"
-                                    },
-                                }
-                            }
-                        },
+                        "description": f"A list of {schema_name}.",
+                        "content": self.__list_of_schema(schema_name),
                     }
                 },
             },
@@ -272,11 +269,18 @@ class GatewapDocument:
     def generate_get_by_id_operation(
         self, path: str, schema_name: str, schema_object: SchemaObject
     ):
+        if not schema_object.primary_key:
+            return
+        
+        # if there is a concurtency property then do not add operaton
+        if schema_object.concurrency_property:
+            return
+
         self.add_operation(
             f"{path}/{{id}}",
             "get",
             {
-                "summary": f"Retrieve all {schema_name}",
+                "summary": f"Retrieve {schema_name} by {schema_object.primary_key.name}",
                 "parameters": [
                     {
                         "name": "id",
@@ -289,16 +293,7 @@ class GatewapDocument:
                 "responses": {
                     "200": {
                         "description": "A list of schema objects.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": f"#/components/schemas/{schema_name}"
-                                    },
-                                }
-                            }
-                        },
+                        "content": self.__list_of_schema(schema_name),
                     }
                 },
             },
@@ -307,19 +302,23 @@ class GatewapDocument:
     def generate_update_by_id_operation(
         self, path: str, schema_name: str, schema_object: SchemaObject
     ):
+        key = schema_object.primary_key
+        if not key:
+            return
+
         # Update operation
         self.add_operation(
-            f"{path}/{{id}}",
+            f"{path}/{{{key.name}}}",
             "put",
             {
-                "summary": f"Update an existing {schema_name} by ID",
+                "summary": f"Update an existing {schema_name} by {key.name}",
                 "parameters": [
                     {
-                        "name": "id",
+                        "name": key.name,
                         "in": "path",
                         "description": f"ID of the {schema_name} to update",
                         "required": True,
-                        "schema": {"type": "string"},
+                        "schema": {"type": key.api_type},
                     }
                 ],
                 "requestBody": {
@@ -328,7 +327,9 @@ class GatewapDocument:
                         "application/json": {
                             "schema": {
                                 "type": "object",
-                                "properties": schema_object.properties,
+                                "properties": self.remove_custom_attributes(
+                                    schema_object.schema_object["properties"]
+                                ),
                                 "required": [],  # No properties are marked as required
                             }
                         }
@@ -336,7 +337,8 @@ class GatewapDocument:
                 },
                 "responses": {
                     "200": {
-                        "description": f"{schema_name} updated successfully"
+                        "description": f"{schema_name} updated successfully",
+                        "content": self.__list_of_schema(schema_name),
                     }
                 },
             },
@@ -347,7 +349,13 @@ class GatewapDocument:
     ):
         # Update operation
         key = schema_object.primary_key
+        if not key:
+            return
+
         cc_property = schema_object.concurrency_property
+        if not cc_property:
+            return
+
         self.add_operation(
             f"{path}/{{{key.name}}}/{cc_property.name}/{{{cc_property.name}}}",
             "put",
@@ -375,15 +383,18 @@ class GatewapDocument:
                         "application/json": {
                             "schema": {
                                 "type": "object",
-                                "properties": schema_object.properties,
-                                "required": [],  # No properties are marked as required
+                                "properties": self.remove_custom_attributes(
+                                    schema_object.schema_object["properties"]
+                                ),
+                                "required": [],
                             }
                         }
                     },
                 },
                 "responses": {
                     "200": {
-                        "description": f"{schema_name} updated successfully"
+                        "description": f"{schema_name} updated successfully",
+                        "content": self.__list_of_schema(schema_name),
                     }
                 },
             },
@@ -405,15 +416,18 @@ class GatewapDocument:
                         "application/json": {
                             "schema": {
                                 "type": "object",
-                                "properties": schema_object.properties,
-                                "required": [],  # No properties are marked as required
+                                "properties": self.remove_custom_attributes(
+                                    schema_object.schema_object["properties"]
+                                ),
+                                "required": [],
                             }
                         }
                     },
                 },
                 "responses": {
                     "200": {
-                        "description": f"{schema_name} updated successfully"
+                        "description": f"{schema_name} updated successfully",
+                        "content": self.__list_of_schema(schema_name),
                     }
                 },
             },
@@ -432,7 +446,8 @@ class GatewapDocument:
                 "parameters": self.generate_query_parameters(schema_object),
                 "responses": {
                     "204": {
-                        "description": f"{schema_name} deleted successfully"
+                        "description": f"{schema_name} deleted successfully",
+                        "content": self.__list_of_schema(schema_name),
                     }
                 },
             },
