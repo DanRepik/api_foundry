@@ -274,6 +274,46 @@ info:
 openapi: 3.1.0
 paths:
     /album:
+        delete:
+            parameters:
+            -   description: Filter by album_id
+                in: query
+                name: album_id
+                required: false
+                schema:
+                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    type: integer
+            -   description: Filter by title
+                in: query
+                name: title
+                required: false
+                schema:
+                    pattern: '"^(({0,160})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,160}),|not-between::({0,160}),|in::(({0,160}),)*)$"'
+                    type: string
+            -   description: Filter by artist_id
+                in: query
+                name: artist_id
+                required: false
+                schema:
+                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    type: integer
+            -   description: Filter by last_updated
+                in: query
+                name: last_updated
+                required: false
+                schema:
+                    pattern: '"^((\d{4}-\d{2}-\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}),|not-between::(\d{4}-\d{2}-\d{2}),|in::((\d{4}-\d{2}-\d{2}),)*)$"'
+                    type: string
+            responses:
+                '204':
+                    content:
+                        application/json:
+                            schema:
+                                items:
+                                    $ref: '#/components/schemas/album'
+                                type: array
+                    description: album deleted successfully
+            summary: Delete many existing album using query
         get:
             parameters:
             -   description: Filter by album_id
@@ -405,6 +445,42 @@ paths:
                     description: album updated successfully
             summary: Update an existing album by ID
     /album/{album_id}:
+        delete:
+            parameters:
+            -   description: ID of the album to update
+                in: path
+                name: album_id
+                required: true
+                schema:
+                    type: integer
+            responses:
+                '204':
+                    content:
+                        application/json:
+                            schema:
+                                items:
+                                    $ref: '#/components/schemas/album'
+                                type: array
+                    description: album deleted successfully
+            summary: Delete an existing album by album_id
+        get:
+            parameters:
+            -   description: ID of the album to get
+                in: path
+                name: id
+                required: true
+                schema:
+                    type: integer
+            responses:
+                '200':
+                    content:
+                        application/json:
+                            schema:
+                                items:
+                                    $ref: '#/components/schemas/album'
+                                type: array
+                    description: A list of album.
+            summary: Retrieve album by album_id
         put:
             parameters:
             -   description: ID of the album to update
@@ -441,23 +517,9 @@ paths:
                                 type: array
                     description: album updated successfully
             summary: Update an existing album by album_id
-    /album/{id}:
+    /artist:
         delete:
             parameters:
-            -   description: Filter by album_id
-                in: query
-                name: album_id
-                required: false
-                schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
-                    type: integer
-            -   description: Filter by title
-                in: query
-                name: title
-                required: false
-                schema:
-                    pattern: '"^(({0,160})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,160}),|not-between::({0,160}),|in::(({0,160}),)*)$"'
-                    type: string
             -   description: Filter by artist_id
                 in: query
                 name: artist_id
@@ -465,12 +527,12 @@ paths:
                 schema:
                     pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
                     type: integer
-            -   description: Filter by last_updated
+            -   description: Filter by name
                 in: query
-                name: last_updated
+                name: name
                 required: false
                 schema:
-                    pattern: '"^((\d{4}-\d{2}-\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}),|not-between::(\d{4}-\d{2}-\d{2}),|in::((\d{4}-\d{2}-\d{2}),)*)$"'
+                    pattern: '"^(({0,120})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,120}),|not-between::({0,120}),|in::(({0,120}),)*)$"'
                     type: string
             responses:
                 '204':
@@ -478,29 +540,10 @@ paths:
                         application/json:
                             schema:
                                 items:
-                                    $ref: '#/components/schemas/album'
+                                    $ref: '#/components/schemas/artist'
                                 type: array
-                    description: album deleted successfully
-            summary: Delete an existing album by ID
-        get:
-            parameters:
-            -   description: ID of the album to get
-                in: path
-                name: id
-                required: true
-                schema:
-                    type: string
-            responses:
-                '200':
-                    content:
-                        application/json:
-                            schema:
-                                items:
-                                    $ref: '#/components/schemas/album'
-                                type: array
-                    description: A list of schema objects.
-            summary: Retrieve album by album_id
-    /artist:
+                    description: artist deleted successfully
+            summary: Delete many existing artist using query
         get:
             parameters:
             -   description: Filter by artist_id
@@ -592,6 +635,42 @@ paths:
                     description: artist updated successfully
             summary: Update an existing artist by ID
     /artist/{artist_id}:
+        delete:
+            parameters:
+            -   description: ID of the artist to update
+                in: path
+                name: artist_id
+                required: true
+                schema:
+                    type: integer
+            responses:
+                '204':
+                    content:
+                        application/json:
+                            schema:
+                                items:
+                                    $ref: '#/components/schemas/artist'
+                                type: array
+                    description: artist deleted successfully
+            summary: Delete an existing artist by artist_id
+        get:
+            parameters:
+            -   description: ID of the artist to get
+                in: path
+                name: id
+                required: true
+                schema:
+                    type: integer
+            responses:
+                '200':
+                    content:
+                        application/json:
+                            schema:
+                                items:
+                                    $ref: '#/components/schemas/artist'
+                                type: array
+                    description: A list of artist.
+            summary: Retrieve artist by artist_id
         put:
             parameters:
             -   description: ID of the artist to update
@@ -623,51 +702,6 @@ paths:
                                 type: array
                     description: artist updated successfully
             summary: Update an existing artist by artist_id
-    /artist/{id}:
-        delete:
-            parameters:
-            -   description: Filter by artist_id
-                in: query
-                name: artist_id
-                required: false
-                schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
-                    type: integer
-            -   description: Filter by name
-                in: query
-                name: name
-                required: false
-                schema:
-                    pattern: '"^(({0,120})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,120}),|not-between::({0,120}),|in::(({0,120}),)*)$"'
-                    type: string
-            responses:
-                '204':
-                    content:
-                        application/json:
-                            schema:
-                                items:
-                                    $ref: '#/components/schemas/artist'
-                                type: array
-                    description: artist deleted successfully
-            summary: Delete an existing artist by ID
-        get:
-            parameters:
-            -   description: ID of the artist to get
-                in: path
-                name: id
-                required: true
-                schema:
-                    type: string
-            responses:
-                '200':
-                    content:
-                        application/json:
-                            schema:
-                                items:
-                                    $ref: '#/components/schemas/artist'
-                                type: array
-                    description: A list of schema objects.
-            summary: Retrieve artist by artist_id
     /customer:
         get:
             parameters:
@@ -841,153 +875,15 @@ paths:
                                 type: array
                     description: customer created successfully
             summary: Create a new customer
-        put:
+    /customer/{customer_id}:
+        get:
             parameters:
-            -   description: Filter by customer_id
-                in: query
-                name: customer_id
-                required: false
+            -   description: ID of the customer to get
+                in: path
+                name: id
+                required: true
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
                     type: integer
-            -   description: Filter by first_name
-                in: query
-                name: first_name
-                required: false
-                schema:
-                    pattern: '"^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$"'
-                    type: string
-            -   description: Filter by last_name
-                in: query
-                name: last_name
-                required: false
-                schema:
-                    pattern: '"^(({0,20})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,20}),|not-between::({0,20}),|in::(({0,20}),)*)$"'
-                    type: string
-            -   description: Filter by company
-                in: query
-                name: company
-                required: false
-                schema:
-                    pattern: '"^(({0,80})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,80}),|not-between::({0,80}),|in::(({0,80}),)*)$"'
-                    type: string
-            -   description: Filter by address
-                in: query
-                name: address
-                required: false
-                schema:
-                    pattern: '"^(({0,70})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,70}),|not-between::({0,70}),|in::(({0,70}),)*)$"'
-                    type: string
-            -   description: Filter by city
-                in: query
-                name: city
-                required: false
-                schema:
-                    pattern: '"^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$"'
-                    type: string
-            -   description: Filter by state
-                in: query
-                name: state
-                required: false
-                schema:
-                    pattern: '"^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$"'
-                    type: string
-            -   description: Filter by country
-                in: query
-                name: country
-                required: false
-                schema:
-                    pattern: '"^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$"'
-                    type: string
-            -   description: Filter by postal_code
-                in: query
-                name: postal_code
-                required: false
-                schema:
-                    pattern: '"^(({0,10})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,10}),|not-between::({0,10}),|in::(({0,10}),)*)$"'
-                    type: string
-            -   description: Filter by phone
-                in: query
-                name: phone
-                required: false
-                schema:
-                    pattern: '"^(({0,24})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,24}),|not-between::({0,24}),|in::(({0,24}),)*)$"'
-                    type: string
-            -   description: Filter by fax
-                in: query
-                name: fax
-                required: false
-                schema:
-                    pattern: '"^(({0,24})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,24}),|not-between::({0,24}),|in::(({0,24}),)*)$"'
-                    type: string
-            -   description: Filter by email
-                in: query
-                name: email
-                required: false
-                schema:
-                    pattern: '"^(({0,60})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,60}),|not-between::({0,60}),|in::(({0,60}),)*)$"'
-                    type: string
-            -   description: Filter by support_rep_id
-                in: query
-                name: support_rep_id
-                required: false
-                schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
-                    type: integer
-            -   description: Filter by version_stamp
-                in: query
-                name: version_stamp
-                required: false
-                schema:
-                    pattern: '"^((.*)|lt::|le::|eq::|ne::|ge::|gt::|between::(.*),|not-between::(.*),|in::((.*),)*)$"'
-                    type: string
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            properties:
-                                address:
-                                    maxLength: 70
-                                    type: string
-                                city:
-                                    maxLength: 40
-                                    type: string
-                                company:
-                                    maxLength: 80
-                                    type: string
-                                country:
-                                    maxLength: 40
-                                    type: string
-                                customer_id:
-                                    type: integer
-                                email:
-                                    maxLength: 60
-                                    type: string
-                                fax:
-                                    maxLength: 24
-                                    type: string
-                                first_name:
-                                    maxLength: 40
-                                    type: string
-                                last_name:
-                                    maxLength: 20
-                                    type: string
-                                phone:
-                                    maxLength: 24
-                                    type: string
-                                postal_code:
-                                    maxLength: 10
-                                    type: string
-                                state:
-                                    maxLength: 40
-                                    type: string
-                                support_rep_id:
-                                    type: integer
-                                version_stamp:
-                                    type: string
-                            required: []
-                            type: object
-                required: false
             responses:
                 '200':
                     content:
@@ -996,10 +892,10 @@ paths:
                                 items:
                                     $ref: '#/components/schemas/customer'
                                 type: array
-                    description: customer updated successfully
-            summary: Update an existing customer by ID
-    /customer/{customer_id}:
-        put:
+                    description: A list of customer.
+            summary: Retrieve customer by customer_id
+    /customer/{customer_id}/version_stamp/{version_stamp}:
+        delete:
             parameters:
             -   description: ID of the customer to update
                 in: path
@@ -1007,64 +903,22 @@ paths:
                 required: true
                 schema:
                     type: integer
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            properties:
-                                address:
-                                    maxLength: 70
-                                    type: string
-                                city:
-                                    maxLength: 40
-                                    type: string
-                                company:
-                                    maxLength: 80
-                                    type: string
-                                country:
-                                    maxLength: 40
-                                    type: string
-                                customer_id:
-                                    type: integer
-                                email:
-                                    maxLength: 60
-                                    type: string
-                                fax:
-                                    maxLength: 24
-                                    type: string
-                                first_name:
-                                    maxLength: 40
-                                    type: string
-                                last_name:
-                                    maxLength: 20
-                                    type: string
-                                phone:
-                                    maxLength: 24
-                                    type: string
-                                postal_code:
-                                    maxLength: 10
-                                    type: string
-                                state:
-                                    maxLength: 40
-                                    type: string
-                                support_rep_id:
-                                    type: integer
-                                version_stamp:
-                                    type: string
-                            required: []
-                            type: object
-                required: false
+            -   description: version_stamp of the customer to update
+                in: path
+                name: version_stamp
+                required: true
+                schema:
+                    type: string
             responses:
-                '200':
+                '204':
                     content:
                         application/json:
                             schema:
                                 items:
                                     $ref: '#/components/schemas/customer'
                                 type: array
-                    description: customer updated successfully
-            summary: Update an existing customer by customer_id
-    /customer/{customer_id}/version_stamp/{version_stamp}:
+                    description: customer deleted successfully
+            summary: Delete an existing customer by ID
         put:
             parameters:
             -   description: ID of the customer to update
@@ -1136,23 +990,16 @@ paths:
                                 type: array
                     description: customer updated successfully
             summary: Update an existing customer by ID
-    /customer/{id}:
+    /employee:
         delete:
             parameters:
-            -   description: Filter by customer_id
+            -   description: Filter by employee_id
                 in: query
-                name: customer_id
+                name: employee_id
                 required: false
                 schema:
                     pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
                     type: integer
-            -   description: Filter by first_name
-                in: query
-                name: first_name
-                required: false
-                schema:
-                    pattern: '"^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$"'
-                    type: string
             -   description: Filter by last_name
                 in: query
                 name: last_name
@@ -1160,12 +1007,40 @@ paths:
                 schema:
                     pattern: '"^(({0,20})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,20}),|not-between::({0,20}),|in::(({0,20}),)*)$"'
                     type: string
-            -   description: Filter by company
+            -   description: Filter by first_name
                 in: query
-                name: company
+                name: first_name
                 required: false
                 schema:
-                    pattern: '"^(({0,80})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,80}),|not-between::({0,80}),|in::(({0,80}),)*)$"'
+                    pattern: '"^(({0,20})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,20}),|not-between::({0,20}),|in::(({0,20}),)*)$"'
+                    type: string
+            -   description: Filter by title
+                in: query
+                name: title
+                required: false
+                schema:
+                    pattern: '"^(({0,30})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,30}),|not-between::({0,30}),|in::(({0,30}),)*)$"'
+                    type: string
+            -   description: Filter by reports_to
+                in: query
+                name: reports_to
+                required: false
+                schema:
+                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    type: integer
+            -   description: Filter by birth_date
+                in: query
+                name: birth_date
+                required: false
+                schema:
+                    pattern: '"^((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|not-between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$"'
+                    type: string
+            -   description: Filter by hire_date
+                in: query
+                name: hire_date
+                required: false
+                schema:
+                    pattern: '"^((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|not-between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$"'
                     type: string
             -   description: Filter by address
                 in: query
@@ -1223,31 +1098,16 @@ paths:
                 schema:
                     pattern: '"^(({0,60})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,60}),|not-between::({0,60}),|in::(({0,60}),)*)$"'
                     type: string
-            -   description: Filter by support_rep_id
-                in: query
-                name: support_rep_id
-                required: false
-                schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
-                    type: integer
-            -   description: Filter by version_stamp
-                in: query
-                name: version_stamp
-                required: false
-                schema:
-                    pattern: '"^((.*)|lt::|le::|eq::|ne::|ge::|gt::|between::(.*),|not-between::(.*),|in::((.*),)*)$"'
-                    type: string
             responses:
                 '204':
                     content:
                         application/json:
                             schema:
                                 items:
-                                    $ref: '#/components/schemas/customer'
+                                    $ref: '#/components/schemas/employee'
                                 type: array
-                    description: customer deleted successfully
-            summary: Delete an existing customer by ID
-    /employee:
+                    description: employee deleted successfully
+            summary: Delete many existing employee using query
         get:
             parameters:
             -   description: Filter by employee_id
@@ -1599,6 +1459,42 @@ paths:
                     description: employee updated successfully
             summary: Update an existing employee by ID
     /employee/{employee_id}:
+        delete:
+            parameters:
+            -   description: ID of the employee to update
+                in: path
+                name: employee_id
+                required: true
+                schema:
+                    type: integer
+            responses:
+                '204':
+                    content:
+                        application/json:
+                            schema:
+                                items:
+                                    $ref: '#/components/schemas/employee'
+                                type: array
+                    description: employee deleted successfully
+            summary: Delete an existing employee by employee_id
+        get:
+            parameters:
+            -   description: ID of the employee to get
+                in: path
+                name: id
+                required: true
+                schema:
+                    type: integer
+            responses:
+                '200':
+                    content:
+                        application/json:
+                            schema:
+                                items:
+                                    $ref: '#/components/schemas/employee'
+                                type: array
+                    description: A list of employee.
+            summary: Retrieve employee by employee_id
         put:
             parameters:
             -   description: ID of the employee to update
@@ -1668,113 +1564,22 @@ paths:
                                 type: array
                     description: employee updated successfully
             summary: Update an existing employee by employee_id
-    /employee/{id}:
+    /genre:
         delete:
             parameters:
-            -   description: Filter by employee_id
+            -   description: Filter by genre_id
                 in: query
-                name: employee_id
+                name: genre_id
                 required: false
                 schema:
                     pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
                     type: integer
-            -   description: Filter by last_name
+            -   description: Filter by name
                 in: query
-                name: last_name
+                name: name
                 required: false
                 schema:
-                    pattern: '"^(({0,20})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,20}),|not-between::({0,20}),|in::(({0,20}),)*)$"'
-                    type: string
-            -   description: Filter by first_name
-                in: query
-                name: first_name
-                required: false
-                schema:
-                    pattern: '"^(({0,20})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,20}),|not-between::({0,20}),|in::(({0,20}),)*)$"'
-                    type: string
-            -   description: Filter by title
-                in: query
-                name: title
-                required: false
-                schema:
-                    pattern: '"^(({0,30})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,30}),|not-between::({0,30}),|in::(({0,30}),)*)$"'
-                    type: string
-            -   description: Filter by reports_to
-                in: query
-                name: reports_to
-                required: false
-                schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
-                    type: integer
-            -   description: Filter by birth_date
-                in: query
-                name: birth_date
-                required: false
-                schema:
-                    pattern: '"^((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|not-between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$"'
-                    type: string
-            -   description: Filter by hire_date
-                in: query
-                name: hire_date
-                required: false
-                schema:
-                    pattern: '"^((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|not-between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$"'
-                    type: string
-            -   description: Filter by address
-                in: query
-                name: address
-                required: false
-                schema:
-                    pattern: '"^(({0,70})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,70}),|not-between::({0,70}),|in::(({0,70}),)*)$"'
-                    type: string
-            -   description: Filter by city
-                in: query
-                name: city
-                required: false
-                schema:
-                    pattern: '"^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$"'
-                    type: string
-            -   description: Filter by state
-                in: query
-                name: state
-                required: false
-                schema:
-                    pattern: '"^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$"'
-                    type: string
-            -   description: Filter by country
-                in: query
-                name: country
-                required: false
-                schema:
-                    pattern: '"^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$"'
-                    type: string
-            -   description: Filter by postal_code
-                in: query
-                name: postal_code
-                required: false
-                schema:
-                    pattern: '"^(({0,10})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,10}),|not-between::({0,10}),|in::(({0,10}),)*)$"'
-                    type: string
-            -   description: Filter by phone
-                in: query
-                name: phone
-                required: false
-                schema:
-                    pattern: '"^(({0,24})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,24}),|not-between::({0,24}),|in::(({0,24}),)*)$"'
-                    type: string
-            -   description: Filter by fax
-                in: query
-                name: fax
-                required: false
-                schema:
-                    pattern: '"^(({0,24})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,24}),|not-between::({0,24}),|in::(({0,24}),)*)$"'
-                    type: string
-            -   description: Filter by email
-                in: query
-                name: email
-                required: false
-                schema:
-                    pattern: '"^(({0,60})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,60}),|not-between::({0,60}),|in::(({0,60}),)*)$"'
+                    pattern: '"^(({0,120})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,120}),|not-between::({0,120}),|in::(({0,120}),)*)$"'
                     type: string
             responses:
                 '204':
@@ -1782,29 +1587,10 @@ paths:
                         application/json:
                             schema:
                                 items:
-                                    $ref: '#/components/schemas/employee'
+                                    $ref: '#/components/schemas/genre'
                                 type: array
-                    description: employee deleted successfully
-            summary: Delete an existing employee by ID
-        get:
-            parameters:
-            -   description: ID of the employee to get
-                in: path
-                name: id
-                required: true
-                schema:
-                    type: string
-            responses:
-                '200':
-                    content:
-                        application/json:
-                            schema:
-                                items:
-                                    $ref: '#/components/schemas/employee'
-                                type: array
-                    description: A list of schema objects.
-            summary: Retrieve employee by employee_id
-    /genre:
+                    description: genre deleted successfully
+            summary: Delete many existing genre using query
         get:
             parameters:
             -   description: Filter by genre_id
@@ -1896,6 +1682,42 @@ paths:
                     description: genre updated successfully
             summary: Update an existing genre by ID
     /genre/{genre_id}:
+        delete:
+            parameters:
+            -   description: ID of the genre to update
+                in: path
+                name: genre_id
+                required: true
+                schema:
+                    type: integer
+            responses:
+                '204':
+                    content:
+                        application/json:
+                            schema:
+                                items:
+                                    $ref: '#/components/schemas/genre'
+                                type: array
+                    description: genre deleted successfully
+            summary: Delete an existing genre by genre_id
+        get:
+            parameters:
+            -   description: ID of the genre to get
+                in: path
+                name: id
+                required: true
+                schema:
+                    type: integer
+            responses:
+                '200':
+                    content:
+                        application/json:
+                            schema:
+                                items:
+                                    $ref: '#/components/schemas/genre'
+                                type: array
+                    description: A list of genre.
+            summary: Retrieve genre by genre_id
         put:
             parameters:
             -   description: ID of the genre to update
@@ -1927,51 +1749,6 @@ paths:
                                 type: array
                     description: genre updated successfully
             summary: Update an existing genre by genre_id
-    /genre/{id}:
-        delete:
-            parameters:
-            -   description: Filter by genre_id
-                in: query
-                name: genre_id
-                required: false
-                schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
-                    type: integer
-            -   description: Filter by name
-                in: query
-                name: name
-                required: false
-                schema:
-                    pattern: '"^(({0,120})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,120}),|not-between::({0,120}),|in::(({0,120}),)*)$"'
-                    type: string
-            responses:
-                '204':
-                    content:
-                        application/json:
-                            schema:
-                                items:
-                                    $ref: '#/components/schemas/genre'
-                                type: array
-                    description: genre deleted successfully
-            summary: Delete an existing genre by ID
-        get:
-            parameters:
-            -   description: ID of the genre to get
-                in: path
-                name: id
-                required: true
-                schema:
-                    type: string
-            responses:
-                '200':
-                    content:
-                        application/json:
-                            schema:
-                                items:
-                                    $ref: '#/components/schemas/genre'
-                                type: array
-                    description: A list of schema objects.
-            summary: Retrieve genre by genre_id
     /invoice:
         get:
             parameters:
@@ -2112,120 +1889,15 @@ paths:
                                 type: array
                     description: invoice created successfully
             summary: Create a new invoice
-        put:
+    /invoice/{invoice_id}:
+        get:
             parameters:
-            -   description: Filter by invoice_id
-                in: query
-                name: invoice_id
-                required: false
+            -   description: ID of the invoice to get
+                in: path
+                name: id
+                required: true
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
                     type: integer
-            -   description: Filter by customer_id
-                in: query
-                name: customer_id
-                required: false
-                schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
-                    type: integer
-            -   description: Filter by invoice_date
-                in: query
-                name: invoice_date
-                required: false
-                schema:
-                    pattern: '"^((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|not-between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$"'
-                    type: string
-            -   description: Filter by billing_address
-                in: query
-                name: billing_address
-                required: false
-                schema:
-                    pattern: '"^(({0,70})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,70}),|not-between::({0,70}),|in::(({0,70}),)*)$"'
-                    type: string
-            -   description: Filter by billing_city
-                in: query
-                name: billing_city
-                required: false
-                schema:
-                    pattern: '"^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$"'
-                    type: string
-            -   description: Filter by billing_state
-                in: query
-                name: billing_state
-                required: false
-                schema:
-                    pattern: '"^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$"'
-                    type: string
-            -   description: Filter by billing_country
-                in: query
-                name: billing_country
-                required: false
-                schema:
-                    pattern: '"^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$"'
-                    type: string
-            -   description: Filter by billing_postal_code
-                in: query
-                name: billing_postal_code
-                required: false
-                schema:
-                    pattern: '"^(({0,10})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,10}),|not-between::({0,10}),|in::(({0,10}),)*)$"'
-                    type: string
-            -   description: Filter by total
-                in: query
-                name: total
-                required: false
-                schema:
-                    pattern: '"^((.*)|lt::|le::|eq::|ne::|ge::|gt::|between::(.*),|not-between::(.*),|in::((.*),)*)$"'
-                    type: number
-            -   description: Filter by last_updated
-                in: query
-                name: last_updated
-                required: false
-                schema:
-                    pattern: '"^((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|not-between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$"'
-                    type: string
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            properties:
-                                billing_address:
-                                    maxLength: 70
-                                    type: string
-                                billing_city:
-                                    maxLength: 40
-                                    type: string
-                                billing_country:
-                                    maxLength: 40
-                                    type: string
-                                billing_postal_code:
-                                    maxLength: 10
-                                    type: string
-                                billing_state:
-                                    maxLength: 40
-                                    type: string
-                                customer:
-                                    $ref: '#/components/schemas/customer'
-                                customer_id:
-                                    type: integer
-                                invoice_date:
-                                    format: date-time
-                                    type: string
-                                invoice_id:
-                                    type: integer
-                                last_updated:
-                                    format: date-time
-                                    type: string
-                                line_items:
-                                    items:
-                                        $ref: '#/components/schemas/invoice_line'
-                                    type: array
-                                total:
-                                    format: float
-                                    type: number
-                            required: []
-                            type: object
-                required: false
             responses:
                 '200':
                     content:
@@ -2234,81 +1906,23 @@ paths:
                                 items:
                                     $ref: '#/components/schemas/invoice'
                                 type: array
-                    description: invoice updated successfully
-            summary: Update an existing invoice by ID
-    /invoice/{id}:
+                    description: A list of invoice.
+            summary: Retrieve invoice by invoice_id
+    /invoice/{invoice_id}/last_updated/{last_updated}:
         delete:
             parameters:
-            -   description: Filter by invoice_id
-                in: query
+            -   description: ID of the invoice to update
+                in: path
                 name: invoice_id
-                required: false
+                required: true
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
                     type: integer
-            -   description: Filter by customer_id
-                in: query
-                name: customer_id
-                required: false
-                schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
-                    type: integer
-            -   description: Filter by invoice_date
-                in: query
-                name: invoice_date
-                required: false
-                schema:
-                    pattern: '"^((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|not-between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$"'
-                    type: string
-            -   description: Filter by billing_address
-                in: query
-                name: billing_address
-                required: false
-                schema:
-                    pattern: '"^(({0,70})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,70}),|not-between::({0,70}),|in::(({0,70}),)*)$"'
-                    type: string
-            -   description: Filter by billing_city
-                in: query
-                name: billing_city
-                required: false
-                schema:
-                    pattern: '"^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$"'
-                    type: string
-            -   description: Filter by billing_state
-                in: query
-                name: billing_state
-                required: false
-                schema:
-                    pattern: '"^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$"'
-                    type: string
-            -   description: Filter by billing_country
-                in: query
-                name: billing_country
-                required: false
-                schema:
-                    pattern: '"^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$"'
-                    type: string
-            -   description: Filter by billing_postal_code
-                in: query
-                name: billing_postal_code
-                required: false
-                schema:
-                    pattern: '"^(({0,10})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,10}),|not-between::({0,10}),|in::(({0,10}),)*)$"'
-                    type: string
-            -   description: Filter by total
-                in: query
-                name: total
-                required: false
-                schema:
-                    pattern: '"^((.*)|lt::|le::|eq::|ne::|ge::|gt::|between::(.*),|not-between::(.*),|in::((.*),)*)$"'
-                    type: number
-            -   description: Filter by last_updated
-                in: query
+            -   description: last_updated of the invoice to update
+                in: path
                 name: last_updated
-                required: false
+                required: true
                 schema:
-                    pattern: '"^((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|not-between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$"'
-                    type: string
+                    type: date-time
             responses:
                 '204':
                     content:
@@ -2319,68 +1933,6 @@ paths:
                                 type: array
                     description: invoice deleted successfully
             summary: Delete an existing invoice by ID
-    /invoice/{invoice_id}:
-        put:
-            parameters:
-            -   description: ID of the invoice to update
-                in: path
-                name: invoice_id
-                required: true
-                schema:
-                    type: integer
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            properties:
-                                billing_address:
-                                    maxLength: 70
-                                    type: string
-                                billing_city:
-                                    maxLength: 40
-                                    type: string
-                                billing_country:
-                                    maxLength: 40
-                                    type: string
-                                billing_postal_code:
-                                    maxLength: 10
-                                    type: string
-                                billing_state:
-                                    maxLength: 40
-                                    type: string
-                                customer:
-                                    $ref: '#/components/schemas/customer'
-                                customer_id:
-                                    type: integer
-                                invoice_date:
-                                    format: date-time
-                                    type: string
-                                invoice_id:
-                                    type: integer
-                                last_updated:
-                                    format: date-time
-                                    type: string
-                                line_items:
-                                    items:
-                                        $ref: '#/components/schemas/invoice_line'
-                                    type: array
-                                total:
-                                    format: float
-                                    type: number
-                            required: []
-                            type: object
-                required: false
-            responses:
-                '200':
-                    content:
-                        application/json:
-                            schema:
-                                items:
-                                    $ref: '#/components/schemas/invoice'
-                                type: array
-                    description: invoice updated successfully
-            summary: Update an existing invoice by invoice_id
-    /invoice/{invoice_id}/last_updated/{last_updated}:
         put:
             parameters:
             -   description: ID of the invoice to update
@@ -2448,6 +2000,53 @@ paths:
                     description: invoice updated successfully
             summary: Update an existing invoice by ID
     /invoice_line:
+        delete:
+            parameters:
+            -   description: Filter by invoice_line_id
+                in: query
+                name: invoice_line_id
+                required: false
+                schema:
+                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    type: integer
+            -   description: Filter by invoice_id
+                in: query
+                name: invoice_id
+                required: false
+                schema:
+                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    type: integer
+            -   description: Filter by track_id
+                in: query
+                name: track_id
+                required: false
+                schema:
+                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    type: integer
+            -   description: Filter by unit_price
+                in: query
+                name: unit_price
+                required: false
+                schema:
+                    pattern: '"^((.*)|lt::|le::|eq::|ne::|ge::|gt::|between::(.*),|not-between::(.*),|in::((.*),)*)$"'
+                    type: number
+            -   description: Filter by quantity
+                in: query
+                name: quantity
+                required: false
+                schema:
+                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    type: integer
+            responses:
+                '204':
+                    content:
+                        application/json:
+                            schema:
+                                items:
+                                    $ref: '#/components/schemas/invoice_line'
+                                type: array
+                    description: invoice_line deleted successfully
+            summary: Delete many existing invoice_line using query
         get:
             parameters:
             -   description: Filter by invoice_line_id
@@ -2596,43 +2195,14 @@ paths:
                                 type: array
                     description: invoice_line updated successfully
             summary: Update an existing invoice_line by ID
-    /invoice_line/{id}:
+    /invoice_line/{invoice_line_id}:
         delete:
             parameters:
-            -   description: Filter by invoice_line_id
-                in: query
+            -   description: ID of the invoice_line to update
+                in: path
                 name: invoice_line_id
-                required: false
+                required: true
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
-                    type: integer
-            -   description: Filter by invoice_id
-                in: query
-                name: invoice_id
-                required: false
-                schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
-                    type: integer
-            -   description: Filter by track_id
-                in: query
-                name: track_id
-                required: false
-                schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
-                    type: integer
-            -   description: Filter by unit_price
-                in: query
-                name: unit_price
-                required: false
-                schema:
-                    pattern: '"^((.*)|lt::|le::|eq::|ne::|ge::|gt::|between::(.*),|not-between::(.*),|in::((.*),)*)$"'
-                    type: number
-            -   description: Filter by quantity
-                in: query
-                name: quantity
-                required: false
-                schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
                     type: integer
             responses:
                 '204':
@@ -2643,7 +2213,7 @@ paths:
                                     $ref: '#/components/schemas/invoice_line'
                                 type: array
                     description: invoice_line deleted successfully
-            summary: Delete an existing invoice_line by ID
+            summary: Delete an existing invoice_line by invoice_line_id
         get:
             parameters:
             -   description: ID of the invoice_line to get
@@ -2651,7 +2221,7 @@ paths:
                 name: id
                 required: true
                 schema:
-                    type: string
+                    type: integer
             responses:
                 '200':
                     content:
@@ -2660,9 +2230,8 @@ paths:
                                 items:
                                     $ref: '#/components/schemas/invoice_line'
                                 type: array
-                    description: A list of schema objects.
+                    description: A list of invoice_line.
             summary: Retrieve invoice_line by invoice_line_id
-    /invoice_line/{invoice_line_id}:
         put:
             parameters:
             -   description: ID of the invoice_line to update
@@ -2701,6 +2270,32 @@ paths:
                     description: invoice_line updated successfully
             summary: Update an existing invoice_line by invoice_line_id
     /media_type:
+        delete:
+            parameters:
+            -   description: Filter by media_type_id
+                in: query
+                name: media_type_id
+                required: false
+                schema:
+                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    type: integer
+            -   description: Filter by name
+                in: query
+                name: name
+                required: false
+                schema:
+                    pattern: '"^(({0,120})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,120}),|not-between::({0,120}),|in::(({0,120}),)*)$"'
+                    type: string
+            responses:
+                '204':
+                    content:
+                        application/json:
+                            schema:
+                                items:
+                                    $ref: '#/components/schemas/media_type'
+                                type: array
+                    description: media_type deleted successfully
+            summary: Delete many existing media_type using query
         get:
             parameters:
             -   description: Filter by media_type_id
@@ -2791,12 +2386,12 @@ paths:
                                 type: array
                     description: media_type updated successfully
             summary: Update an existing media_type by ID
-    /media_type/{id}:
+    /playlist:
         delete:
             parameters:
-            -   description: Filter by media_type_id
+            -   description: Filter by playlist_id
                 in: query
-                name: media_type_id
+                name: playlist_id
                 required: false
                 schema:
                     pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
@@ -2814,11 +2409,10 @@ paths:
                         application/json:
                             schema:
                                 items:
-                                    $ref: '#/components/schemas/media_type'
+                                    $ref: '#/components/schemas/playlist'
                                 type: array
-                    description: media_type deleted successfully
-            summary: Delete an existing media_type by ID
-    /playlist:
+                    description: playlist deleted successfully
+            summary: Delete many existing playlist using query
         get:
             parameters:
             -   description: Filter by playlist_id
@@ -2909,23 +2503,15 @@ paths:
                                 type: array
                     description: playlist updated successfully
             summary: Update an existing playlist by ID
-    /playlist/{id}:
+    /playlist/{playlist_id}:
         delete:
             parameters:
-            -   description: Filter by playlist_id
-                in: query
+            -   description: ID of the playlist to update
+                in: path
                 name: playlist_id
-                required: false
+                required: true
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
                     type: integer
-            -   description: Filter by name
-                in: query
-                name: name
-                required: false
-                schema:
-                    pattern: '"^(({0,120})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,120}),|not-between::({0,120}),|in::(({0,120}),)*)$"'
-                    type: string
             responses:
                 '204':
                     content:
@@ -2935,7 +2521,7 @@ paths:
                                     $ref: '#/components/schemas/playlist'
                                 type: array
                     description: playlist deleted successfully
-            summary: Delete an existing playlist by ID
+            summary: Delete an existing playlist by playlist_id
         get:
             parameters:
             -   description: ID of the playlist to get
@@ -2943,7 +2529,7 @@ paths:
                 name: id
                 required: true
                 schema:
-                    type: string
+                    type: integer
             responses:
                 '200':
                     content:
@@ -2952,9 +2538,8 @@ paths:
                                 items:
                                     $ref: '#/components/schemas/playlist'
                                 type: array
-                    description: A list of schema objects.
+                    description: A list of playlist.
             summary: Retrieve playlist by playlist_id
-    /playlist/{playlist_id}:
         put:
             parameters:
             -   description: ID of the playlist to update
@@ -2987,6 +2572,32 @@ paths:
                     description: playlist updated successfully
             summary: Update an existing playlist by playlist_id
     /playlist_track:
+        delete:
+            parameters:
+            -   description: Filter by playlist_id
+                in: query
+                name: playlist_id
+                required: false
+                schema:
+                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    type: integer
+            -   description: Filter by track_id
+                in: query
+                name: track_id
+                required: false
+                schema:
+                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    type: integer
+            responses:
+                '204':
+                    content:
+                        application/json:
+                            schema:
+                                items:
+                                    $ref: '#/components/schemas/playlist_track'
+                                type: array
+                    description: playlist_track deleted successfully
+            summary: Delete many existing playlist_track using query
         get:
             parameters:
             -   description: Filter by playlist_id
@@ -3076,16 +2687,9 @@ paths:
                                 type: array
                     description: playlist_track updated successfully
             summary: Update an existing playlist_track by ID
-    /playlist_track/{id}:
+    /track:
         delete:
             parameters:
-            -   description: Filter by playlist_id
-                in: query
-                name: playlist_id
-                required: false
-                schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
-                    type: integer
             -   description: Filter by track_id
                 in: query
                 name: track_id
@@ -3093,17 +2697,72 @@ paths:
                 schema:
                     pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
                     type: integer
+            -   description: Filter by name
+                in: query
+                name: name
+                required: false
+                schema:
+                    pattern: '"^(({0,200})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,200}),|not-between::({0,200}),|in::(({0,200}),)*)$"'
+                    type: string
+            -   description: Filter by album_id
+                in: query
+                name: album_id
+                required: false
+                schema:
+                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    type: integer
+            -   description: Filter by media_type_id
+                in: query
+                name: media_type_id
+                required: false
+                schema:
+                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    type: integer
+            -   description: Filter by genre_id
+                in: query
+                name: genre_id
+                required: false
+                schema:
+                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    type: integer
+            -   description: Filter by composer
+                in: query
+                name: composer
+                required: false
+                schema:
+                    pattern: '"^(({0,220})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,220}),|not-between::({0,220}),|in::(({0,220}),)*)$"'
+                    type: string
+            -   description: Filter by milliseconds
+                in: query
+                name: milliseconds
+                required: false
+                schema:
+                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    type: integer
+            -   description: Filter by bytes
+                in: query
+                name: bytes
+                required: false
+                schema:
+                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    type: integer
+            -   description: Filter by unit_price
+                in: query
+                name: unit_price
+                required: false
+                schema:
+                    pattern: '"^((.*)|lt::|le::|eq::|ne::|ge::|gt::|between::(.*),|not-between::(.*),|in::((.*),)*)$"'
+                    type: number
             responses:
                 '204':
                     content:
                         application/json:
                             schema:
                                 items:
-                                    $ref: '#/components/schemas/playlist_track'
+                                    $ref: '#/components/schemas/track'
                                 type: array
-                    description: playlist_track deleted successfully
-            summary: Delete an existing playlist_track by ID
-    /track:
+                    description: track deleted successfully
+            summary: Delete many existing track using query
         get:
             parameters:
             -   description: Filter by track_id
@@ -3328,72 +2987,15 @@ paths:
                                 type: array
                     description: track updated successfully
             summary: Update an existing track by ID
-    /track/{id}:
+    /track/{track_id}:
         delete:
             parameters:
-            -   description: Filter by track_id
-                in: query
+            -   description: ID of the track to update
+                in: path
                 name: track_id
-                required: false
+                required: true
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
                     type: integer
-            -   description: Filter by name
-                in: query
-                name: name
-                required: false
-                schema:
-                    pattern: '"^(({0,200})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,200}),|not-between::({0,200}),|in::(({0,200}),)*)$"'
-                    type: string
-            -   description: Filter by album_id
-                in: query
-                name: album_id
-                required: false
-                schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
-                    type: integer
-            -   description: Filter by media_type_id
-                in: query
-                name: media_type_id
-                required: false
-                schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
-                    type: integer
-            -   description: Filter by genre_id
-                in: query
-                name: genre_id
-                required: false
-                schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
-                    type: integer
-            -   description: Filter by composer
-                in: query
-                name: composer
-                required: false
-                schema:
-                    pattern: '"^(({0,220})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,220}),|not-between::({0,220}),|in::(({0,220}),)*)$"'
-                    type: string
-            -   description: Filter by milliseconds
-                in: query
-                name: milliseconds
-                required: false
-                schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
-                    type: integer
-            -   description: Filter by bytes
-                in: query
-                name: bytes
-                required: false
-                schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
-                    type: integer
-            -   description: Filter by unit_price
-                in: query
-                name: unit_price
-                required: false
-                schema:
-                    pattern: '"^((.*)|lt::|le::|eq::|ne::|ge::|gt::|between::(.*),|not-between::(.*),|in::((.*),)*)$"'
-                    type: number
             responses:
                 '204':
                     content:
@@ -3403,7 +3005,7 @@ paths:
                                     $ref: '#/components/schemas/track'
                                 type: array
                     description: track deleted successfully
-            summary: Delete an existing track by ID
+            summary: Delete an existing track by track_id
         get:
             parameters:
             -   description: ID of the track to get
@@ -3411,7 +3013,7 @@ paths:
                 name: id
                 required: true
                 schema:
-                    type: string
+                    type: integer
             responses:
                 '200':
                     content:
@@ -3420,9 +3022,8 @@ paths:
                                 items:
                                     $ref: '#/components/schemas/track'
                                 type: array
-                    description: A list of schema objects.
+                    description: A list of track.
             summary: Retrieve track by track_id
-    /track/{track_id}:
         put:
             parameters:
             -   description: ID of the track to update

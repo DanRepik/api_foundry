@@ -84,7 +84,7 @@ class GatewapDocument:
                 "produces": ["application/json"],
                 "responses": {
                     "200": {
-                        "description": f"200 response",
+                        "description": "200 response",
                         "schema": {
                             "type": "object",
                         },
@@ -106,9 +106,9 @@ class GatewapDocument:
                         "default": {
                             "statusCode": 200,
                             "responseParameters": {
-                                "method.response.header.Access-Control-Allow-Methods": "'DELETE,GET,HEAD,OPTIONS,PATCH,POST,PUT'",
-                                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'",
-                                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                                "method.response.header.Access-Control-Allow-Methods": "'DELETE,GET,HEAD,OPTIONS,PATCH,POST,PUT'",  # noqa: E501
+                                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'",  # noqa: E501
+                                "method.response.header.Access-Control-Allow-Origin": "'*'",  # noqa: E501
                             },
                             "responseTemplates": {
                                 "application/json": "",
@@ -116,7 +116,7 @@ class GatewapDocument:
                         },
                     },
                     "requestTemplates": {
-                        "application/json": f'{{"statusCode": 200}}',
+                        "application/json": '{{"statusCode": 200}}',
                     },
                     "passthroughBehavior": "when_no_match",
                     "type": "mock",
@@ -173,7 +173,13 @@ class GatewapDocument:
         if len(regex_pattern) == 0:
             regex_pattern = ".*"
 
-        return f'"^(({regex_pattern})|lt::|le::|eq::|ne::|ge::|gt::|between::({regex_pattern}),|not-between::({regex_pattern}),|in::(({regex_pattern}),)*)$"'
+        return (
+            f"^(({regex_pattern})|lt::|le::|eq::|ne::|ge::|gt::"
+            + f"|between::({regex_pattern}),"
+            + f"|not-between::({regex_pattern}),"
+            + f"|in::(({regex_pattern}),)*)$"
+            + f"|not-in::(({regex_pattern}),)*)$"
+        )
 
     def generate_query_parameters(self, schema_object: SchemaObject):
         parameters = []
@@ -212,7 +218,9 @@ class GatewapDocument:
         self.generate_update_by_id_operation(path, schema_name, schema_object)
         self.generate_update_with_cc_operation(path, schema_name, schema_object)
         self.generate_update_many_operation(path, schema_name, schema_object)
-        self.generate_delete_operation(path, schema_name, schema_object)
+        self.generate_delete_by_id_operation(path, schema_name, schema_object)
+        self.generate_delete_with_cc_operation(path, schema_name, schema_object)
+        self.generate_delete_many_operation(path, schema_name, schema_object)
 
     def generate_create_operation(
         self, path: str, schema_name: str, schema_object: SchemaObject
@@ -269,30 +277,27 @@ class GatewapDocument:
     def generate_get_by_id_operation(
         self, path: str, schema_name: str, schema_object: SchemaObject
     ):
-        if not schema_object.primary_key:
-            return
-        
-        # if there is a concurtency property then do not add operaton
-        if schema_object.concurrency_property:
+        key = schema_object.primary_key
+        if not key:
             return
 
         self.add_operation(
-            f"{path}/{{id}}",
+            f"{path}/{{{key.name}}}",
             "get",
             {
-                "summary": f"Retrieve {schema_name} by {schema_object.primary_key.name}",
+                "summary": f"Retrieve {schema_name} by {key.name}",
                 "parameters": [
                     {
                         "name": "id",
                         "in": "path",
                         "description": f"ID of the {schema_name} to get",
                         "required": True,
-                        "schema": {"type": "string"},
+                        "schema": {"type": key.api_type},
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "A list of schema objects.",
+                        "description": f"A list of {schema_name}.",
                         "content": self.__list_of_schema(schema_name),
                     }
                 },
@@ -302,6 +307,9 @@ class GatewapDocument:
     def generate_update_by_id_operation(
         self, path: str, schema_name: str, schema_object: SchemaObject
     ):
+        if schema_object.concurrency_property:
+            return
+
         key = schema_object.primary_key
         if not key:
             return
@@ -372,7 +380,9 @@ class GatewapDocument:
                     {
                         "name": cc_property.name,
                         "in": "path",
-                        "description": f"{cc_property.name} of the {schema_name} to update",
+                        "description": (
+                            cc_property.name + " of the " + schema_name + " to update"
+                        ),
                         "required": True,
                         "schema": {"type": cc_property.api_type},
                     },
@@ -403,6 +413,9 @@ class GatewapDocument:
     def generate_update_many_operation(
         self, path: str, schema_name: str, schema_object: SchemaObject
     ):
+        if schema_object.concurrency_property:
+            return
+
         # Update operation
         self.add_operation(
             path,
@@ -435,14 +448,93 @@ class GatewapDocument:
 
         # Delete operation
 
-    def generate_delete_operation(
+    def generate_delete_with_cc_operation(
         self, path: str, schema_name: str, schema_object: SchemaObject
     ):
+        cc_property = schema_object.concurrency_property
+        if not cc_property:
+            return
+
+        key = schema_object.primary_key
+        if not key:
+            return
+
         self.add_operation(
-            f"{path}/{{id}}",
+            f"{path}/{{{key.name}}}/{cc_property.name}/{{{cc_property.name}}}",
             "delete",
             {
                 "summary": f"Delete an existing {schema_name} by ID",
+                "parameters": [
+                    {
+                        "name": key.name,
+                        "in": "path",
+                        "description": f"ID of the {schema_name} to update",
+                        "required": True,
+                        "schema": {"type": key.api_type},
+                    },
+                    {
+                        "name": cc_property.name,
+                        "in": "path",
+                        "description": (
+                            f"{cc_property.name} of the {schema_name} to update"
+                        ),
+                        "required": True,
+                        "schema": {"type": cc_property.api_type},
+                    },
+                ],
+                "responses": {
+                    "204": {
+                        "description": f"{schema_name} deleted successfully",
+                        "content": self.__list_of_schema(schema_name),
+                    }
+                },
+            },
+        )
+
+    def generate_delete_by_id_operation(
+        self, path: str, schema_name: str, schema_object: SchemaObject
+    ):
+        if schema_object.concurrency_property:
+            return
+
+        key = schema_object.primary_key
+        if not key:
+            return
+
+        self.add_operation(
+            f"{path}/{{{key.name}}}",
+            "delete",
+            {
+                "summary": f"Delete an existing {schema_name} by {key.name}",
+                "parameters": [
+                    {
+                        "name": key.name,
+                        "in": "path",
+                        "description": f"ID of the {schema_name} to update",
+                        "required": True,
+                        "schema": {"type": key.api_type},
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": f"{schema_name} deleted successfully",
+                        "content": self.__list_of_schema(schema_name),
+                    }
+                },
+            },
+        )
+
+    def generate_delete_many_operation(
+        self, path: str, schema_name: str, schema_object: SchemaObject
+    ):
+        if schema_object.concurrency_property:
+            return
+
+        self.add_operation(
+            path,
+            "delete",
+            {
+                "summary": f"Delete many existing {schema_name} using query",
                 "parameters": self.generate_query_parameters(schema_object),
                 "responses": {
                     "204": {
