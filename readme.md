@@ -264,11 +264,12 @@ components:
           x-am-parent-property: customer_id
 ```
 
-In this example the customer property type after the reference resolution is an object.  By setting the 'x-am-parent-property' attribute to a peer property, API-Maker will use that value of that property to resolve the object value.  In the case of this example the customer_id value of the invoice will be used to select the customer.
+In this example, the `customer` property of the `invoice` schema is an object type after reference resolution. By setting the `x-am-parent-property` attribute to a sibling property, API-Maker will use the value of that property to resolve the object value. Specifically, in this example, the `customer_id` value of the invoice will be used to select the corresponding customer.
 
 > Internally API-Maker uses inner joins to select these objects using a single database operation.
 
 **Including an Array Propety**
+
 
 Consider the following api spec:
 ```
@@ -299,18 +300,11 @@ Consider the following api spec:
           type: integer
 ```
 
-API-Maker simplifies the retrieval of complex objects, including those containing nested objects or lists of objects, through the utilization of associations. These associations can be classified as either one-to-one or one-to-many and are specified within the properties of the schema component object.
+In this example, the `line_items` property of the `invoice` schema is an array of `invoice_lines` type after reference resolution.  By setting the `x-am-child-property` attribute to a property in the `invoice_line` schema, API-Maker will use the primary key value of the invoice to select on that property.  Specifically, in this example, the `invoice_id` values from the selected `invoice`s will be used to filter on the `invoice_id` property of the associated `invoice_line` items.
 
-By default, API_maker services return a flat object. To retrieve objects associated with the association, the request must select those properties using the '_properties' metadata parameter.
-
-> A note on terminology regarding associations: When referring to objects in the association, `primary` represents the main object being returned. `Secondary` objects are objects attached either directly or as elements of a list attached to the primary object.
-
-To specify these associations, properties are added to the `primary` schema component object.  These properties constain attributes that specify the association using the following attributes:
 
 | Attribute             | Description                                          | Usage             |
 |-----------------------|------------------------------------------------------|-------------------|
-| x-am-schema-object    | The name of the secondary schema component object to select. | Required      |
-| x-am-cardinality      | The type of association, must be either '1:1' or '1:m',                      | Optional, '1:1' by default |
 | x-am-parent-property  | The name of the 'primary' property that identifies the selection key.  | Optional, defaults to `parent` primary key.  Normally needed for 1:1 associations. |
 | x-am-child-property   | The name of the property in the `secondary` object used as the selection key | Optional, defaults to primary key of  defaults to the child if not specified |
 
