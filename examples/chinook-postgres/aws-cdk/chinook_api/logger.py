@@ -10,10 +10,6 @@ logging.basicConfig(
     force=True,
 )
 
-WARN = logging.WARN
-INFO = logging.INFO
-DEBUG = logging.DEBUG
-
 
 def logger(name=None):
     """
@@ -35,3 +31,7 @@ def logger(name=None):
 
     # Returning a logger object with the specified name or the root logger
     return logging.getLogger(name)
+
+
+INFO = logging.INFO
+DEBUG = logging.DEBUG

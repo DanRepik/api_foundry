@@ -21,6 +21,8 @@ src/api_maker/dao/sql_insert_generator.py
 src/api_maker/dao/sql_select_generator.py
 src/api_maker/dao/sql_subselect_generator.py
 src/api_maker/dao/sql_update_generator.py
+src/api_maker/deployment/aws_cdk/iam_execution_role.py
+src/api_maker/scripts/archive_builder.py
 src/api_maker/services/service.py
 src/api_maker/services/transactional_service.py
 src/api_maker/utils/app_exception.py
