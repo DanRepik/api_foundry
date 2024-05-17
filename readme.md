@@ -40,7 +40,7 @@ Annotations on component schema objects enable seamless operations on database t
 Annotations to the OpenAPI specification document provides the means of mapping from API elements to database resources.
 
 This is done via two primary methods.
-
+::
 * Component Schema Objects to Database Tables - These objects can be mapped to database tables.  When this mapping is available api-maker will build supporting CRUD services.
 
 * Path Operations to Custom SQL - This method allows attaching custom SQL to a specific operation.
@@ -50,25 +50,40 @@ This is done via two primary methods.
 
 When processing requests, API-Maker categorizes parameters into three categories: query, store, and metadata.
 
-| Type     | Description                          | Methods          | Location                                |
-|----------|--------------------------------------|------------------|-----------------------------------------|
-| Query    | Used for selecting data.              | GET, PUT, DELETE | Request query string or path parameters |
-| Store    | Values to be stored in the database. | PUT, POST        | Request body                            |
-| Metadata | Instructions for processing the request | ALL              | Request query string                    |
+**Qeury Parameters**
 
-### Selecting Data
+These paramters are always used in selecting the set of records that the operation applies to.  Generally these parameters are passed as query string elements in the request, however with some of services provided these can appear as path elements.
 
-API-Maker provides the following CRUD services for schema objects with the following URIs:
+When selecting records using request query string elements relational operands can be applied by prefixing the operand to the value.  For example using the Chinook example API invoices with a total price of less then five dollars would be;
 
-| Operation | URI    | Method  |Description |
-|-----------|--------|-|-------------------------------|
-| read | <object_endpoint> | GET | Query for a set of data |
-| read | <object_endpoint>/{id} | GET| Selects a single record by ID.              |
-| create | <object_endpoint> | POST | Insert record(s).|
-| update | <object_endpoint> | PUT | Update a set of records    |
-| update | <object_endpoint>/{id} | PUT | Update a record by id    |
-| update | <object_endpoint>/{id}/{stamp} | PUT | Update a record with concurrency management by id    |
-|delete | <object_endpoint> | DELETE | Delete a set of records |
+```
+GET https://bobsrecords.com/invoice?total=lt::5
+```
+
+**Store Parameters**
+
+Store parameters are always passed in the request body using json format and represents data to be stored in the request.  These parameters only apply to create and update operations.
+
+**Metadata Parameters**
+
+Metadata parameters allow sending of additional instructions in the request.  These paraemters are always passed in the request query string and are always prefixed with an underscore '_'.
+
+
+### Schema Object Services
+
+When schema objects are enhanced with database configuration API-Maker builds the following services.
+
+
+| Operation | URI                     | Method | Description |
+|-----------|-------------------------|--------|-------------------------------|
+| read      | <endpoint>              | GET    | Query for a set of data |
+| read      | <endpoint>/{id}         | GET    | Selects a single record by ID.              |
+| create    | <endpoint>              | POST   | Insert record(s).|
+| update    | <endpoint>              | PUT    | Update a set of records    |
+| update    | <endpoint>/{id}         | PUT    | Update a record by id    |
+| update    | <endpoint>/{id}/{stamp} | PUT    | Update a record with concurrency management by id    |
+|delete     | <object_endpoint>       | DELETE | Delete a set of records |
+| delete    | <endpoint>/{id}         | DELETE | Update a record by id    |
 
 Here, \<object_endpoint> represents the API endpoint followed by the schema object name. For example, 'https://bobsrecords.com/albums'.
 
@@ -76,7 +91,7 @@ The service to select a record by its ID is self-explanatory.
 
 > Note: {id} always represents the primary key property of the schema object.
 
-#### Selecting Sets of Data
+#### Reading Records
 
 For more flexibility in selecting sets of data, query parameters can be passed via the request query string. Additionally, requests can include relational operands to refine selection criteria.
 
@@ -186,10 +201,13 @@ To accomplish this, attention must be given to several configuration aspects:
   - Auto: The database table autonomously generates the key.
   - Sequences: Employed in databases like Oracle, where sequence objects serve as the source of keys.
 
-- **Concurrency Control**: Optionally, a property within the schema component can be identified as a concurrency control column, utilized to prevent service requests from overriding updates made by other requests. When a schema object includes a concurrency control property, that property must be provided as a query parameter. If the value provided does not match the one in the database, the update request fails. It's important to note that requesting services cannot set concurrency control properties using store parameters, as those values are managed by API-Maker. API-Maker supports three different concurrency control column types:
-  - Timestamp: API-Maker inserts the current time in the control field, and applications must provide that timestamp.
-  - UUID: Utilizes a UUID as the control value.
-  - Serial: In this scenario, an integer is incremented when the record is updated.
+- **Concurrency Control**: Optionally, a property within the schema component can be identified as a concurrency control property this is utilized to prevent service requests from overriding updates made by earlier requests. When a schema object includes a concurrency control property, that property must be provided as a query parameter. If the value provided does not match the one in the database, the update request will fail.  API-Maker applies the following strategies depending on the property type and format:
+
+| Property Type | Property Format | Column Type | Description |
+|---------------|-----------------|-------------|-------------|
+| string        | date-time       | timestamp   | Timestamp: API-Maker inserts the current time in the control field, and applications must provide that timestamp. |
+| string        |                 |string       | Uses database UUID function in the control value. |
+| interger      |                 | integer     |  When created the value is set to one.  Incremented by one on subsequent updates |
 
 #### Schema Component Object Attributes
 
@@ -200,6 +218,7 @@ These attributes map the componnent object to a database table.
 | x-am-database | The name of the database where the table is located.   | Required, value is used to access database configuration from the runtime secrets map. |
 | x-am-engine | The type of database being accessed. Determines SQL dilect to use.  | Required, must be one of 'postgres', 'oracle' or 'mysql' |
 | x-am-table | The table name to perform the operations on. | Optional, defaults to schema component object name if not provided.  Must be a valid table name |
+| x-am-concurency-control | The name of the property
 
 #### Schema Component Object Property Attributes
 
@@ -207,22 +226,85 @@ These attributes map the componnent object to a database table.
 |-----------------------|--------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
 | x-am-column-name      | Specifies the database column name if it differs from the property name.                                | Optional                                                                                |
 | x-am-primary-key      | Indicates that this property serves as the primary key for the object and defines how the key is obtained. | Required; must be one of the following: manual, auto, or sequence.                       |
-| x-am-concurrency-control | Marks the property for concurrency control when updating records.                                         | Optional; can be one of the following: timestamp, uuid, or serial.                        |
 | x-am-sequence-name    | Specifies the database sequence to be used for generating primary keys.                                     | Required only when the primary key type is "sequence".                                    |
 #### Schema Component Object Associations
 
-API-Maker simplifies the retrieval of complex objects, including those containing nested objects or lists of objects, through the utilization of associations. These associations can be classified as either one-to-one or one-to-many and are specified within the properties of the schema component object.
+When defining the api using schema objects the Open API specication allows properties that can be either objects or array of objects in addition to the other basic types.  With additional custom attributes API-Maker can populate these properties saving the client application the need to make multiple requests to construct objects with these properties.
 
-By default, API_maker services return a flat object. To retrieve objects associated with the association, the request must select those properties using the '_properties' metadata parameter.
+**Including an Object Property**
 
-> A note on terminology regarding associations: When referring to objects in the association, `primary` represents the main object being returned. `Secondary` objects are objects attached either directly or as elements of a list attached to the primary object.
+Consider the following api spec;
 
-To specify these associations, properties are added to the `primary` schema component object.  These properties constain attributes that specify the association using the following attributes:
+```yaml
+components:
+  schemas:
+    customer:
+      type: object
+      x-am-engine: postgres
+      x-am-database: chinook
+      properties:
+        customer_id:
+          type: integer
+          x-am-primary-key: auto
+        company:
+          type: string
+          maxLength: 80
+    invoice:
+      type: object
+      x-am-engine: postgres
+      x-am-database: chinook
+      properties:
+        invoice_id:
+          type: integer
+          x-am-primary-key: auto
+        customer_id:
+          type: integer
+        customer:
+          $ref: '#/components/schemas/customer'
+          x-am-parent-property: customer_id
+```
+
+In this example, the `customer` property of the `invoice` schema is an object type after reference resolution. By setting the `x-am-parent-property` attribute to a sibling property, API-Maker will use the value of that property to resolve the object value. Specifically, in this example, the `customer_id` value of the invoice will be used to select the corresponding customer.
+
+> Internally API-Maker uses inner joins to select these objects using a single database operation.
+
+**Including an Array Propety**
+
+
+Consider the following api spec:
+```
+    invoice:
+      type: object
+      x-am-engine: postgres
+      x-am-database: chinook
+      properties:
+        invoice_id:
+          type: integer
+          x-am-primary-key: auto
+        line_items:
+          type: array
+          items:
+            $ref: "#/components/schemas/invoice_line"
+            x-am-child-property: invoice_id
+    invoice_line:
+      type: object
+      x-am-engine: postgres
+      x-am-database: chinook
+      properties:
+        invoice_line_id:
+          type: integer
+          x-am-primary-key: auto
+        invoice_id:
+          type: integer
+        track_id:
+          type: integer
+```
+
+In this example, the `line_items` property of the `invoice` schema is an array of `invoice_lines` type after reference resolution.  By setting the `x-am-child-property` attribute to a property in the `invoice_line` schema, API-Maker will use the primary key value of the invoice to select on that property.  Specifically, in this example, the `invoice_id` values from the selected `invoice`s will be used to filter on the `invoice_id` property of the associated `invoice_line` items.
+
 
 | Attribute             | Description                                          | Usage             |
 |-----------------------|------------------------------------------------------|-------------------|
-| x-am-schema-object    | The name of the secondary schema component object to select. | Required      |
-| x-am-cardinality      | The type of association, must be either '1:1' or '1:m',                      | Optional, '1:1' by default |
 | x-am-parent-property  | The name of the 'primary' property that identifies the selection key.  | Optional, defaults to `parent` primary key.  Normally needed for 1:1 associations. |
 | x-am-child-property   | The name of the property in the `secondary` object used as the selection key | Optional, defaults to primary key of  defaults to the child if not specified |
 

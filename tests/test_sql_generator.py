@@ -122,7 +122,7 @@ class TestSQLGenerator:
         except ApplicationException as e:
             assert (
                 e.message
-                == "Queries using properties in 1:m associationed is not supported. schema object: invoice, property: line_items.track_id"
+                == "Queries using properties in arrays is not supported. schema object: invoice, property: line_items.track_id"
             )
 
     def test_search_invalid_property(self):

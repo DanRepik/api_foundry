@@ -2,22 +2,26 @@ from api_maker.dao.sql_generator import SQLGenerator
 from api_maker.operation import Operation
 from api_maker.utils.app_exception import ApplicationException
 from api_maker.utils.logger import logger
-from api_maker.utils.model_factory import (
-    ModelFactory,
-    SchemaObject,
-    SchemaObjectAssociation,
-)
+from api_maker.utils.model_factory import SchemaObject
 
 log = logger(__name__)
 
 
 class SQLSelectGenerator(SQLGenerator):
-    def __init__(self, operation: Operation, schema_object: SchemaObject) -> None:
+    def __init__(
+        self, operation: Operation, schema_object: SchemaObject
+    ) -> None:
         super().__init__(operation, schema_object)
 
     @property
     def sql(self) -> str:
-        return f"SELECT {self.select_list} FROM {self.table_expression}{self.search_condition}"
+        return (
+            "SELECT "
+            + self.select_list
+            + " FROM "
+            + self.table_expression
+            + self.search_condition
+        )
 
     @property
     def select_list(self) -> str:
@@ -27,7 +31,6 @@ class SQLSelectGenerator(SQLGenerator):
 
     @property
     def search_condition(self) -> str:
-
         self.search_placeholders = {}
         conditions = []
 
@@ -37,12 +40,21 @@ class SQLSelectGenerator(SQLGenerator):
             try:
                 if len(parts) > 1:
                     relation = self.schema_object.relations[parts[0]]
-                    if relation.cardinality != "1:1":
+                    if relation.type == "array":
                         raise ApplicationException(
                             400,
-                            f"Queries using properties in 1:m associationed is not supported. schema object: {self.schema_object.entity}, property: {name}",
+                            (
+                                "Queries using properties in "
+                                + "arrays is not supported. "
+                                + "schema object: "
+                                + self.schema_object.entity
+                                + ", property: "
+                                + name
+                            ),
                         )
-                    property = relation.child_schema_object.properties[parts[1]]
+                    property = relation.child_schema_object.properties[
+                        parts[1]
+                    ]
                     prefix = self.prefix_map[parts[0]]
                 else:
                     property = self.schema_object.properties[parts[0]]
@@ -50,7 +62,13 @@ class SQLSelectGenerator(SQLGenerator):
             except KeyError:
                 raise ApplicationException(
                     500,
-                    f"Invalid query parameter, property not found. schema object: {self.schema_object.entity}, property: {name}",
+                    (
+                        "Invalid query parameter, property not found. "
+                        + "schema object: "
+                        + self.schema_object.entity
+                        + ", property: "
+                        + name
+                    ),
                 )
 
             assignment, holders = self.search_value_assignment(
@@ -59,7 +77,9 @@ class SQLSelectGenerator(SQLGenerator):
             conditions.append(assignment)
             self.search_placeholders.update(holders)
 
-        return f" WHERE {' AND '.join(conditions)}" if len(conditions) > 0 else ""
+        return (
+            f" WHERE {' AND '.join(conditions)}" if len(conditions) > 0 else ""
+        )
 
     @property
     def table_expression(self) -> str:
@@ -70,16 +90,30 @@ class SQLSelectGenerator(SQLGenerator):
         parent_prefix = self.prefix_map["$default$"]
         for name, relation in self.schema_object.relations.items():
             child_prefix = self.prefix_map[relation.name]
-            if relation.cardinality == "1:1":
-                table_expression = (
-                    f"{relation.child_schema_object.table_name} AS {child_prefix}"
-                )
+            if relation.type == "object":
                 joins.append(
-                    f"INNER JOIN {table_expression} ON {parent_prefix}.{relation.parent_property.column_name} = {child_prefix}.{relation.child_property.column_name}"
+                    "INNER JOIN "
+                    + relation.child_schema_object.table_name
+                    + " AS "
+                    + child_prefix
+                    + " ON "
+                    + parent_prefix
+                    + "."
+                    + relation.parent_property.column_name
+                    + " = "
+                    + child_prefix
+                    + "."
+                    + relation.child_property.column_name
                 )
 
-        inner_join = f" {' '.join(joins)}" if len(joins) > 0 else ""
-        return f"{self.schema_object.table_name} AS {self.prefix_map['$default$']}{inner_join}"
+        return (
+            self.schema_object.table_name
+            + " AS "
+            + self.prefix_map["$default$"]
+            + f" {' '.join(joins)}"
+            if len(joins) > 0
+            else ""
+        )
 
     def selection_result_map(self) -> dict:
         if self.single_table:
@@ -93,7 +127,7 @@ class SQLSelectGenerator(SQLGenerator):
             relation_property = self.schema_object.relations.get(relation)
 
             if relation_property:
-                if relation_property.cardinality != "1:1":
+                if relation_property.type == "array":
                     continue
 
                 # Use a default value if relation_property is None
@@ -101,7 +135,8 @@ class SQLSelectGenerator(SQLGenerator):
             else:
                 schema_object = self.schema_object
 
-            # Filter and prefix keys for the current entity and regular expressions
+            # Filter and prefix keys for the current entity
+            # and regular expressions
             filtered_keys = self.filter_and_prefix_keys(
                 reg_exs, schema_object.properties, self.prefix_map[relation]
             )
@@ -119,7 +154,8 @@ class SQLSelectGenerator(SQLGenerator):
             entity = parts[0] if len(parts) > 1 else "$default$"
             expression = parts[-1]
 
-            # Check if entity already exists in result, if not, initialize it with an empty list
+            # Check if entity already exists in result, if not, initialize
+            # it with an empty list
             if entity not in result:
                 result[entity] = []
 
@@ -133,7 +169,9 @@ class SQLSelectGenerator(SQLGenerator):
         for name, value in record.items():
             property = self.selection_results[name]
             parts = name.split(".")
-            component = parts[0] if len(parts) > 1 else self.prefix_map["$default$"]
+            component = (
+                parts[0] if len(parts) > 1 else self.prefix_map["$default$"]
+            )
             object = object_set.get(component, {})
             if not object:
                 object_set[component] = object

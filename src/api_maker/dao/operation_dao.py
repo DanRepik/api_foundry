@@ -73,7 +73,7 @@ class OperationDAO(DAO):
     def __fetch_many(self, parent_set: list[dict], cursor: Cursor):
         for name, relation in self.schema_object.relations.items():
             log.info(f"checking relation: {name}, relation: {vars(relation)}")
-            if relation.cardinality != "1:m":
+            if relation.type == "object":
                 continue
 
             subselect_generator = SQLSubselectGenerator(

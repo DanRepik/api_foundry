@@ -2,15 +2,15 @@ from api_maker.dao.sql_generator import SQLGenerator
 from api_maker.operation import Operation
 from api_maker.utils.app_exception import ApplicationException
 from api_maker.utils.logger import logger
-from api_maker.utils.model_factory import SchemaObject
+from api_maker.utils.model_factory import SchemaObject, SchemaObjectKey
 
 log = logger(__name__)
 
 
 class SQLInsertGenerator(SQLGenerator):
-    def __init__(
-        self, operation: Operation, schema_object: SchemaObject
-    ) -> None:
+    key_property: SchemaObjectKey | None
+
+    def __init__(self, operation: Operation, schema_object: SchemaObject) -> None:
         super().__init__(operation, schema_object)
         self.key_property = schema_object.primary_key
         if self.key_property:
@@ -22,9 +22,7 @@ class SQLInsertGenerator(SQLGenerator):
                         + f" is auto. schema_object: {schema_object.entity}",
                     )
             elif self.key_property.key_type == "required":
-                if not operation.store_params.get(
-                    self.key_property.column_name
-                ):
+                if not operation.store_params.get(self.key_property.column_name):
                     raise ApplicationException(
                         400,
                         "Primary key values must be provided when key type is"
@@ -60,7 +58,7 @@ class SQLInsertGenerator(SQLGenerator):
                 + f"property: {self.concurrency_property.name}",
             )
         return (
-            f"INSERT INTO {self.table_expression}{self.insert_values} "
+            f"INSERT INTO {self.table_expression}{self.insert_values}"
             + f" RETURNING {self.select_list}"
         )
 
@@ -80,8 +78,7 @@ class SQLInsertGenerator(SQLGenerator):
                 if len(parts) > 1:
                     raise ApplicationException(
                         400,
-                        "Properties can not be set on associated objects "
-                        + name,
+                        "Properties can not be set on associated objects " + name,
                     )
 
                 property = self.schema_object.properties[parts[0]]
@@ -91,20 +88,16 @@ class SQLInsertGenerator(SQLGenerator):
             log.info(f"name: {name}, value: {value}")
             columns.append(property.column_name)
             placeholders.append(self.placeholder(property, property.name))
-            self.store_placeholders[
-                property.name
-            ] = property.convert_to_db_value(value)
+            self.store_placeholders[property.name] = property.convert_to_db_value(value)
 
         if self.key_property:
             if self.key_property.key_type == "sequence":
                 columns.append(self.key_property.column_name)
-                placeholders.append(
-                    f"nextval('{self.key_property.sequence_name}')"
-                )
+                placeholders.append(f"nextval('{self.key_property.sequence_name}')")
 
         if self.concurrency_property:
             columns.append(self.concurrency_property.column_name)
-            if self.concurrency_property.concurrency_control == "serial":
+            if self.concurrency_property.type == "integer":
                 placeholders.append("1")
             else:
                 placeholders.append(
