@@ -10,6 +10,8 @@ pyyaml = "*"
 psycopg2-binary = "*"
 oracledb = "*"
 pytest-cov = "*"
+pulumi = "*"
+pulumi-aws = "*"
 
 [dev-packages]
 black = "*"

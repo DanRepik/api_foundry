@@ -3,6 +3,7 @@ runtime:
   name: python
   options:
     virtualenv: venv
+#    typechecker: pylance
 description: Demostration Chinook API using a Portstgres database.
 config:
   pulumi:tags:

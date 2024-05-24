@@ -114,3 +114,22 @@ class GatewayAdapter(Adapter):
                 query_params[key] = value
 
         return query_params, metadata_params
+
+def lambda_handler(event, _):
+    # Extract HTTP method and path from the event
+    http_method = event['httpMethod']
+    path = event['path']
+    body = event.get('body')
+    query_params = event.get('queryStringParameters')
+
+    log.info(f"event: {event}")
+    try:
+        adapter = GatewayAdapter()
+        return adapter.process_event(event)
+    except Exception as e:
+        log.error(f"exception: {e}")
+
+    return {
+        "status_code": 500,
+        "message": f"exception: {e}"
+    }

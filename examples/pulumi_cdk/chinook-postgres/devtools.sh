@@ -1,2 +1,2 @@
-alias up="pulumi up --yes"
-alias down="pulumi down --yes"
+alias up="pulumi up --yes --stack local"
+alias down="pulumi down --yes --stack local"

@@ -6,3 +6,5 @@ venv
 build/
 coverage.xml
 htmlcov/
+.coverage
+.vscode/

@@ -9,6 +9,8 @@ pulumi-aws = ">=6.0.2, <7.0.0"
 api-maker = {file = "../../.."}
 
 [dev-packages]
+pytest = "*"
+pytest-cov = "*"
 
 [requires]
 python_version = "3.7"

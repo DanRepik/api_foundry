@@ -1,4 +1,5 @@
 import copy
+import json
 import re
 
 from api_maker.utils.model_factory import (
@@ -12,13 +13,20 @@ from api_maker.utils.logger import logger
 log = logger(__name__)
 
 
-class GatewapDocument:
-    def __init__(self, *, authentication_invoke_arn: str, enable_cors: bool = False):
+class GatewayDocument:
+    api_doc: dict
+    function_name: str
+    function_invoke_arn: str
+
+    def __init__(
+        self, *, function_name: str, function_invoke_arn, enable_cors: bool = False
+    ):
+        self.function_name = function_name
+        self.function_invoke_arn = function_invoke_arn
+        log.info(f"invoke_arn: {function_invoke_arn}")
         document = ModelFactory.document
 
         self.api_doc = dict(self.remove_custom_attributes(copy.deepcopy(document)))
-        if authentication_invoke_arn:
-            self.add_custom_authentication(authentication_invoke_arn)
         if enable_cors:
             self.enable_cors()
 
@@ -26,6 +34,9 @@ class GatewapDocument:
             self.generate_crud_operations(
                 schema_name, ModelFactory.get_schema_object(schema_name)
             )
+
+    def as_json(self):
+        return json.dumps(self.api_doc)
 
     def remove_custom_attributes(self, obj):
         return self.remove_attributes(obj, "^x-am-.*$")
@@ -72,8 +83,14 @@ class GatewapDocument:
             }
 
     def add_operation(self, path: str, method: str, operation: dict):
-        paths = self.api_doc.setdefault("paths", {})
-        paths.setdefault(path, {})[method] = operation
+        operation["x-function-name"] = self.function_name
+        operation["x-amazon-apigateway-integration"] = {
+            "type": "aws_proxy",
+            "uri": self.function_invoke_arn,
+            "httpMethod": "POST",
+        }
+
+        self.api_doc.setdefault("paths", {}).setdefault(path, {})[method] = operation
 
     def enable_cors(self):
         self.add_operation(
@@ -104,7 +121,7 @@ class GatewapDocument:
                 "x-amazon-apigateway-integration": {
                     "responses": {
                         "default": {
-                            "statusCode": 200,
+                            "statusCode": "200",
                             "responseParameters": {
                                 "method.response.header.Access-Control-Allow-Methods": "'DELETE,GET,HEAD,OPTIONS,PATCH,POST,PUT'",  # noqa: E501
                                 "method.response.header.Access-Control-Allow-Headers": "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'",  # noqa: E501

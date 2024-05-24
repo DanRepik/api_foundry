@@ -227,7 +227,10 @@ class SchemaObject(OpenAPIElement):
 
 class ModelFactory:
     @classmethod
-    def load_spec(cls, api_spec_path: str = os.environ["API_SPEC"]):
+    def load_spec(cls, api_spec_path: str = os.environ.get("API_SPEC", None)):
+        if not api_spec_path:
+            file_path = os.path.join(os.path.dirname(__file__), 'api_spec.yaml')
+    
         cls.schema_objects = dict()
         if api_spec_path:
             with open(api_spec_path, "r") as yaml_file:

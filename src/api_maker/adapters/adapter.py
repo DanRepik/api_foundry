@@ -1,6 +1,7 @@
 import abc
 
 from api_maker.operation import Operation
+from api_maker.services.transactional_service import TransactionalService
 from api_maker.utils.logger import logger
 from api_maker.services.service import Service
 
@@ -8,6 +9,8 @@ log = logger(__name__)
 
 
 class Adapter(metaclass=abc.ABCMeta):
+    service: Service
+
     @classmethod
     def __subclasshook__(cls, __subclass: type) -> bool:
         return (
@@ -17,8 +20,8 @@ class Adapter(metaclass=abc.ABCMeta):
             and callable(__subclass.unmarshal)
         )
 
-    def __init__(self, service: Service) -> None:
-        self.service = service
+    def __init__(self) -> None:
+        self.service = TransactionalService()
 
     def unmarshal(self, event) -> Operation:
         """
@@ -44,7 +47,7 @@ class Adapter(metaclass=abc.ABCMeta):
         """
         return result
 
-    def process_event(self, service: Service, event):
+    def process_event(self, event):
         """
         Process Lambda event using a domain function.
 
