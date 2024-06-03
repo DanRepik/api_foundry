@@ -12,3 +12,5 @@ Requires-Dist: pyhumps~=3.8.0
 Requires-Dist: cryptography~=37.0.4
 Requires-Dist: requests~=2.28.2
 Requires-Dist: simplejson~=3.19.1
+Requires-Dist: pyyaml==6.0.1
+Requires-Dist: boto3

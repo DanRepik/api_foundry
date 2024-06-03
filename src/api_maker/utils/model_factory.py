@@ -16,7 +16,7 @@ class OpenAPIElement:
         self.required = self.properties.get("required", None)
         self.type = self.properties.get("type", None)
 
-    def resolve_reference(self, reference: str | None) -> dict:
+    def resolve_reference(self, reference: Optional[str]) -> dict:
         """
         Resolves the reference in the OpenAPI specification and returns the referenced element.
 
@@ -30,20 +30,27 @@ class OpenAPIElement:
         if not reference:
             return {}
 
-        components = reference.split("/")
-        current_element = ModelFactory.document
+        try:
+            components = reference.split("/")
+            current_element = ModelFactory.document
+            if not current_element:
+                return {}
 
-        # Iterate over each component to traverse the specification
-        for component in components:
-            if component == "#":
-                continue
-            elif component in current_element:
-                # Move to the next element
-                current_element = current_element[component]
-            else:
-                raise ApplicationException(500, f"Reference not found: {reference}")
+            # Iterate over each component to traverse the specification
+            for component in components:
+                if component == "#":
+                    continue
+                elif component in current_element:
+                    # Move to the next element
+                    current_element = current_element[component]
+                else:
+                    raise ApplicationException(500, f"Reference not found: {reference}")
 
-        return current_element
+            return current_element
+        except Exception as e:
+            log.error(f"exception: {e.message()}")
+        
+        return {}
 
 
 class SchemaObjectAssociation(OpenAPIElement):
@@ -161,7 +168,7 @@ class SchemaObjectKey(SchemaObjectProperty):
 
 
 class SchemaObject(OpenAPIElement):
-    concurrency_property: SchemaObjectProperty | None
+    concurrency_property: Optional[SchemaObjectProperty]
 
     def __init__(self, entity: str, schema_object: Dict[str, Any]):
         super().__init__(schema_object)
@@ -229,7 +236,22 @@ class ModelFactory:
     @classmethod
     def load_spec(cls, api_spec_path: str = os.environ.get("API_SPEC", None)):
         if not api_spec_path:
-            file_path = os.path.join(os.path.dirname(__file__), 'api_spec.yaml')
+            api_spec_path = "/var/task/api_spec.yaml"
+        """
+        folder_path = "/var"
+        contents = os.listdir(folder_path)
+        log.info(f"Contents of folder:")
+        for item in contents:
+            item_path = os.path.join(folder_path, item)
+            if os.path.isdir(item_path):
+                log.info(f"Directory: {item}")
+            elif os.path.isfile(item_path):
+                log.info(f"File: {item}")
+            else:
+                log.info(f"Other: {item}")
+        """
+        
+        log.info(f"api_spec_path: {api_spec_path}")
     
         cls.schema_objects = dict()
         if api_spec_path:

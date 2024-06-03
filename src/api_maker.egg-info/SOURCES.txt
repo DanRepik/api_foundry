@@ -14,7 +14,7 @@ src/api_maker/cloudprints/hash_comparator.py
 src/api_maker/cloudprints/python_archive_builder.py
 src/api_maker/cloudprints/aws_cdk/iam_execution_role.py
 src/api_maker/cloudprints/pulumi/lambda_.py
-src/api_maker/cloudprints/pulumi/pulumi_api_gateway.py
+src/api_maker/cloudprints/pulumi/rest_api.py
 src/api_maker/connectors/connection.py
 src/api_maker/connectors/connection_factory.py
 src/api_maker/connectors/oracle_connector.py
@@ -28,6 +28,7 @@ src/api_maker/dao/sql_select_generator.py
 src/api_maker/dao/sql_subselect_generator.py
 src/api_maker/dao/sql_update_generator.py
 src/api_maker/iac/gateway_doc.py
+src/api_maker/iac/pulumi/api_maker.py
 src/api_maker/services/service.py
 src/api_maker/services/transactional_service.py
 src/api_maker/utils/app_exception.py

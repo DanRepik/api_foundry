@@ -1,4 +1,5 @@
 import re
+from typing import Optional
 from datetime import datetime, date
 
 from api_maker.utils.app_exception import ApplicationException
@@ -109,7 +110,7 @@ class SQLGenerator:
         )
 
     def search_value_assignment(
-        self, property: SchemaObjectProperty, value, prefix: str | None = None
+        self, property: SchemaObjectProperty, value, prefix: Optional[str ] = None
     ) -> tuple[str, dict]:
         operand = "="
         relational_types = {
@@ -229,7 +230,7 @@ class SQLGenerator:
         self,
         regex_list: list[str],
         properties: dict,
-        prefix: str | None = None,
+        prefix: Optional[str] = None,
     ):
         """
         Accepts a prefix string, list of regular expressions, and a

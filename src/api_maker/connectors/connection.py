@@ -1,3 +1,4 @@
+import boto3
 import json
 import os
 import re
@@ -66,9 +67,8 @@ class Connection:
         Returns:
         - dict: The database configuration obtained from the secret.
         """
-        import boto3
-
-        sts_client = boto3.client("sts")
+        endpoint_url = "http://localstack:4566"  # LocalStack endpoint
+        sts_client = boto3.client("sts", endpoint_url=endpoint_url)
 
         secret_account_id = os.environ.get("SECRET_ACCOUNT_ID", None)
         log.info(f"secret_account_id: {secret_account_id}")
@@ -88,20 +88,22 @@ class Connection:
                 aws_access_key_id=credentials["AccessKeyId"],
                 aws_secret_access_key=credentials["SecretAccessKey"],
                 aws_session_token=credentials["SessionToken"],
+                endpoint_url=endpoint_url,
             )
         else:
             # If no secret account ID is provided, use the default account
+            log.info(f"endpoint_url: {endpoint_url}")
             secretsmanager = boto3.client(
                 "secretsmanager",
-                endpoint_url="http://localhost.localstack.cloud:4566",
+#                endpoint_url=endpoint_url,
             )
 
         # Get the secret value from AWS Secrets Manager
         log.info(f"db_secret_name: {db_secret_name}")
-        log.info(f"credentials: {vars(boto3.DEFAULT_SESSION.get_credentials())}")
         db_secret = secretsmanager.describe_secret(SecretId=db_secret_name)
         db_secret = secretsmanager.get_secret_value(SecretId=db_secret_name)
         log.debug(f"loading secret name: {db_secret}")
 
         # Return the parsed JSON secret string
         return json.loads(db_secret.get("SecretString"))
+

@@ -1,8 +1,36 @@
 import requests
 import pytest
+from pulumi import automation as auto
+
+from api_maker.utils.logger import logger
+
+log = logger(__name__)
+
+def get_stack_output_value(stack_name: str, work_dir: str, output_name: str):
+    # Create or select a stack
+    try:
+        stack = auto.select_stack(
+            stack_name=stack_name,
+            work_dir=work_dir,
+        )
+
+        # Refresh the stack to get the latest outputs
+        stack.refresh(on_output=print)
+
+        # Get the stack outputs
+        outputs = stack.outputs()
+    except auto.errors.CommandError:
+        return None
+
+
+    # Return the requested output value
+    return outputs[output_name].value if output_name in outputs else None
+
 
 # The API ID and stage name from the previous steps
-API_ID = "nt5zecklg7"
+
+API_ID = get_stack_output_value("local", ".", "gateway-api") #"nt5zecklg7"
+print(f"api_id: {API_ID}")
 STAGE_NAME = "dev"
 
 # Base URL for the LocalStack API Gateway
@@ -18,6 +46,7 @@ def test_get_request():
     response = requests.get(BASE_URL + endpoint)
 
     # Validate the response status code
+    log.info(f"response: {response.text}")
     assert response.status_code == 200, f"Expected status code 200, got {response.status_code}"
 
     # Validate the response content

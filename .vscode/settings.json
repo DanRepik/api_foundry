@@ -1,10 +1,8 @@
 {
   "python.analysis.typeCheckingMode": "basic",
   "python.testing.pytestArgs": [
-    "-v",
     "--cov=src/api_maker/",
-    "--cov-report=xml",
-    "tests/"
+    "--cov-report=xml"
   ],
   "python.testing.unittestEnabled": false,
   "python.testing.pytestEnabled": true

@@ -12,8 +12,8 @@ __secrets_map = None
 def secrets_map() -> dict:
     global __secrets_map
     if not __secrets_map:
-        log.info(f"secrets_map; {os.environ.get('SECRETS_MAP')}")
-        __secrets_map = json.loads(os.environ.get("SECRETS_MAP", "{}"))
+        log.info(f"secrets_map; {os.environ.get('SECRETS')}")
+        __secrets_map = json.loads(os.environ.get("SECRETS", "{}"))
     return __secrets_map
 
 
@@ -32,7 +32,8 @@ def connection_factory(engine: str, database: str) -> Connection:
     """
 
     # Get the secret name based on the engine and database from the secrets map
-    secret_name = secrets_map().get(f"{engine}|{database}")
+    log.info(f"engine: {engine}, database: {database}")
+    secret_name = secrets_map().get(f"{engine}:{database}")
     log.info(f"secret_name: {secret_name}")
 
     if secret_name:

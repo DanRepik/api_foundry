@@ -1,6 +1,8 @@
 import copy
 import json
 import re
+import yaml
+from typing import Union
 
 from api_maker.utils.model_factory import (
     ModelFactory,
@@ -38,10 +40,14 @@ class GatewayDocument:
     def as_json(self):
         return json.dumps(self.api_doc)
 
+    def as_yaml(self):        
+        return yaml.dump(self.api_doc, default_flow_style=False)
+
+
     def remove_custom_attributes(self, obj):
         return self.remove_attributes(obj, "^x-am-.*$")
 
-    def remove_attributes(self, obj, pattern) -> dict | list:
+    def remove_attributes(self, obj, pattern) -> Union[dict,list]:
         """
         Remove attributes from an object that match a regular expression pattern.
 
