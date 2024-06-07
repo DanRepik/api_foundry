@@ -70,7 +70,6 @@ class PythonArchiveBuilder(ArchiveBuilder):
                     for filename in filenames:
                         file_path = os.path.join(folder_name, filename)
                         archive_path = os.path.relpath(file_path, self._staging)
-                        log.info(f"adding {file_path}")
                         zipf.write(file_path, archive_path)
                 
                 # Add installed libraries
@@ -78,7 +77,6 @@ class PythonArchiveBuilder(ArchiveBuilder):
                     for filename in filenames:
                         file_path = os.path.join(folder_name, filename)
                         archive_path = os.path.relpath(file_path, self._libs)
-                        log.info(f"adding {file_path}")
                         zipf.write(file_path, archive_path)
 
             log.info("Archive built successfully")

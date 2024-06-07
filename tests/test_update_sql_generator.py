@@ -12,17 +12,17 @@ from api_maker.utils.app_exception import ApplicationException
 from api_maker.utils.model_factory import (
     ModelFactory,
     SchemaObject,
-    SchemaObjectProperty,
 )
 from api_maker.operation import Operation
 from api_maker.utils.logger import logger
+
+from test_fixtures import load_model
 
 log = logger(__name__)
 
 
 class TestUpdateSQLGenerator:
-    def test_update_uuid(self):
-        ModelFactory.load_spec()
+    def test_update_uuid(self, load_model):
         sql_generator = SQLUpdateGenerator(
             Operation(
                 entity="invoice",
@@ -80,6 +80,7 @@ class TestUpdateSQLGenerator:
                     ],
                 },
             ),
+            "postgres",
         )
 
         log.info(
@@ -97,8 +98,7 @@ class TestUpdateSQLGenerator:
             "total": 2.63,
         }
 
-    def test_update_timestamp(self):
-        ModelFactory.load_spec()
+    def test_update_timestamp(self, load_model):
         sql_generator = SQLUpdateGenerator(
             Operation(
                 entity="invoice",
@@ -110,6 +110,7 @@ class TestUpdateSQLGenerator:
                 store_params={"invoice_date": "2024-03-18", "total": "2.63"},
             ),
             ModelFactory.get_schema_object("invoice"),
+            "posgres",
         )
 
         log.info(
@@ -139,7 +140,7 @@ class TestUpdateSQLGenerator:
         )
         sql_generator = None
         try:
-            sql_generator = SQLUpdateGenerator(operation, schema_object)
+            sql_generator = SQLUpdateGenerator(operation, schema_object, "postgres")
             log.info(
                 f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
             )
@@ -148,23 +149,24 @@ class TestUpdateSQLGenerator:
             pass
 
     def test_update_overwrite_version(self):
-        schema_object = ModelFactory.get_schema_object("invoice")
-        operation = Operation(
-            entity="invoice",
-            action="update",
-            query_params={
-                "customer_id": "2",
-            },
-            store_params={
-                "invoice_date": "2024-03-18",
-                "total": "2.63",
-                "last_updated": "this is not allowed",
-            },
-            metadata_params={"_properties": "invoice_id last_updated"},
-        )
-        sql_generator = None
         try:
-            sql_generator = SQLUpdateGenerator(operation, schema_object)
+            sql_generator = SQLUpdateGenerator(
+                Operation(
+                    entity="invoice",
+                    action="update",
+                    query_params={
+                        "customer_id": "2",
+                    },
+                    store_params={
+                        "invoice_date": "2024-03-18",
+                        "total": "2.63",
+                        "last_updated": "this is not allowed",
+                    },
+                    metadata_params={"_properties": "invoice_id last_updated"},
+                ),
+                ModelFactory.get_schema_object("invoice"),
+                "postgres",
+            )
             log.info(
                 f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
             )

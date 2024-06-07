@@ -6,9 +6,6 @@ components:
                     type: integer
                 artist_id:
                     type: integer
-                last_updated:
-                    format: date
-                    type: string
                 title:
                     maxLength: 160
                     type: string
@@ -285,13 +282,6 @@ paths:
                 schema:
                     pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
-            -   description: Filter by last_updated
-                in: query
-                name: last_updated
-                required: false
-                schema:
-                    pattern: ^((\d{4}-\d{2}-\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}),|not-between::(\d{4}-\d{2}-\d{2}),|in::((\d{4}-\d{2}-\d{2}),)*)$|not-in::((\d{4}-\d{2}-\d{2}),)*)$
-                    type: string
             responses:
                 '204':
                     content:
@@ -330,13 +320,6 @@ paths:
                 schema:
                     pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
-            -   description: Filter by last_updated
-                in: query
-                name: last_updated
-                required: false
-                schema:
-                    pattern: ^((\d{4}-\d{2}-\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}),|not-between::(\d{4}-\d{2}-\d{2}),|in::((\d{4}-\d{2}-\d{2}),)*)$|not-in::((\d{4}-\d{2}-\d{2}),)*)$
-                    type: string
             responses:
                 '200':
                     content:
@@ -362,9 +345,6 @@ paths:
                                     type: integer
                                 artist_id:
                                     type: integer
-                                last_updated:
-                                    format: date
-                                    type: string
                                 title:
                                     maxLength: 160
                                     type: string
@@ -412,13 +392,6 @@ paths:
                 schema:
                     pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
-            -   description: Filter by last_updated
-                in: query
-                name: last_updated
-                required: false
-                schema:
-                    pattern: ^((\d{4}-\d{2}-\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}),|not-between::(\d{4}-\d{2}-\d{2}),|in::((\d{4}-\d{2}-\d{2}),)*)$|not-in::((\d{4}-\d{2}-\d{2}),)*)$
-                    type: string
             requestBody:
                 content:
                     application/json:
@@ -428,9 +401,6 @@ paths:
                                     type: integer
                                 artist_id:
                                     type: integer
-                                last_updated:
-                                    format: date
-                                    type: string
                                 title:
                                     maxLength: 160
                                     type: string
@@ -516,9 +486,6 @@ paths:
                                     type: integer
                                 artist_id:
                                     type: integer
-                                last_updated:
-                                    format: date
-                                    type: string
                                 title:
                                     maxLength: 160
                                     type: string

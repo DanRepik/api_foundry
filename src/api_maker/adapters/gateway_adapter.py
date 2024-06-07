@@ -116,15 +116,3 @@ class GatewayAdapter(Adapter):
 
         return query_params, metadata_params
 
-def lambda_handler(event, _):
-    log.info(f"event: {event}")
-    try:
-        ModelFactory.load_spec()
-        adapter = GatewayAdapter()
-        return adapter.process_event(event)
-    except Exception as e:
-        log.error(f"exception: {e}")
-        return {
-            "status_code": 500,
-            "message": f"exception: {e}"
-        }

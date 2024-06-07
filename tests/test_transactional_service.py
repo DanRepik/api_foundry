@@ -22,7 +22,7 @@ class TestTransactionalService:
         """
         ModelFactory.load_spec()
         install_secrets()
-        os.environ["SECRETS_MAP"] = secrets_map
+        os.environ["SECRET"] = secrets_map
 
         # test insert/create
         transactional_service = TransactionalService()

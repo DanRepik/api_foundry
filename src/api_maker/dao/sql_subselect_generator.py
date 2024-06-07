@@ -15,7 +15,7 @@ class SQLSubselectGenerator(SQLSelectGenerator):
         relation: SchemaObjectAssociation,
         parent_generator: SQLGenerator,
     ) -> None:
-        super().__init__(operation, relation.child_schema_object)
+        super().__init__(operation, relation.child_schema_object, parent_generator.engine)
         self.relation = relation
         self.parent_generator = parent_generator
 

@@ -17,9 +17,6 @@ components:
           maxLength: 160
         artist_id:
           type: integer
-        last_updated:
-          type: string
-          format: date
       required:
         - album_id
         - title

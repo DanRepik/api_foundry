@@ -1,4 +1,5 @@
 import json
+import pkgutil
 from typing import Any, Awaitable, Mapping, Optional, Sequence, Union, overload
 from zipfile import ZipFile
 
@@ -39,39 +40,7 @@ class APIMaker(pulumi.ComponentResource):
             sources={
                 "api_maker": api_maker_source,
                 "api_spec.yaml": api_spec,
-                "app.py": 
-"""
-import json
-import logging
-#from api_maker.adapters.gateway_adapter import GatewayAdapter
-from api_maker.utils.model_factory import ModelFactory
-
-log = logging.getLogger(__name__)
-
-def lambda_handler(event, _):
-    log.info(f"event: {event}")
-    try:
-        ModelFactory.load_spec("api_spec.yaml")
-#        adapter = GatewayAdapter()
-#        response = adapter.process_event(event)
-        response = {}
-
-        # Ensure the response conforms to API Gateway requirements
-        return {
-            "isBase64Encoded": False,
-            "statusCode": response.get("statusCode", 200),
-            "headers": response.get("headers", {"Content-Type": "application/json"}),
-            "body": json.dumps(response.get("body", {}))
-        }
-    except Exception as e:
-        log.error(f"exception: {e}")
-        return {
-            "isBase64Encoded": False,
-            "statusCode": 500,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({"message": f"exception: {e}"})
-        }
-"""
+                "app.py": str(pkgutil.get_data("api_maker", "iac/handler.py"))
             },
             requirements=[
                 "psycopg2-binary",

@@ -16,13 +16,13 @@ from api_maker.utils.model_factory import (
 )
 from api_maker.operation import Operation
 from api_maker.utils.logger import logger
+from test_fixtures import load_model
 
 log = logger(__name__)
 
 
 class TestInsertSQLGenerator:
-    def test_insert_uuid(self):
-        ModelFactory.load_spec()
+    def test_insert_uuid(self, load_model):
         sql_generator = SQLInsertGenerator(
             Operation(
                 entity="invoice",
@@ -84,6 +84,7 @@ class TestInsertSQLGenerator:
                     ],
                 },
             ),
+            "postgres"
         )
 
         log.info(
@@ -105,8 +106,7 @@ class TestInsertSQLGenerator:
             "total": 1.63,
         }
 
-    def test_insert_no_cc(self):
-        ModelFactory.load_spec()
+    def test_insert_no_cc(self, load_model):
         sql_generator = SQLInsertGenerator(
             Operation(
                 entity="invoice",
@@ -166,6 +166,7 @@ class TestInsertSQLGenerator:
                     ],
                 },
             ),
+            "postgres"
         )
 
         log.info(
@@ -187,8 +188,7 @@ class TestInsertSQLGenerator:
             "total": 1.63,
         }
 
-    def test_insert_property_selection(self):
-        ModelFactory.load_spec()
+    def test_insert_property_selection(self, load_model):
         sql_generator = SQLInsertGenerator(
             Operation(
                 entity="invoice",
@@ -251,6 +251,7 @@ class TestInsertSQLGenerator:
                     ],
                 },
             ),
+            "postgres"
         )
 
         log.info(
@@ -272,9 +273,8 @@ class TestInsertSQLGenerator:
             "total": 1.63,
         }
 
-    def test_insert_bad_key(self):
+    def test_insert_bad_key(self, load_model):
         try:
-            ModelFactory.load_spec()
             sql_generator = SQLInsertGenerator(
                 Operation(
                     entity="genre",
@@ -296,6 +296,7 @@ class TestInsertSQLGenerator:
                         "required": ["genre_id"],
                     },
                 ),
+                "postgres"
             )
             assert (
                 False
@@ -306,7 +307,7 @@ class TestInsertSQLGenerator:
                 == "Primary key values cannot be inserted when key type is auto. schema_object: genre"
             )
 
-    def test_insert_missing_required_key(self):
+    def test_insert_missing_required_key(self, load_model):
         try:
             SQLInsertGenerator(
                 Operation(
@@ -329,6 +330,7 @@ class TestInsertSQLGenerator:
                         "required": ["genre_id"],
                     },
                 ),
+                "postgres"
             )
             assert (
                 False
@@ -336,7 +338,7 @@ class TestInsertSQLGenerator:
         except ApplicationException as e:
             pass
 
-    def test_insert_auto_key(self):
+    def test_insert_auto_key(self, load_model):
         try:
             sql_generator = SQLInsertGenerator(
                 Operation(
@@ -359,6 +361,7 @@ class TestInsertSQLGenerator:
                         "required": ["genre_id"],
                     },
                 ),
+                "postgres"
             )
             assert (
                 False
@@ -366,7 +369,7 @@ class TestInsertSQLGenerator:
         except ApplicationException as e:
             pass
 
-    def test_insert_sequence(self):
+    def test_insert_sequence(self, load_model):
         sql_generator = SQLInsertGenerator(
             Operation(
                 entity="genre",
@@ -389,6 +392,7 @@ class TestInsertSQLGenerator:
                     "required": ["genre_id"],
                 },
             ),
+            "postgres"
         )
         log.info(
             f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
@@ -400,7 +404,7 @@ class TestInsertSQLGenerator:
         )
         assert sql_generator.placeholders == {"name": "Good genre"}
 
-    def test_insert_timestamp(self):
+    def test_insert_timestamp(self, load_model):
         try:
             sql_generator = SQLInsertGenerator(
                 Operation(
@@ -428,6 +432,7 @@ class TestInsertSQLGenerator:
                         "required": ["genre_id"],
                     },
                 ),
+                "postgres"
             )
             log.info(
                 f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
@@ -440,7 +445,7 @@ class TestInsertSQLGenerator:
         except ApplicationException as e:
             assert False
 
-    def test_insert_cc_with_param(self):
+    def test_insert_cc_with_param(self, load_model):
         try:
             SQLInsertGenerator(
                 Operation(
@@ -470,6 +475,7 @@ class TestInsertSQLGenerator:
                         "required": ["genre_id"],
                     },
                 ),
+                "postgres"
             )
             assert (
                 False
@@ -480,7 +486,7 @@ class TestInsertSQLGenerator:
                 == "Versioned properties can not be supplied a store parameters. schema_object: genre, property: last_updated"
             )
 
-    def test_insert_serial(self):
+    def test_insert_serial(self, load_model):
         try:
             sql_generator = SQLInsertGenerator(
                 Operation(
@@ -507,6 +513,7 @@ class TestInsertSQLGenerator:
                         "required": ["genre_id"],
                     },
                 ),
+                "postgres"
             )
             log.info(
                 f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
@@ -519,7 +526,7 @@ class TestInsertSQLGenerator:
         except ApplicationException as e:
             assert False
 
-    def test_insert_sequence_missing_name(self):
+    def test_insert_sequence_missing_name(self, load_model):
         try:
             sql_generator = SQLInsertGenerator(
                 Operation(
@@ -542,6 +549,7 @@ class TestInsertSQLGenerator:
                         "required": ["genre_id"],
                     },
                 ),
+                "postgres"
             )
             assert False, "Primary key of sequence without a name did not fail"
         except ApplicationException as e:

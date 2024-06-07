@@ -1,5 +1,6 @@
+import json
 import requests
-import pytest
+from pytest import fixture
 from pulumi import automation as auto
 
 from api_maker.utils.logger import logger
