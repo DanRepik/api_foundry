@@ -38,19 +38,18 @@ class MockService(Service):
 
 
 class TestGatewayAdapter:
-
     def test_gateway_adapter_path_params(self):
         mock_service = MockService()
         mock_adapter = GatewayAdapter(service=mock_service)
 
         # Calling the process_event method
         event = proto_event("GET", "/accounts/{account_id}", "/accounts/123")
-        event["pathParameters"] = { "account_id": 123}
+        event["pathParameters"] = {"account_id": 123}
 
-        result = mock_adapter.process_event(service=mock_service, event=event)
+        result = mock_adapter.process_event(event=event)
 
         # Asserting the result
-        assert result == [{ "account_id": 123}]
+        assert result == [{"account_id": 123}]
 
     def test_gateway_adapter_query_params(self):
         mock_service = MockService()
@@ -58,12 +57,12 @@ class TestGatewayAdapter:
 
         # Calling the process_event method
         event = proto_event("GET", "/accounts", "/accounts?account_id=123")
-        event["queryStringParameters"] = { "account_id": 123}
+        event["queryStringParameters"] = {"account_id": 123}
 
-        result = mock_adapter.process_event(service=mock_service, event=event)
+        result = mock_adapter.process_event(event)
 
         # Asserting the result
-        assert result == [{ "account_id": 123}]
+        assert result == [{"account_id": 123}]
 
     def test_gateway_adapter_camel_case(self):
         mock_service = MockService()
@@ -71,9 +70,9 @@ class TestGatewayAdapter:
 
         # Calling the process_event method
         event = proto_event("GET", "/accounts", "/accounts?accountId=123&_case=camel")
-        event["queryStringParameters"] = { "accountId": 123}
+        event["queryStringParameters"] = {"accountId": 123}
 
-        result = mock_adapter.process_event(service=mock_service, event=event)
+        result = mock_adapter.process_event(event)
 
         # Asserting the result
-        assert result == [{ "accountId": 123}]
+        assert result == [{"accountId": 123}]

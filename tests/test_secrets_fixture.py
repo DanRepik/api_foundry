@@ -2,17 +2,18 @@ import os
 import boto3
 import pytest
 
+
 @pytest.fixture
 def secretsmanager():
     """Creates a boto3 client for Secrets Manager, using LocalStack if specified."""
-    if os.getenv('AWS_PROFILE') == 'localstack':
+    if os.getenv("AWS_PROFILE") == "localstack":
         return boto3.client(
-            'secretsmanager',
-            region_name='us-east-1',
-            endpoint_url='http://localhost:4566'
+            "secretsmanager",
+            region_name="us-east-1",
+            endpoint_url="https://localhost.localstack.cloud:4566",
         )
     else:
-        return boto3.client('secretsmanager', region_name='us-east-1')
+        return boto3.client("secretsmanager", region_name="us-east-1")
 
 
 @pytest.fixture
@@ -21,10 +22,7 @@ def create_secret(secretsmanager):
         try:
             secretsmanager.describe_secret(SecretId=secret_name)
         except secretsmanager.exceptions.ResourceNotFoundException:
-            secretsmanager.create_secret(
-                Name=secret_name,
-                SecretString=secret_value
-            )
+            secretsmanager.create_secret(Name=secret_name, SecretString=secret_value)
         return secret_name
 
     return _create_secret
@@ -40,7 +38,7 @@ def test_secret_creation(create_secret, secretsmanager):
 
     # Verify the secret exists
     response = secretsmanager.get_secret_value(SecretId=secret_name)
-    assert response['SecretString'] == secret_value
+    assert response["SecretString"] == secret_value
 
 
 if __name__ == "__main__":

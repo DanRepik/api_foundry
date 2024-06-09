@@ -7,7 +7,7 @@ import pulumi_aws as aws
 from api_maker.utils.logger import logger, DEBUG
 from api_maker.iac.pulumi.api_maker import APIMaker
 from api_maker.utils.model_factory import ModelFactory
-from api_maker.iac.gateway_doc import GatewayDocument
+from api_maker.iac.gateway_spec import GatewaySpec
 from api_maker.cloudprints.python_archive_builder import PythonArchiveBuilder
 from api_maker.cloudprints.pulumi.lambda_ import PythonFunctionCloudprint
 from api_maker.cloudprints.pulumi.rest_api import GatewayAPICloudprint
@@ -21,7 +21,7 @@ api_maker = APIMaker(
     "chinook_postgres",
     props={
         "api_spec": "./chinook_api.yaml",
-        "secrets": json.dumps({"postgres:chinook": "postgres/chinook"})
+        "secrets": json.dumps({"postgres:chinook": "postgres/chinook"}),
     },
 )
 

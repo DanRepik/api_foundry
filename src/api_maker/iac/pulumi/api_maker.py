@@ -9,13 +9,12 @@ import pulumi_aws as aws
 
 from api_maker.utils.logger import logger, DEBUG, write_logging_file
 from api_maker.utils.model_factory import ModelFactory
-from api_maker.iac.gateway_doc import GatewayDocument
+from api_maker.iac.gateway_spec import GatewaySpec
 from api_maker.cloudprints.python_archive_builder import PythonArchiveBuilder
 from api_maker.cloudprints.pulumi.lambda_ import PythonFunctionCloudprint
 from api_maker.cloudprints.pulumi.rest_api import GatewayAPICloudprint
 
 log = logger(__name__)
-
 
 
 class APIMaker(pulumi.ComponentResource):
@@ -40,7 +39,7 @@ class APIMaker(pulumi.ComponentResource):
             sources={
                 "api_maker": api_maker_source,
                 "api_spec.yaml": api_spec,
-                "app.py": str(pkgutil.get_data("api_maker", "iac/handler.py"))
+                "app.py": str(pkgutil.get_data("api_maker", "iac/handler.py")),
             },
             requirements=[
                 "psycopg2-binary",
@@ -64,28 +63,27 @@ class APIMaker(pulumi.ComponentResource):
 
         ModelFactory.load_spec(api_spec)
 
-        body=lambda_function.invoke_arn().apply(
+        body = lambda_function.invoke_arn().apply(
             lambda invoke_arn: (
-                GatewayDocument(
+                GatewaySpec(
                     function_name=lambda_function.name,
                     function_invoke_arn=invoke_arn,
                     enable_cors=True,
                 ).as_yaml()
             )
         )
-        
+
         if log.isEnabledFor(DEBUG):
             body.apply(
                 lambda body_str: (
                     write_logging_file(f"{name}-gateway-doc.yaml", body_str)
                 )
             )
-                    
 
         gateway = aws.apigateway.RestApi(
             f"{name}-http-api",
             name=f"{name}-http-api",
-        body=body,
+            body=body,
         )
 
         pulumi.export("gateway-api", gateway.id)

@@ -15,8 +15,8 @@ from api_maker.utils.logger import logger
 log = logger(__name__)
 
 
-class GatewayDocument:
-    api_doc: dict
+class GatewaySpec:
+    api_spec: dict
     function_name: str
     function_invoke_arn: str
 
@@ -26,9 +26,9 @@ class GatewayDocument:
         self.function_name = function_name
         self.function_invoke_arn = function_invoke_arn
         log.info(f"invoke_arn: {function_invoke_arn}")
-        document = ModelFactory.document
+        document = ModelFactory.spec
 
-        self.api_doc = dict(self.remove_custom_attributes(copy.deepcopy(document)))
+        self.api_spec = dict(self.remove_custom_attributes(copy.deepcopy(document)))
         if enable_cors:
             self.enable_cors()
 
@@ -38,16 +38,15 @@ class GatewayDocument:
             )
 
     def as_json(self):
-        return json.dumps(self.api_doc)
+        return json.dumps(self.api_spec)
 
-    def as_yaml(self):        
-        return yaml.dump(self.api_doc, default_flow_style=False)
-
+    def as_yaml(self):
+        return yaml.dump(self.api_spec, default_flow_style=False)
 
     def remove_custom_attributes(self, obj):
         return self.remove_attributes(obj, "^x-am-.*$")
 
-    def remove_attributes(self, obj, pattern) -> Union[dict,list]:
+    def remove_attributes(self, obj, pattern) -> Union[dict, list]:
         """
         Remove attributes from an object that match a regular expression pattern.
 
@@ -70,7 +69,7 @@ class GatewayDocument:
             return obj
 
     def add_custom_authentication(self, authentication_invoke_arn: str):
-        components = self.api_doc.get("components", None)
+        components = self.api_spec.get("components", None)
         if components:
             components["securitySchemes"] = {
                 "auth0": {
@@ -96,7 +95,7 @@ class GatewayDocument:
             "httpMethod": "POST",
         }
 
-        self.api_doc.setdefault("paths", {}).setdefault(path, {})[method] = operation
+        self.api_spec.setdefault("paths", {}).setdefault(path, {})[method] = operation
 
     def enable_cors(self):
         self.add_operation(
@@ -147,7 +146,7 @@ class GatewayDocument:
             },
         )
 
-        self.api_doc["x-amazon-apigateway-cors"] = {
+        self.api_spec["x-amazon-apigateway-cors"] = {
             "allowOrigins": ["*"],
             "allowCredentials": True,
             "allowMethods": [

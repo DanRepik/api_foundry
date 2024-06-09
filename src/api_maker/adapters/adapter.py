@@ -1,4 +1,5 @@
 import abc
+from typing import Optional
 
 from api_maker.operation import Operation
 from api_maker.services.transactional_service import TransactionalService
@@ -20,8 +21,8 @@ class Adapter(metaclass=abc.ABCMeta):
             and callable(__subclass.unmarshal)
         )
 
-    def __init__(self) -> None:
-        self.service = TransactionalService()
+    def __init__(self, service: Optional[Service] = None) -> None:
+        self.service = service if service is not None else TransactionalService()
 
     def unmarshal(self, event) -> Operation:
         """
