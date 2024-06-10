@@ -27,7 +27,7 @@ class APIMaker(pulumi.ComponentResource):
     ) -> None:
         super().__init__("api_maker", name, props, opts, remote)
 
-        api_spec = props.get("api_spec", None)
+        api_spec = str(props.get("api_spec", None))
         assert api_spec, "api_spec is not set, a location must be provided."
 
         assert "secrets" in props, "Missing secrets map"
@@ -39,7 +39,7 @@ class APIMaker(pulumi.ComponentResource):
             sources={
                 "api_maker": api_maker_source,
                 "api_spec.yaml": api_spec,
-                "app.py": str(pkgutil.get_data("api_maker", "iac/handler.py")),
+                "app.py": pkgutil.get_data("api_maker", "iac/handler.py").decode("utf-8"),  # type: ignore
             },
             requirements=[
                 "psycopg2-binary",
@@ -57,11 +57,12 @@ class APIMaker(pulumi.ComponentResource):
             environment={
                 "AWS_ACCESS_KEY_ID": "test",
                 "AWS_SECRET_ACCESS_KEY": "test",
+                "AWS_ENDPOINT_URL": "http://localstack:4566",
                 "SECRETS": props["secrets"],
             },
         )
 
-        ModelFactory.load_spec(api_spec)
+        ModelFactory.load_yaml(api_spec)
 
         body = lambda_function.invoke_arn().apply(
             lambda invoke_arn: (

@@ -27,7 +27,8 @@ src/api_maker/dao/sql_insert_generator.py
 src/api_maker/dao/sql_select_generator.py
 src/api_maker/dao/sql_subselect_generator.py
 src/api_maker/dao/sql_update_generator.py
-src/api_maker/iac/gateway_doc.py
+src/api_maker/iac/gateway_spec.py
+src/api_maker/iac/handler.py
 src/api_maker/iac/pulumi/api_maker.py
 src/api_maker/services/service.py
 src/api_maker/services/transactional_service.py
@@ -36,8 +37,9 @@ src/api_maker/utils/logger.py
 src/api_maker/utils/model_factory.py
 tests/test_adapter.py
 tests/test_connection_factory.py
+tests/test_fixtures.py
 tests/test_gateway_adapter.py
-tests/test_gateway_doc.py
+tests/test_gateway_spec.py
 tests/test_insert_sql_generator.py
 tests/test_model_factory.py
 tests/test_secrets_fixture.py

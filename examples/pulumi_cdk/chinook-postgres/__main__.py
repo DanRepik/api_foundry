@@ -21,7 +21,7 @@ api_maker = APIMaker(
     "chinook_postgres",
     props={
         "api_spec": "./chinook_api.yaml",
-        "secrets": json.dumps({"postgres:chinook": "postgres/chinook"}),
+        "secrets": json.dumps({"chinook": "postgres/chinook"}),
     },
 )
 

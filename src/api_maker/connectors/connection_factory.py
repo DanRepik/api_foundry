@@ -52,18 +52,9 @@ class ConnectionFactory:
 
             return PostgresConnection(db_config)
 
-        elif engine == "oracle":
-            pass
-
-        elif engine == "mysql":
-            pass
-
         # Add support for other engines here if needed in the future
 
-        else:
-            raise ValueError(f"Unsupported database engine: {engine}")
-
-        return self.connection_map[database]
+        raise ValueError(f"Unsupported database engine: {engine}")
 
     def __get_secret(self, db_secret_name: str):
         """
