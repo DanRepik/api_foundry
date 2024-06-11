@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 
 from api_maker.utils.app_exception import ApplicationException
 from api_maker.adapters.gateway_adapter import GatewayAdapter
@@ -7,7 +8,7 @@ from api_maker.utils.model_factory import ModelFactory
 
 log = logging.getLogger(__name__)
 
-ModelFactory.load_yaml("/var/task/api_spec.yaml")
+ModelFactory.load_yaml(os.environ.get("API_SPEC", "/var/task/api_spec.yaml"))
 adapter = GatewayAdapter()
 
 

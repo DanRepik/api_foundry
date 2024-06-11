@@ -48,9 +48,9 @@ def create_secret_if_not_exists(secret_name, secret_value):
 def db_secrets():
     log.info("set secrets variable")
     os.environ["AWS_ENDPOINT_URL"] = "https://localhost.localstack.cloud:4566"
-    os.environ["SECRETS"] = json.dumps({"chinook": "postgres/chinook"})
+    os.environ["SECRETS"] = json.dumps({"chinook": "postgres/chinook/localstack"})
     create_secret_if_not_exists(
-        "postgres/chinook",
+        "postgres/chinook/localstack",
         json.dumps(
             {
                 "engine": "postgres",
