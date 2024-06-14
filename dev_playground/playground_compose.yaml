@@ -1,0 +1,67 @@
+version: "3.8"
+
+services:
+  localstack:
+    container_name: "${LOCALSTACK_DOCKER_NAME:-localstack-main}"
+    image: localstack/localstack
+    restart: always
+    ports:
+      - "127.0.0.1:4566:4566"            # LocalStack Gateway
+      - "127.0.0.1:4510-4559:4510-4559"  # External services port range
+    environment:
+      # LocalStack configuration: https://docs.localstack.cloud/references/configuration/
+      - DEBUG=${DEBUG:-0}
+    volumes:
+      - "${LOCALSTACK_VOLUME_DIR:-./volume}:/var/lib/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+
+  postgres_db:
+    image: postgres:latest
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_DB: public
+      POSTGRES_USER: chinook_user
+      POSTGRES_PASSWORD: chinook_password
+    ports:
+      - 5432:5432
+    volumes:
+      - "${POSTGRES_INIT_DB:-./postgres}:/docker-entrypoint-initdb.d"
+      - postgres_data:/var/lib/postgresql/data
+
+  oracle_db:
+    image: container-registry.oracle.com/database/express:21.3.0-xe
+    container_name: oracle_db
+    tty: true
+    restart: always
+    volumes:
+      - oracle_data:/opt/oracle/oradata
+      - "${ORACLE_INIT_DB:-./oracle}:/docker-entrypoint-initdb.d"
+    environment:
+      ORACLE_PWD: oracle
+    ports:
+      - "5500:5500"
+      - "1521:1521"
+
+  mysql_db:
+    image: mysql
+    container_name: mysql_db
+    cap_add:
+      - SYS_NICE
+    restart: always
+    environment:
+      MYSQL_DATABASE: chinook
+      MYSQL_ROOT_PASSWORD: mysql
+    ports:
+      - '3306:3306'
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - "${MYSQL_INIT_DB:-./mysql}:/docker-entrypoint-initdb.d"
+
+volumes:
+  mysql_data:
+    driver: local
+  postgres_data:
+    driver: local
+  oracle_data:
+    driver: local

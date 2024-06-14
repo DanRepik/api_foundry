@@ -32,9 +32,7 @@ class OperationDAO(DAO):
         """
         super().__init__()
         self.operation = operation
-        self.schema_object = ModelFactory.get_schema_object(
-            self.operation.entity
-        )
+        self.schema_object = ModelFactory.get_schema_object(self.operation.entity)
         self.sql_generator = self.__sql_generator(engine)
 
     def __sql_generator(self, engine: str) -> SQLGenerator:
@@ -67,6 +65,8 @@ class OperationDAO(DAO):
 
         if self.operation.action == "read":
             self.__fetch_many(result, cursor)
+        elif self.operation.action in ["update", "delete"] and len(result) == 0:
+            raise ApplicationException(400, "No records were modified")
 
         return result
 
@@ -103,9 +103,7 @@ class OperationDAO(DAO):
                 if parent:
                     parent[name].append(child)
 
-    def __fetch_record_set(
-        self, generator: SQLGenerator, cursor: Cursor
-    ) -> list[dict]:
+    def __fetch_record_set(self, generator: SQLGenerator, cursor: Cursor) -> list[dict]:
         result = []
         record_set = cursor.execute(
             generator.sql,
