@@ -1,8 +1,100 @@
 # API-MAKER
 
-> Note: this project is currently in development and has no functional releases at this time.  Please check back.
+Welcome to API-Maker, an open-source tool designed for rapidly building and exposing relational database resource as RESTful services.  The project's primary objective is to offer a solution that requires minimal coding effort to query and manipulate data stored in relational databases.
 
-Welcome to API-Maker, an open-source tool designed for rapidly building and deploying RESTful services utilizing an AWS Gateway API in conjunction with a Lambda function. Our project's primary objective is to offer a solution that demands minimal coding effort to query and manipulate data stored in relational databases.
+Database resources that API-MAKER can expose as services can be tables or custom SQL.
+
+With database table resources API-MAKER provides services to support the normal CRUD operations.  Additionally with table resourses API-MAKER provides a rich record selection API that reduces the need to build custom functions.
+
+Custom SQL operations can also be exposed.
+
+There are three steps to building an API-MAKER api;
+
+1. Define the resources to be exposed in an OpenAPI document.
+1. Create a secret containing the connection parameters to access the database.
+1. Deploy the API-Maker as part of a IAC resource to AWS.
+
+## API in Five Minutes
+
+This section provides a quick overview of building an minimal API using API-MAKER.  The examples presented here a accessing data in a Chinook database.  What is presented is an subset of a complete working example that can be found in the examples.
+
+**Define Schema Objects**
+
+The first step is to define the database table as a component schema object in the API specification. This specfication uses the OpenAPI specfication.
+
+In the abbreviated specification we are only building services albums and artists.
+
+```yaml
+openapi: 3.1.0
+info:
+  title: Chinook RestAPI
+  version: 1.0.0
+components:
+  schemas:
+    album:
+      type: object
+      x-am-database: chinook
+      properties:
+        album_id:
+          type: integer
+          x-am-primary-key: auto
+        title:
+          type: string
+          maxLength: 160
+        artist_id:
+          type: integer
+      required:
+        - album_id
+        - title
+        - artist_id
+    artist:
+      type: object
+      x-am-database: chinook
+      properties:
+        artist_id:
+          type: integer
+          x-am-primary-key: auto
+        name:
+          type: string
+          maxLength: 120
+      required:
+        - artist_id
+```
+
+The above is standard OpenAPI specification with the except ion of the custom attributes.  API-MAKER always prefixes its custom attributes with 'x-am-'.
+
+In this example the following API-MAKER attributes have been added;
+
+* x-am-database - This indicates what database should be accessed for the built services.
+* x-am-primary-key - This attribute can be attached to one of the object properties to indicate that property is the primary key for the component object.  The value of this property is the key generation strategy to use for record creation.
+
+In this example table names, albums and artists, is same as the component object names and in turn in the API path operations.  API-MAKER provides additional custom attributes that allow explicit naming of the table.
+
+> TODO: Link to custom attribute documentation
+
+**Define the Database Access Secret**
+
+When processing requests API-MAKER uses secrets to access the database connection parameters it needs to perform the services.
+
+```python
+# Create a Secrets Manager client
+client = boto3.client("secretsmanager")
+
+client.create_secret(
+  Name="postgres/chinook",
+  SecretString=json.dumps(
+    {
+        "engine": "postgres",
+        "dbname": "chinook",
+        "username": "chinook_user",
+        "password": "chinook_password",
+        "host": "postgres_db",
+    }
+  )
+)
+
+```
+
 
 With API-Maker, developing RESTful API's is first focused on defining components and services in the form of an Open API specification.  Objects in this specification then can be enhanced by either;
 
