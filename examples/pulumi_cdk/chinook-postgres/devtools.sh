@@ -1,7 +1,8 @@
 alias up="pulumi up --yes --stack local"
-alias down="pulumi down --yes --stack local"
+alias down="pulumi destroy --yes --stack local"
 
-alias playground_up="docker-compose -f ../../../dev_playground/playground_compose.yaml up -d"
-alias playground_down="docker-compose -f ../../../dev_playground/playground_compose.yaml down"
+echo "echo $(dirname "$0")/../../../dev_playground/devtools.sh"
+
+source "$(dirname "$0")/../../../dev_playground/devtools.sh"
 
 export AWS_PROFILE=localstack

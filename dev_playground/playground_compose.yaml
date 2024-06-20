@@ -28,6 +28,9 @@ services:
     volumes:
       - "${POSTGRES_INIT_DB:-./postgres}:/docker-entrypoint-initdb.d"
       - postgres_data:/var/lib/postgresql/data
+    profiles:
+      - postgres
+      - all
 
   oracle_db:
     image: container-registry.oracle.com/database/express:21.3.0-xe
@@ -42,6 +45,9 @@ services:
     ports:
       - "5500:5500"
       - "1521:1521"
+    profiles:
+      - oracle
+      - all
 
   mysql_db:
     image: mysql
@@ -57,6 +63,9 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
       - "${MYSQL_INIT_DB:-./mysql}:/docker-entrypoint-initdb.d"
+    profiles:
+      - mysql
+      - all
 
 volumes:
   mysql_data:

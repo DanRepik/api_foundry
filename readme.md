@@ -8,13 +8,24 @@ With database table resources API-MAKER provides services to support the normal 
 
 Custom SQL operations can also be exposed.
 
+In the following sections we will provide a brief overview of the following API-MAKER features;
+
+* [Build an API](#Build an API in Five Minutes) - this section provides an abbreviated example of building an API.
+* [Exploring the API deployment](#What API-Maker Deploys) - Briefly looks at resulting the API-MAKER deployment.
+* **Exploring the Services** - This section delves into the API services that that was built, covered are basic operations and the enhanced record selection capabilities provided.
+* **Using Metadata Parameters** - These parameters allow requesting application to customize the results returned from the services.
+* **Managing Concurrency** - This section illustrates how API-MAKER handles currency between application clients.
+* **Object and List Properties** - API-MAKER can return objects that have objects or list of objects as properties.  This section demonstrates how to configure such properties.
+
+The examples presented here are accessing data in a Chinook database.  What is presented in the example is an subset of a complete working example that can be found in the examples.
+
+## Build an API in Five Minutes
+
 There are three steps to building an API-MAKER api;
 
 1. Define the resources to be exposed in an OpenAPI document.
 1. Create a secret containing the connection parameters to access the database.
 1. Deploy the API-Maker as part of a IAC resource to AWS.
-
-## API in Five Minutes
 
 This section provides a quick overview of building an minimal API using API-MAKER.  The examples presented here a accessing data in a Chinook database.  What is presented is an subset of a complete working example that can be found in the examples.
 
@@ -25,6 +36,7 @@ The first step is to define the database table as a component schema object in t
 In the abbreviated specification we are only building services albums and artists.
 
 ```yaml
+# filename: chinook_postgres.yaml
 openapi: 3.1.0
 info:
   title: Chinook RestAPI
@@ -74,9 +86,13 @@ In this example table names, albums and artists, is same as the component object
 
 **Define the Database Access Secret**
 
-When processing requests API-MAKER uses secrets to access the database connection parameters it needs to perform the services.
+For the second step you will need to supply API-MAKER with connection parameters for access to databases.
+
+With API-MAKER the connection parameters needed to access the backend database is obtained using a AWS secretsmanager secret.  This secret should be a JSON string defining the connection parameters needed. The following script creates a secret for accessing the Chinook database running on Postgres.
 
 ```python
+import boto3
+
 # Create a Secrets Manager client
 client = boto3.client("secretsmanager")
 
@@ -95,6 +111,122 @@ client.create_secret(
 
 ```
 
+**Deploy the API**
+
+The final step is to deploy the API.  In the example the deployment is made using Pulumi.
+
+```python
+#filename: __main.py__
+from api_maker.iac.pulumi.api_maker import APIMaker
+
+api_maker = APIMaker(
+    "chinook-postgres",
+    props={
+        # this references the OpenAPI file created
+        # in the first step
+        "api_spec": "./chinook_api.yaml",
+
+        # This parameter maps databases referenced in
+        # the api_spec to secret names
+        "secrets": json.dumps({"chinook": "postgres/chinook"}),
+    },
+)
+```
+
+## What API-Maker Deploys
+
+Once the API-Maker deployment is complete
+
+```plantuml
+@startuml
+title Deployment Diagram for API-MAKER api with External Database
+
+actor Client as client
+
+node "AWS" {
+    node "API-MAKER" {
+      [API Gateway] as apigw
+      [Lambda Function] as lambda
+    }
+    [Secret] as secret
+}
+
+database "External Database" as db
+
+client --> apigw : API Request
+apigw --> lambda : Invoke Lambda
+lambda --> db : Database Query
+lambda --> secret : reads
+db --> lambda : Database Response
+lambda --> apigw : Lambda Response
+apigw --> client : API Response
+
+@enduml
+```
+
+## Services That API-MAKER Supports
+
+In this section we will explore the API services that API-MAKER provides.
+
+### Basic Operations
+
+First basic CRUD services are supported.
+
+These services are RESTful using the HTTP method to determine the operation.  Data passed via requests and response is of course in JSON.
+
+Services return the operation status via response headers.  For successful operations the response body contains an array of the selected objects.  When mutating records via POST, PUT, and DELETE the body contains the array of modified or deleted records.
+
+For these sevices the operation path is of the form;
+
+```
+# for POST
+/{entity}
+# for GET, PUT and DELETE
+/{entity}/{id}
+```
+
+Where;
+
+* entity - is the schema compoenent object name from the API  specification.  In the example case this would be either album or artist.
+* id - is the primary key of the selected record.
+
+> TODO: put link to tests
+
+## Enhanced Record Selection
+
+In addition to basic CRUD operations API-MAKER offers a set of services that provide enhanced record selection using query strings.  With this feature multiple records can be selected and does not apply to create operations.  The path for these services is;
+
+```
+# for GET, PUT and DELETE
+/{entity}
+```
+
+Records are then selected using query string parameters. Where the name for the name value pair of a parameter can be any property from the component schema object.
+
+Thus for the Chinook database we could execute the following operations;
+
+```
+# get an artist, same as /artist/3
+GET /artist?artist_id=3
+
+# get an album, same as /album/5
+GET /album/album_id=5
+
+# get the albums by an artist
+GET /album/artist_id=3
+```
+
+Additionally a relation operand can be prefixed to the value of the parameter.  Whis these records can be selected to match a criteria.  The relational operands ('lt', 'le', 'eq', 'ne', 'ge', 'gt', 'in', 'between') are denoted with '::' can prefixed to the value.  An example of a parameter with a would be;
+
+```
+# read ablums with an album_id of less than 100
+GET /ablum?album_id=lt::100
+```
+
+
+
+
+# Attic
 
 With API-Maker, developing RESTful API's is first focused on defining components and services in the form of an Open API specification.  Objects in this specification then can be enhanced by either;
 
