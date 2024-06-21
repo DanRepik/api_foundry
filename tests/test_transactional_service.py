@@ -2,43 +2,32 @@ from datetime import datetime
 import json
 import os
 
-import pytest
-
-from test_connection_factory import secrets_map, install_secrets
 from api_maker.utils.app_exception import ApplicationException
-from api_maker.utils.model_factory import ModelFactory
 from api_maker.utils.logger import logger
 from api_maker.operation import Operation
 from api_maker.services.transactional_service import TransactionalService
+
+from test_fixtures import load_model, db_secrets
 
 log = logger(__name__)
 
 
 class TestTransactionalService:
-
-    def test_crud_service(self):
+    def test_crud_service(self, load_model, db_secrets):
         """
         Integration test to check insert
         """
-        ModelFactory.load_spec()
-        install_secrets()
-        os.environ["SECRETS_MAP"] = secrets_map
-
         # test insert/create
         transactional_service = TransactionalService()
         operation = Operation(
             entity="media_type",
             action="create",
-            store_params={
-                "media_type_id": 9000,
-                "name": "X-Ray"
-            },
+            store_params={"media_type_id": 9000, "name": "X-Ray"},
         )
 
         result = transactional_service.execute(operation)
         log.info(f"result: {json.dumps(result, indent=4)}")
         assert result[0]["name"] == "X-Ray"
-
 
         # test select/read
         operation = Operation(
@@ -57,9 +46,7 @@ class TestTransactionalService:
         operation = Operation(
             entity="media_type",
             action="update",
-            query_params={
-                "media_type_id": 9000
-            },
+            query_params={"media_type_id": 9000},
             store_params={"name": "Ray gun"},
         )
 
@@ -73,9 +60,7 @@ class TestTransactionalService:
         operation = Operation(
             entity="media_type",
             action="delete",
-            query_params={
-                "media_type_id": 9000
-            },
+            query_params={"media_type_id": 9000},
         )
 
         result = transactional_service.execute(operation)
@@ -97,15 +82,10 @@ class TestTransactionalService:
         log.info(f"result: {json.dumps(result, indent=4)}")
         assert len(result) == 0
 
-
-    def test_crud_with_timestamp_service(self):
+    def test_crud_with_timestamp_service(self, load_model, db_secrets):
         """
         Integration test to check insert
         """
-        ModelFactory.load_spec()
-        install_secrets()
-        os.environ["SECRETS_MAP"] = secrets_map
-
         # test insert/create
         transactional_service = TransactionalService()
         operation = Operation(
@@ -224,15 +204,10 @@ class TestTransactionalService:
         log.info(f"result: {json.dumps(result, indent=4)}")
         assert len(result) == 0
 
-
-    def test_crud_with_uuid_service(self):
+    def test_crud_with_uuid_service(self, load_model, db_secrets):
         """
         Integration test to check insert
         """
-        ModelFactory.load_spec()
-        install_secrets()
-        os.environ["SECRETS_MAP"] = secrets_map
-
         # test insert/create
         transactional_service = TransactionalService()
         operation = Operation(
@@ -262,9 +237,7 @@ class TestTransactionalService:
 
         # test select/read
         operation = Operation(
-            entity="customer",
-            action="read",
-            query_params={"customer_id": customer_id}
+            entity="customer", action="read", query_params={"customer_id": customer_id}
         )
         result = transactional_service.execute(operation)
 
@@ -308,19 +281,20 @@ class TestTransactionalService:
         assert result[0]["address"] == "321 Broad St"
 
         try:
-          # test delete without version stamp
-          operation = Operation(
-              entity="customer",
-              action="delete",
-              query_params={
-                  "customer_id": customer_id
-              },
-          )
+            # test delete without version stamp
+            operation = Operation(
+                entity="customer",
+                action="delete",
+                query_params={"customer_id": customer_id},
+            )
 
-          result = transactional_service.execute(operation)
+            result = transactional_service.execute(operation)
         except ApplicationException as e:
-            assert e.message == "Missing required concurrency management property.  schema_object: customer, property: version_stamp"
-            
+            assert (
+                e.message
+                == "Missing required concurrency management property.  schema_object: customer, property: version_stamp"
+            )
+
         # test delete
         operation = Operation(
             entity="customer",
@@ -339,9 +313,7 @@ class TestTransactionalService:
 
         # test select/read
         operation = Operation(
-            entity="customer",
-            action="read",
-            query_params={"customer_id": customer_id}
+            entity="customer", action="read", query_params={"customer_id": customer_id}
         )
         result = transactional_service.execute(operation)
 

@@ -23,7 +23,7 @@ class OperationDAO(DAO):
         operation (Operation): The operation to perform.
     """
 
-    def __init__(self, operation: Operation) -> None:
+    def __init__(self, operation: Operation, engine: str) -> None:
         """
         Initialize the OperationDAO with the provided Operation object.
 
@@ -32,20 +32,18 @@ class OperationDAO(DAO):
         """
         super().__init__()
         self.operation = operation
-        self.schema_object = ModelFactory.get_schema_object(
-            self.operation.entity
-        )
-        self.sql_generator = self.__sql_generator()
+        self.schema_object = ModelFactory.get_schema_object(self.operation.entity)
+        self.sql_generator = self.__sql_generator(engine)
 
-    def __sql_generator(self) -> SQLGenerator:
+    def __sql_generator(self, engine: str) -> SQLGenerator:
         if self.operation.action == "read":
-            return SQLSelectGenerator(self.operation, self.schema_object)
+            return SQLSelectGenerator(self.operation, self.schema_object, engine)
         elif self.operation.action == "create":
-            return SQLInsertGenerator(self.operation, self.schema_object)
+            return SQLInsertGenerator(self.operation, self.schema_object, engine)
         elif self.operation.action == "update":
-            return SQLUpdateGenerator(self.operation, self.schema_object)
+            return SQLUpdateGenerator(self.operation, self.schema_object, engine)
         elif self.operation.action == "delete":
-            return SQLDeleteGenerator(self.operation, self.schema_object)
+            return SQLDeleteGenerator(self.operation, self.schema_object, engine)
 
         raise ApplicationException(
             400, f"Invalid operation action: {self.operation.action}"
@@ -67,6 +65,8 @@ class OperationDAO(DAO):
 
         if self.operation.action == "read":
             self.__fetch_many(result, cursor)
+        elif self.operation.action in ["update", "delete"] and len(result) == 0:
+            raise ApplicationException(400, "No records were modified")
 
         return result
 
@@ -103,9 +103,7 @@ class OperationDAO(DAO):
                 if parent:
                     parent[name].append(child)
 
-    def __fetch_record_set(
-        self, generator: SQLGenerator, cursor: Cursor
-    ) -> list[dict]:
+    def __fetch_record_set(self, generator: SQLGenerator, cursor: Cursor) -> list[dict]:
         result = []
         record_set = cursor.execute(
             generator.sql,

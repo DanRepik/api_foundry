@@ -13,18 +13,15 @@ log = logger(__name__)
 
 
 class TransactionalService(ServiceAdapter):
-
     def execute(self, operation: Operation):
         schema_object = ModelFactory.get_schema_object(operation.entity)
-        connection = connection_factory(
-            engine=schema_object.engine, database=schema_object.database
-        )
+        connection = connection_factory.get_connection(schema_object.database)
 
         try:
             result = None
             cursor = connection.cursor()
             try:
-                result = OperationDAO(operation).execute(cursor)
+                result = OperationDAO(operation, connection.engine()).execute(cursor)
             finally:
                 cursor.close()
             if operation.action != "read":

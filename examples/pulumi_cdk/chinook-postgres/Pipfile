@@ -7,8 +7,11 @@ verify_ssl = true
 pulumi = ">=3.0.0, <4.0.0"
 pulumi-aws = ">=6.0.2, <7.0.0"
 api-maker = {file = "../../.."}
+boto3 = "*"
 
 [dev-packages]
+pytest = "*"
+pytest-cov = "*"
 
 [requires]
 python_version = "3.7"

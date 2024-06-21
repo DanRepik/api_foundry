@@ -6,9 +6,6 @@ components:
                     type: integer
                 artist_id:
                     type: integer
-                last_updated:
-                    format: date
-                    type: string
                 title:
                     maxLength: 160
                     type: string
@@ -256,18 +253,6 @@ components:
             - milliseconds
             - unit_price
             type: object
-    securitySchemes:
-        auth0:
-            in: header
-            name: Authorization
-            type: apiKey
-            x-amazon-apigateway-authorizer:
-                authorizerResultTtlInSeconds: 60
-                authorizerUri: authentication invoke
-                identitySource: method.request.header.Authorization
-                identityValidationExpression: ^Bearer [-0-9a-zA-Z._]*$
-                type: token
-            x-amazon-apigateway-authtype: custom
 info:
     title: Chinook RestAPI
     version: 1.0.0
@@ -281,29 +266,22 @@ paths:
                 name: album_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by title
                 in: query
                 name: title
                 required: false
                 schema:
-                    pattern: '"^(({0,160})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,160}),|not-between::({0,160}),|in::(({0,160}),)*)$"'
+                    pattern: ^(({0,160})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,160}),|not-between::({0,160}),|in::(({0,160}),)*)$|not-in::(({0,160}),)*)$
                     type: string
             -   description: Filter by artist_id
                 in: query
                 name: artist_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
-            -   description: Filter by last_updated
-                in: query
-                name: last_updated
-                required: false
-                schema:
-                    pattern: '"^((\d{4}-\d{2}-\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}),|not-between::(\d{4}-\d{2}-\d{2}),|in::((\d{4}-\d{2}-\d{2}),)*)$"'
-                    type: string
             responses:
                 '204':
                     content:
@@ -314,6 +292,11 @@ paths:
                                 type: array
                     description: album deleted successfully
             summary: Delete many existing album using query
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         get:
             parameters:
             -   description: Filter by album_id
@@ -321,29 +304,22 @@ paths:
                 name: album_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by title
                 in: query
                 name: title
                 required: false
                 schema:
-                    pattern: '"^(({0,160})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,160}),|not-between::({0,160}),|in::(({0,160}),)*)$"'
+                    pattern: ^(({0,160})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,160}),|not-between::({0,160}),|in::(({0,160}),)*)$|not-in::(({0,160}),)*)$
                     type: string
             -   description: Filter by artist_id
                 in: query
                 name: artist_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
-            -   description: Filter by last_updated
-                in: query
-                name: last_updated
-                required: false
-                schema:
-                    pattern: '"^((\d{4}-\d{2}-\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}),|not-between::(\d{4}-\d{2}-\d{2}),|in::((\d{4}-\d{2}-\d{2}),)*)$"'
-                    type: string
             responses:
                 '200':
                     content:
@@ -354,6 +330,11 @@ paths:
                                 type: array
                     description: A list of album.
             summary: Retrieve all album
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         post:
             requestBody:
                 content:
@@ -364,9 +345,6 @@ paths:
                                     type: integer
                                 artist_id:
                                     type: integer
-                                last_updated:
-                                    format: date
-                                    type: string
                                 title:
                                     maxLength: 160
                                     type: string
@@ -386,6 +364,11 @@ paths:
                                 type: array
                     description: album created successfully
             summary: Create a new album
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         put:
             parameters:
             -   description: Filter by album_id
@@ -393,29 +376,22 @@ paths:
                 name: album_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by title
                 in: query
                 name: title
                 required: false
                 schema:
-                    pattern: '"^(({0,160})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,160}),|not-between::({0,160}),|in::(({0,160}),)*)$"'
+                    pattern: ^(({0,160})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,160}),|not-between::({0,160}),|in::(({0,160}),)*)$|not-in::(({0,160}),)*)$
                     type: string
             -   description: Filter by artist_id
                 in: query
                 name: artist_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
-            -   description: Filter by last_updated
-                in: query
-                name: last_updated
-                required: false
-                schema:
-                    pattern: '"^((\d{4}-\d{2}-\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}),|not-between::(\d{4}-\d{2}-\d{2}),|in::((\d{4}-\d{2}-\d{2}),)*)$"'
-                    type: string
             requestBody:
                 content:
                     application/json:
@@ -425,9 +401,6 @@ paths:
                                     type: integer
                                 artist_id:
                                     type: integer
-                                last_updated:
-                                    format: date
-                                    type: string
                                 title:
                                     maxLength: 160
                                     type: string
@@ -444,6 +417,11 @@ paths:
                                 type: array
                     description: album updated successfully
             summary: Update an existing album by ID
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
     /album/{album_id}:
         delete:
             parameters:
@@ -463,6 +441,11 @@ paths:
                                 type: array
                     description: album deleted successfully
             summary: Delete an existing album by album_id
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         get:
             parameters:
             -   description: ID of the album to get
@@ -481,6 +464,11 @@ paths:
                                 type: array
                     description: A list of album.
             summary: Retrieve album by album_id
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         put:
             parameters:
             -   description: ID of the album to update
@@ -498,9 +486,6 @@ paths:
                                     type: integer
                                 artist_id:
                                     type: integer
-                                last_updated:
-                                    format: date
-                                    type: string
                                 title:
                                     maxLength: 160
                                     type: string
@@ -517,6 +502,11 @@ paths:
                                 type: array
                     description: album updated successfully
             summary: Update an existing album by album_id
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
     /artist:
         delete:
             parameters:
@@ -525,14 +515,14 @@ paths:
                 name: artist_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by name
                 in: query
                 name: name
                 required: false
                 schema:
-                    pattern: '"^(({0,120})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,120}),|not-between::({0,120}),|in::(({0,120}),)*)$"'
+                    pattern: ^(({0,120})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,120}),|not-between::({0,120}),|in::(({0,120}),)*)$|not-in::(({0,120}),)*)$
                     type: string
             responses:
                 '204':
@@ -544,6 +534,11 @@ paths:
                                 type: array
                     description: artist deleted successfully
             summary: Delete many existing artist using query
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         get:
             parameters:
             -   description: Filter by artist_id
@@ -551,14 +546,14 @@ paths:
                 name: artist_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by name
                 in: query
                 name: name
                 required: false
                 schema:
-                    pattern: '"^(({0,120})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,120}),|not-between::({0,120}),|in::(({0,120}),)*)$"'
+                    pattern: ^(({0,120})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,120}),|not-between::({0,120}),|in::(({0,120}),)*)$|not-in::(({0,120}),)*)$
                     type: string
             responses:
                 '200':
@@ -570,6 +565,11 @@ paths:
                                 type: array
                     description: A list of artist.
             summary: Retrieve all artist
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         post:
             requestBody:
                 content:
@@ -595,6 +595,11 @@ paths:
                                 type: array
                     description: artist created successfully
             summary: Create a new artist
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         put:
             parameters:
             -   description: Filter by artist_id
@@ -602,14 +607,14 @@ paths:
                 name: artist_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by name
                 in: query
                 name: name
                 required: false
                 schema:
-                    pattern: '"^(({0,120})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,120}),|not-between::({0,120}),|in::(({0,120}),)*)$"'
+                    pattern: ^(({0,120})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,120}),|not-between::({0,120}),|in::(({0,120}),)*)$|not-in::(({0,120}),)*)$
                     type: string
             requestBody:
                 content:
@@ -634,6 +639,11 @@ paths:
                                 type: array
                     description: artist updated successfully
             summary: Update an existing artist by ID
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
     /artist/{artist_id}:
         delete:
             parameters:
@@ -653,6 +663,11 @@ paths:
                                 type: array
                     description: artist deleted successfully
             summary: Delete an existing artist by artist_id
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         get:
             parameters:
             -   description: ID of the artist to get
@@ -671,6 +686,11 @@ paths:
                                 type: array
                     description: A list of artist.
             summary: Retrieve artist by artist_id
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         put:
             parameters:
             -   description: ID of the artist to update
@@ -702,6 +722,11 @@ paths:
                                 type: array
                     description: artist updated successfully
             summary: Update an existing artist by artist_id
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
     /customer:
         get:
             parameters:
@@ -710,98 +735,98 @@ paths:
                 name: customer_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by first_name
                 in: query
                 name: first_name
                 required: false
                 schema:
-                    pattern: '"^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$"'
+                    pattern: ^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$|not-in::(({0,40}),)*)$
                     type: string
             -   description: Filter by last_name
                 in: query
                 name: last_name
                 required: false
                 schema:
-                    pattern: '"^(({0,20})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,20}),|not-between::({0,20}),|in::(({0,20}),)*)$"'
+                    pattern: ^(({0,20})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,20}),|not-between::({0,20}),|in::(({0,20}),)*)$|not-in::(({0,20}),)*)$
                     type: string
             -   description: Filter by company
                 in: query
                 name: company
                 required: false
                 schema:
-                    pattern: '"^(({0,80})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,80}),|not-between::({0,80}),|in::(({0,80}),)*)$"'
+                    pattern: ^(({0,80})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,80}),|not-between::({0,80}),|in::(({0,80}),)*)$|not-in::(({0,80}),)*)$
                     type: string
             -   description: Filter by address
                 in: query
                 name: address
                 required: false
                 schema:
-                    pattern: '"^(({0,70})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,70}),|not-between::({0,70}),|in::(({0,70}),)*)$"'
+                    pattern: ^(({0,70})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,70}),|not-between::({0,70}),|in::(({0,70}),)*)$|not-in::(({0,70}),)*)$
                     type: string
             -   description: Filter by city
                 in: query
                 name: city
                 required: false
                 schema:
-                    pattern: '"^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$"'
+                    pattern: ^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$|not-in::(({0,40}),)*)$
                     type: string
             -   description: Filter by state
                 in: query
                 name: state
                 required: false
                 schema:
-                    pattern: '"^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$"'
+                    pattern: ^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$|not-in::(({0,40}),)*)$
                     type: string
             -   description: Filter by country
                 in: query
                 name: country
                 required: false
                 schema:
-                    pattern: '"^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$"'
+                    pattern: ^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$|not-in::(({0,40}),)*)$
                     type: string
             -   description: Filter by postal_code
                 in: query
                 name: postal_code
                 required: false
                 schema:
-                    pattern: '"^(({0,10})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,10}),|not-between::({0,10}),|in::(({0,10}),)*)$"'
+                    pattern: ^(({0,10})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,10}),|not-between::({0,10}),|in::(({0,10}),)*)$|not-in::(({0,10}),)*)$
                     type: string
             -   description: Filter by phone
                 in: query
                 name: phone
                 required: false
                 schema:
-                    pattern: '"^(({0,24})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,24}),|not-between::({0,24}),|in::(({0,24}),)*)$"'
+                    pattern: ^(({0,24})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,24}),|not-between::({0,24}),|in::(({0,24}),)*)$|not-in::(({0,24}),)*)$
                     type: string
             -   description: Filter by fax
                 in: query
                 name: fax
                 required: false
                 schema:
-                    pattern: '"^(({0,24})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,24}),|not-between::({0,24}),|in::(({0,24}),)*)$"'
+                    pattern: ^(({0,24})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,24}),|not-between::({0,24}),|in::(({0,24}),)*)$|not-in::(({0,24}),)*)$
                     type: string
             -   description: Filter by email
                 in: query
                 name: email
                 required: false
                 schema:
-                    pattern: '"^(({0,60})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,60}),|not-between::({0,60}),|in::(({0,60}),)*)$"'
+                    pattern: ^(({0,60})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,60}),|not-between::({0,60}),|in::(({0,60}),)*)$|not-in::(({0,60}),)*)$
                     type: string
             -   description: Filter by support_rep_id
                 in: query
                 name: support_rep_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by version_stamp
                 in: query
                 name: version_stamp
                 required: false
                 schema:
-                    pattern: '"^((.*)|lt::|le::|eq::|ne::|ge::|gt::|between::(.*),|not-between::(.*),|in::((.*),)*)$"'
+                    pattern: ^((.*)|lt::|le::|eq::|ne::|ge::|gt::|between::(.*),|not-between::(.*),|in::((.*),)*)$|not-in::((.*),)*)$
                     type: string
             responses:
                 '200':
@@ -813,6 +838,11 @@ paths:
                                 type: array
                     description: A list of customer.
             summary: Retrieve all customer
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         post:
             requestBody:
                 content:
@@ -875,6 +905,11 @@ paths:
                                 type: array
                     description: customer created successfully
             summary: Create a new customer
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
     /customer/{customer_id}:
         get:
             parameters:
@@ -894,6 +929,11 @@ paths:
                                 type: array
                     description: A list of customer.
             summary: Retrieve customer by customer_id
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
     /customer/{customer_id}/version_stamp/{version_stamp}:
         delete:
             parameters:
@@ -919,6 +959,11 @@ paths:
                                 type: array
                     description: customer deleted successfully
             summary: Delete an existing customer by ID
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         put:
             parameters:
             -   description: ID of the customer to update
@@ -990,6 +1035,11 @@ paths:
                                 type: array
                     description: customer updated successfully
             summary: Update an existing customer by ID
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
     /employee:
         delete:
             parameters:
@@ -998,105 +1048,105 @@ paths:
                 name: employee_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by last_name
                 in: query
                 name: last_name
                 required: false
                 schema:
-                    pattern: '"^(({0,20})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,20}),|not-between::({0,20}),|in::(({0,20}),)*)$"'
+                    pattern: ^(({0,20})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,20}),|not-between::({0,20}),|in::(({0,20}),)*)$|not-in::(({0,20}),)*)$
                     type: string
             -   description: Filter by first_name
                 in: query
                 name: first_name
                 required: false
                 schema:
-                    pattern: '"^(({0,20})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,20}),|not-between::({0,20}),|in::(({0,20}),)*)$"'
+                    pattern: ^(({0,20})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,20}),|not-between::({0,20}),|in::(({0,20}),)*)$|not-in::(({0,20}),)*)$
                     type: string
             -   description: Filter by title
                 in: query
                 name: title
                 required: false
                 schema:
-                    pattern: '"^(({0,30})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,30}),|not-between::({0,30}),|in::(({0,30}),)*)$"'
+                    pattern: ^(({0,30})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,30}),|not-between::({0,30}),|in::(({0,30}),)*)$|not-in::(({0,30}),)*)$
                     type: string
             -   description: Filter by reports_to
                 in: query
                 name: reports_to
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by birth_date
                 in: query
                 name: birth_date
                 required: false
                 schema:
-                    pattern: '"^((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|not-between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$"'
+                    pattern: ^((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|not-between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$|not-in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$
                     type: string
             -   description: Filter by hire_date
                 in: query
                 name: hire_date
                 required: false
                 schema:
-                    pattern: '"^((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|not-between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$"'
+                    pattern: ^((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|not-between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$|not-in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$
                     type: string
             -   description: Filter by address
                 in: query
                 name: address
                 required: false
                 schema:
-                    pattern: '"^(({0,70})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,70}),|not-between::({0,70}),|in::(({0,70}),)*)$"'
+                    pattern: ^(({0,70})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,70}),|not-between::({0,70}),|in::(({0,70}),)*)$|not-in::(({0,70}),)*)$
                     type: string
             -   description: Filter by city
                 in: query
                 name: city
                 required: false
                 schema:
-                    pattern: '"^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$"'
+                    pattern: ^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$|not-in::(({0,40}),)*)$
                     type: string
             -   description: Filter by state
                 in: query
                 name: state
                 required: false
                 schema:
-                    pattern: '"^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$"'
+                    pattern: ^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$|not-in::(({0,40}),)*)$
                     type: string
             -   description: Filter by country
                 in: query
                 name: country
                 required: false
                 schema:
-                    pattern: '"^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$"'
+                    pattern: ^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$|not-in::(({0,40}),)*)$
                     type: string
             -   description: Filter by postal_code
                 in: query
                 name: postal_code
                 required: false
                 schema:
-                    pattern: '"^(({0,10})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,10}),|not-between::({0,10}),|in::(({0,10}),)*)$"'
+                    pattern: ^(({0,10})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,10}),|not-between::({0,10}),|in::(({0,10}),)*)$|not-in::(({0,10}),)*)$
                     type: string
             -   description: Filter by phone
                 in: query
                 name: phone
                 required: false
                 schema:
-                    pattern: '"^(({0,24})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,24}),|not-between::({0,24}),|in::(({0,24}),)*)$"'
+                    pattern: ^(({0,24})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,24}),|not-between::({0,24}),|in::(({0,24}),)*)$|not-in::(({0,24}),)*)$
                     type: string
             -   description: Filter by fax
                 in: query
                 name: fax
                 required: false
                 schema:
-                    pattern: '"^(({0,24})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,24}),|not-between::({0,24}),|in::(({0,24}),)*)$"'
+                    pattern: ^(({0,24})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,24}),|not-between::({0,24}),|in::(({0,24}),)*)$|not-in::(({0,24}),)*)$
                     type: string
             -   description: Filter by email
                 in: query
                 name: email
                 required: false
                 schema:
-                    pattern: '"^(({0,60})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,60}),|not-between::({0,60}),|in::(({0,60}),)*)$"'
+                    pattern: ^(({0,60})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,60}),|not-between::({0,60}),|in::(({0,60}),)*)$|not-in::(({0,60}),)*)$
                     type: string
             responses:
                 '204':
@@ -1108,6 +1158,11 @@ paths:
                                 type: array
                     description: employee deleted successfully
             summary: Delete many existing employee using query
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         get:
             parameters:
             -   description: Filter by employee_id
@@ -1115,105 +1170,105 @@ paths:
                 name: employee_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by last_name
                 in: query
                 name: last_name
                 required: false
                 schema:
-                    pattern: '"^(({0,20})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,20}),|not-between::({0,20}),|in::(({0,20}),)*)$"'
+                    pattern: ^(({0,20})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,20}),|not-between::({0,20}),|in::(({0,20}),)*)$|not-in::(({0,20}),)*)$
                     type: string
             -   description: Filter by first_name
                 in: query
                 name: first_name
                 required: false
                 schema:
-                    pattern: '"^(({0,20})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,20}),|not-between::({0,20}),|in::(({0,20}),)*)$"'
+                    pattern: ^(({0,20})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,20}),|not-between::({0,20}),|in::(({0,20}),)*)$|not-in::(({0,20}),)*)$
                     type: string
             -   description: Filter by title
                 in: query
                 name: title
                 required: false
                 schema:
-                    pattern: '"^(({0,30})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,30}),|not-between::({0,30}),|in::(({0,30}),)*)$"'
+                    pattern: ^(({0,30})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,30}),|not-between::({0,30}),|in::(({0,30}),)*)$|not-in::(({0,30}),)*)$
                     type: string
             -   description: Filter by reports_to
                 in: query
                 name: reports_to
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by birth_date
                 in: query
                 name: birth_date
                 required: false
                 schema:
-                    pattern: '"^((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|not-between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$"'
+                    pattern: ^((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|not-between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$|not-in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$
                     type: string
             -   description: Filter by hire_date
                 in: query
                 name: hire_date
                 required: false
                 schema:
-                    pattern: '"^((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|not-between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$"'
+                    pattern: ^((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|not-between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$|not-in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$
                     type: string
             -   description: Filter by address
                 in: query
                 name: address
                 required: false
                 schema:
-                    pattern: '"^(({0,70})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,70}),|not-between::({0,70}),|in::(({0,70}),)*)$"'
+                    pattern: ^(({0,70})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,70}),|not-between::({0,70}),|in::(({0,70}),)*)$|not-in::(({0,70}),)*)$
                     type: string
             -   description: Filter by city
                 in: query
                 name: city
                 required: false
                 schema:
-                    pattern: '"^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$"'
+                    pattern: ^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$|not-in::(({0,40}),)*)$
                     type: string
             -   description: Filter by state
                 in: query
                 name: state
                 required: false
                 schema:
-                    pattern: '"^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$"'
+                    pattern: ^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$|not-in::(({0,40}),)*)$
                     type: string
             -   description: Filter by country
                 in: query
                 name: country
                 required: false
                 schema:
-                    pattern: '"^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$"'
+                    pattern: ^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$|not-in::(({0,40}),)*)$
                     type: string
             -   description: Filter by postal_code
                 in: query
                 name: postal_code
                 required: false
                 schema:
-                    pattern: '"^(({0,10})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,10}),|not-between::({0,10}),|in::(({0,10}),)*)$"'
+                    pattern: ^(({0,10})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,10}),|not-between::({0,10}),|in::(({0,10}),)*)$|not-in::(({0,10}),)*)$
                     type: string
             -   description: Filter by phone
                 in: query
                 name: phone
                 required: false
                 schema:
-                    pattern: '"^(({0,24})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,24}),|not-between::({0,24}),|in::(({0,24}),)*)$"'
+                    pattern: ^(({0,24})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,24}),|not-between::({0,24}),|in::(({0,24}),)*)$|not-in::(({0,24}),)*)$
                     type: string
             -   description: Filter by fax
                 in: query
                 name: fax
                 required: false
                 schema:
-                    pattern: '"^(({0,24})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,24}),|not-between::({0,24}),|in::(({0,24}),)*)$"'
+                    pattern: ^(({0,24})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,24}),|not-between::({0,24}),|in::(({0,24}),)*)$|not-in::(({0,24}),)*)$
                     type: string
             -   description: Filter by email
                 in: query
                 name: email
                 required: false
                 schema:
-                    pattern: '"^(({0,60})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,60}),|not-between::({0,60}),|in::(({0,60}),)*)$"'
+                    pattern: ^(({0,60})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,60}),|not-between::({0,60}),|in::(({0,60}),)*)$|not-in::(({0,60}),)*)$
                     type: string
             responses:
                 '200':
@@ -1225,6 +1280,11 @@ paths:
                                 type: array
                     description: A list of employee.
             summary: Retrieve all employee
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         post:
             requestBody:
                 content:
@@ -1290,6 +1350,11 @@ paths:
                                 type: array
                     description: employee created successfully
             summary: Create a new employee
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         put:
             parameters:
             -   description: Filter by employee_id
@@ -1297,105 +1362,105 @@ paths:
                 name: employee_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by last_name
                 in: query
                 name: last_name
                 required: false
                 schema:
-                    pattern: '"^(({0,20})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,20}),|not-between::({0,20}),|in::(({0,20}),)*)$"'
+                    pattern: ^(({0,20})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,20}),|not-between::({0,20}),|in::(({0,20}),)*)$|not-in::(({0,20}),)*)$
                     type: string
             -   description: Filter by first_name
                 in: query
                 name: first_name
                 required: false
                 schema:
-                    pattern: '"^(({0,20})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,20}),|not-between::({0,20}),|in::(({0,20}),)*)$"'
+                    pattern: ^(({0,20})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,20}),|not-between::({0,20}),|in::(({0,20}),)*)$|not-in::(({0,20}),)*)$
                     type: string
             -   description: Filter by title
                 in: query
                 name: title
                 required: false
                 schema:
-                    pattern: '"^(({0,30})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,30}),|not-between::({0,30}),|in::(({0,30}),)*)$"'
+                    pattern: ^(({0,30})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,30}),|not-between::({0,30}),|in::(({0,30}),)*)$|not-in::(({0,30}),)*)$
                     type: string
             -   description: Filter by reports_to
                 in: query
                 name: reports_to
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by birth_date
                 in: query
                 name: birth_date
                 required: false
                 schema:
-                    pattern: '"^((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|not-between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$"'
+                    pattern: ^((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|not-between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$|not-in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$
                     type: string
             -   description: Filter by hire_date
                 in: query
                 name: hire_date
                 required: false
                 schema:
-                    pattern: '"^((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|not-between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$"'
+                    pattern: ^((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|not-between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$|not-in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$
                     type: string
             -   description: Filter by address
                 in: query
                 name: address
                 required: false
                 schema:
-                    pattern: '"^(({0,70})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,70}),|not-between::({0,70}),|in::(({0,70}),)*)$"'
+                    pattern: ^(({0,70})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,70}),|not-between::({0,70}),|in::(({0,70}),)*)$|not-in::(({0,70}),)*)$
                     type: string
             -   description: Filter by city
                 in: query
                 name: city
                 required: false
                 schema:
-                    pattern: '"^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$"'
+                    pattern: ^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$|not-in::(({0,40}),)*)$
                     type: string
             -   description: Filter by state
                 in: query
                 name: state
                 required: false
                 schema:
-                    pattern: '"^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$"'
+                    pattern: ^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$|not-in::(({0,40}),)*)$
                     type: string
             -   description: Filter by country
                 in: query
                 name: country
                 required: false
                 schema:
-                    pattern: '"^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$"'
+                    pattern: ^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$|not-in::(({0,40}),)*)$
                     type: string
             -   description: Filter by postal_code
                 in: query
                 name: postal_code
                 required: false
                 schema:
-                    pattern: '"^(({0,10})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,10}),|not-between::({0,10}),|in::(({0,10}),)*)$"'
+                    pattern: ^(({0,10})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,10}),|not-between::({0,10}),|in::(({0,10}),)*)$|not-in::(({0,10}),)*)$
                     type: string
             -   description: Filter by phone
                 in: query
                 name: phone
                 required: false
                 schema:
-                    pattern: '"^(({0,24})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,24}),|not-between::({0,24}),|in::(({0,24}),)*)$"'
+                    pattern: ^(({0,24})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,24}),|not-between::({0,24}),|in::(({0,24}),)*)$|not-in::(({0,24}),)*)$
                     type: string
             -   description: Filter by fax
                 in: query
                 name: fax
                 required: false
                 schema:
-                    pattern: '"^(({0,24})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,24}),|not-between::({0,24}),|in::(({0,24}),)*)$"'
+                    pattern: ^(({0,24})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,24}),|not-between::({0,24}),|in::(({0,24}),)*)$|not-in::(({0,24}),)*)$
                     type: string
             -   description: Filter by email
                 in: query
                 name: email
                 required: false
                 schema:
-                    pattern: '"^(({0,60})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,60}),|not-between::({0,60}),|in::(({0,60}),)*)$"'
+                    pattern: ^(({0,60})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,60}),|not-between::({0,60}),|in::(({0,60}),)*)$|not-in::(({0,60}),)*)$
                     type: string
             requestBody:
                 content:
@@ -1458,6 +1523,11 @@ paths:
                                 type: array
                     description: employee updated successfully
             summary: Update an existing employee by ID
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
     /employee/{employee_id}:
         delete:
             parameters:
@@ -1477,6 +1547,11 @@ paths:
                                 type: array
                     description: employee deleted successfully
             summary: Delete an existing employee by employee_id
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         get:
             parameters:
             -   description: ID of the employee to get
@@ -1495,6 +1570,11 @@ paths:
                                 type: array
                     description: A list of employee.
             summary: Retrieve employee by employee_id
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         put:
             parameters:
             -   description: ID of the employee to update
@@ -1564,6 +1644,11 @@ paths:
                                 type: array
                     description: employee updated successfully
             summary: Update an existing employee by employee_id
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
     /genre:
         delete:
             parameters:
@@ -1572,14 +1657,14 @@ paths:
                 name: genre_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by name
                 in: query
                 name: name
                 required: false
                 schema:
-                    pattern: '"^(({0,120})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,120}),|not-between::({0,120}),|in::(({0,120}),)*)$"'
+                    pattern: ^(({0,120})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,120}),|not-between::({0,120}),|in::(({0,120}),)*)$|not-in::(({0,120}),)*)$
                     type: string
             responses:
                 '204':
@@ -1591,6 +1676,11 @@ paths:
                                 type: array
                     description: genre deleted successfully
             summary: Delete many existing genre using query
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         get:
             parameters:
             -   description: Filter by genre_id
@@ -1598,14 +1688,14 @@ paths:
                 name: genre_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by name
                 in: query
                 name: name
                 required: false
                 schema:
-                    pattern: '"^(({0,120})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,120}),|not-between::({0,120}),|in::(({0,120}),)*)$"'
+                    pattern: ^(({0,120})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,120}),|not-between::({0,120}),|in::(({0,120}),)*)$|not-in::(({0,120}),)*)$
                     type: string
             responses:
                 '200':
@@ -1617,6 +1707,11 @@ paths:
                                 type: array
                     description: A list of genre.
             summary: Retrieve all genre
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         post:
             requestBody:
                 content:
@@ -1642,6 +1737,11 @@ paths:
                                 type: array
                     description: genre created successfully
             summary: Create a new genre
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         put:
             parameters:
             -   description: Filter by genre_id
@@ -1649,14 +1749,14 @@ paths:
                 name: genre_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by name
                 in: query
                 name: name
                 required: false
                 schema:
-                    pattern: '"^(({0,120})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,120}),|not-between::({0,120}),|in::(({0,120}),)*)$"'
+                    pattern: ^(({0,120})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,120}),|not-between::({0,120}),|in::(({0,120}),)*)$|not-in::(({0,120}),)*)$
                     type: string
             requestBody:
                 content:
@@ -1681,6 +1781,11 @@ paths:
                                 type: array
                     description: genre updated successfully
             summary: Update an existing genre by ID
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
     /genre/{genre_id}:
         delete:
             parameters:
@@ -1700,6 +1805,11 @@ paths:
                                 type: array
                     description: genre deleted successfully
             summary: Delete an existing genre by genre_id
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         get:
             parameters:
             -   description: ID of the genre to get
@@ -1718,6 +1828,11 @@ paths:
                                 type: array
                     description: A list of genre.
             summary: Retrieve genre by genre_id
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         put:
             parameters:
             -   description: ID of the genre to update
@@ -1749,6 +1864,11 @@ paths:
                                 type: array
                     description: genre updated successfully
             summary: Update an existing genre by genre_id
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
     /invoice:
         get:
             parameters:
@@ -1757,70 +1877,70 @@ paths:
                 name: invoice_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by customer_id
                 in: query
                 name: customer_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by invoice_date
                 in: query
                 name: invoice_date
                 required: false
                 schema:
-                    pattern: '"^((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|not-between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$"'
+                    pattern: ^((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|not-between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$|not-in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$
                     type: string
             -   description: Filter by billing_address
                 in: query
                 name: billing_address
                 required: false
                 schema:
-                    pattern: '"^(({0,70})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,70}),|not-between::({0,70}),|in::(({0,70}),)*)$"'
+                    pattern: ^(({0,70})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,70}),|not-between::({0,70}),|in::(({0,70}),)*)$|not-in::(({0,70}),)*)$
                     type: string
             -   description: Filter by billing_city
                 in: query
                 name: billing_city
                 required: false
                 schema:
-                    pattern: '"^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$"'
+                    pattern: ^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$|not-in::(({0,40}),)*)$
                     type: string
             -   description: Filter by billing_state
                 in: query
                 name: billing_state
                 required: false
                 schema:
-                    pattern: '"^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$"'
+                    pattern: ^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$|not-in::(({0,40}),)*)$
                     type: string
             -   description: Filter by billing_country
                 in: query
                 name: billing_country
                 required: false
                 schema:
-                    pattern: '"^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$"'
+                    pattern: ^(({0,40})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,40}),|not-between::({0,40}),|in::(({0,40}),)*)$|not-in::(({0,40}),)*)$
                     type: string
             -   description: Filter by billing_postal_code
                 in: query
                 name: billing_postal_code
                 required: false
                 schema:
-                    pattern: '"^(({0,10})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,10}),|not-between::({0,10}),|in::(({0,10}),)*)$"'
+                    pattern: ^(({0,10})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,10}),|not-between::({0,10}),|in::(({0,10}),)*)$|not-in::(({0,10}),)*)$
                     type: string
             -   description: Filter by total
                 in: query
                 name: total
                 required: false
                 schema:
-                    pattern: '"^((.*)|lt::|le::|eq::|ne::|ge::|gt::|between::(.*),|not-between::(.*),|in::((.*),)*)$"'
+                    pattern: ^((.*)|lt::|le::|eq::|ne::|ge::|gt::|between::(.*),|not-between::(.*),|in::((.*),)*)$|not-in::((.*),)*)$
                     type: number
             -   description: Filter by last_updated
                 in: query
                 name: last_updated
                 required: false
                 schema:
-                    pattern: '"^((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|not-between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$"'
+                    pattern: ^((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})|lt::|le::|eq::|ne::|ge::|gt::|between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|not-between::(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),|in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$|not-in::((\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}),)*)$
                     type: string
             responses:
                 '200':
@@ -1832,6 +1952,11 @@ paths:
                                 type: array
                     description: A list of invoice.
             summary: Retrieve all invoice
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         post:
             requestBody:
                 content:
@@ -1889,6 +2014,11 @@ paths:
                                 type: array
                     description: invoice created successfully
             summary: Create a new invoice
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
     /invoice/{invoice_id}:
         get:
             parameters:
@@ -1908,6 +2038,11 @@ paths:
                                 type: array
                     description: A list of invoice.
             summary: Retrieve invoice by invoice_id
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
     /invoice/{invoice_id}/last_updated/{last_updated}:
         delete:
             parameters:
@@ -1933,6 +2068,11 @@ paths:
                                 type: array
                     description: invoice deleted successfully
             summary: Delete an existing invoice by ID
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         put:
             parameters:
             -   description: ID of the invoice to update
@@ -1999,6 +2139,11 @@ paths:
                                 type: array
                     description: invoice updated successfully
             summary: Update an existing invoice by ID
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
     /invoice_line:
         delete:
             parameters:
@@ -2007,35 +2152,35 @@ paths:
                 name: invoice_line_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by invoice_id
                 in: query
                 name: invoice_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by track_id
                 in: query
                 name: track_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by unit_price
                 in: query
                 name: unit_price
                 required: false
                 schema:
-                    pattern: '"^((.*)|lt::|le::|eq::|ne::|ge::|gt::|between::(.*),|not-between::(.*),|in::((.*),)*)$"'
+                    pattern: ^((.*)|lt::|le::|eq::|ne::|ge::|gt::|between::(.*),|not-between::(.*),|in::((.*),)*)$|not-in::((.*),)*)$
                     type: number
             -   description: Filter by quantity
                 in: query
                 name: quantity
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             responses:
                 '204':
@@ -2047,6 +2192,11 @@ paths:
                                 type: array
                     description: invoice_line deleted successfully
             summary: Delete many existing invoice_line using query
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         get:
             parameters:
             -   description: Filter by invoice_line_id
@@ -2054,35 +2204,35 @@ paths:
                 name: invoice_line_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by invoice_id
                 in: query
                 name: invoice_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by track_id
                 in: query
                 name: track_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by unit_price
                 in: query
                 name: unit_price
                 required: false
                 schema:
-                    pattern: '"^((.*)|lt::|le::|eq::|ne::|ge::|gt::|between::(.*),|not-between::(.*),|in::((.*),)*)$"'
+                    pattern: ^((.*)|lt::|le::|eq::|ne::|ge::|gt::|between::(.*),|not-between::(.*),|in::((.*),)*)$|not-in::((.*),)*)$
                     type: number
             -   description: Filter by quantity
                 in: query
                 name: quantity
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             responses:
                 '200':
@@ -2094,6 +2244,11 @@ paths:
                                 type: array
                     description: A list of invoice_line.
             summary: Retrieve all invoice_line
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         post:
             requestBody:
                 content:
@@ -2129,6 +2284,11 @@ paths:
                                 type: array
                     description: invoice_line created successfully
             summary: Create a new invoice_line
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         put:
             parameters:
             -   description: Filter by invoice_line_id
@@ -2136,35 +2296,35 @@ paths:
                 name: invoice_line_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by invoice_id
                 in: query
                 name: invoice_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by track_id
                 in: query
                 name: track_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by unit_price
                 in: query
                 name: unit_price
                 required: false
                 schema:
-                    pattern: '"^((.*)|lt::|le::|eq::|ne::|ge::|gt::|between::(.*),|not-between::(.*),|in::((.*),)*)$"'
+                    pattern: ^((.*)|lt::|le::|eq::|ne::|ge::|gt::|between::(.*),|not-between::(.*),|in::((.*),)*)$|not-in::((.*),)*)$
                     type: number
             -   description: Filter by quantity
                 in: query
                 name: quantity
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             requestBody:
                 content:
@@ -2195,6 +2355,11 @@ paths:
                                 type: array
                     description: invoice_line updated successfully
             summary: Update an existing invoice_line by ID
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
     /invoice_line/{invoice_line_id}:
         delete:
             parameters:
@@ -2214,6 +2379,11 @@ paths:
                                 type: array
                     description: invoice_line deleted successfully
             summary: Delete an existing invoice_line by invoice_line_id
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         get:
             parameters:
             -   description: ID of the invoice_line to get
@@ -2232,6 +2402,11 @@ paths:
                                 type: array
                     description: A list of invoice_line.
             summary: Retrieve invoice_line by invoice_line_id
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         put:
             parameters:
             -   description: ID of the invoice_line to update
@@ -2269,6 +2444,11 @@ paths:
                                 type: array
                     description: invoice_line updated successfully
             summary: Update an existing invoice_line by invoice_line_id
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
     /media_type:
         delete:
             parameters:
@@ -2277,14 +2457,14 @@ paths:
                 name: media_type_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by name
                 in: query
                 name: name
                 required: false
                 schema:
-                    pattern: '"^(({0,120})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,120}),|not-between::({0,120}),|in::(({0,120}),)*)$"'
+                    pattern: ^(({0,120})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,120}),|not-between::({0,120}),|in::(({0,120}),)*)$|not-in::(({0,120}),)*)$
                     type: string
             responses:
                 '204':
@@ -2296,6 +2476,11 @@ paths:
                                 type: array
                     description: media_type deleted successfully
             summary: Delete many existing media_type using query
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         get:
             parameters:
             -   description: Filter by media_type_id
@@ -2303,14 +2488,14 @@ paths:
                 name: media_type_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by name
                 in: query
                 name: name
                 required: false
                 schema:
-                    pattern: '"^(({0,120})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,120}),|not-between::({0,120}),|in::(({0,120}),)*)$"'
+                    pattern: ^(({0,120})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,120}),|not-between::({0,120}),|in::(({0,120}),)*)$|not-in::(({0,120}),)*)$
                     type: string
             responses:
                 '200':
@@ -2322,6 +2507,11 @@ paths:
                                 type: array
                     description: A list of media_type.
             summary: Retrieve all media_type
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         post:
             requestBody:
                 content:
@@ -2347,6 +2537,11 @@ paths:
                                 type: array
                     description: media_type created successfully
             summary: Create a new media_type
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         put:
             parameters:
             -   description: Filter by media_type_id
@@ -2354,14 +2549,14 @@ paths:
                 name: media_type_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by name
                 in: query
                 name: name
                 required: false
                 schema:
-                    pattern: '"^(({0,120})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,120}),|not-between::({0,120}),|in::(({0,120}),)*)$"'
+                    pattern: ^(({0,120})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,120}),|not-between::({0,120}),|in::(({0,120}),)*)$|not-in::(({0,120}),)*)$
                     type: string
             requestBody:
                 content:
@@ -2386,6 +2581,11 @@ paths:
                                 type: array
                     description: media_type updated successfully
             summary: Update an existing media_type by ID
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
     /playlist:
         delete:
             parameters:
@@ -2394,14 +2594,14 @@ paths:
                 name: playlist_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by name
                 in: query
                 name: name
                 required: false
                 schema:
-                    pattern: '"^(({0,120})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,120}),|not-between::({0,120}),|in::(({0,120}),)*)$"'
+                    pattern: ^(({0,120})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,120}),|not-between::({0,120}),|in::(({0,120}),)*)$|not-in::(({0,120}),)*)$
                     type: string
             responses:
                 '204':
@@ -2413,6 +2613,11 @@ paths:
                                 type: array
                     description: playlist deleted successfully
             summary: Delete many existing playlist using query
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         get:
             parameters:
             -   description: Filter by playlist_id
@@ -2420,14 +2625,14 @@ paths:
                 name: playlist_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by name
                 in: query
                 name: name
                 required: false
                 schema:
-                    pattern: '"^(({0,120})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,120}),|not-between::({0,120}),|in::(({0,120}),)*)$"'
+                    pattern: ^(({0,120})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,120}),|not-between::({0,120}),|in::(({0,120}),)*)$|not-in::(({0,120}),)*)$
                     type: string
             responses:
                 '200':
@@ -2439,6 +2644,11 @@ paths:
                                 type: array
                     description: A list of playlist.
             summary: Retrieve all playlist
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         post:
             requestBody:
                 content:
@@ -2464,6 +2674,11 @@ paths:
                                 type: array
                     description: playlist created successfully
             summary: Create a new playlist
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         put:
             parameters:
             -   description: Filter by playlist_id
@@ -2471,14 +2686,14 @@ paths:
                 name: playlist_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by name
                 in: query
                 name: name
                 required: false
                 schema:
-                    pattern: '"^(({0,120})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,120}),|not-between::({0,120}),|in::(({0,120}),)*)$"'
+                    pattern: ^(({0,120})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,120}),|not-between::({0,120}),|in::(({0,120}),)*)$|not-in::(({0,120}),)*)$
                     type: string
             requestBody:
                 content:
@@ -2503,6 +2718,11 @@ paths:
                                 type: array
                     description: playlist updated successfully
             summary: Update an existing playlist by ID
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
     /playlist/{playlist_id}:
         delete:
             parameters:
@@ -2522,6 +2742,11 @@ paths:
                                 type: array
                     description: playlist deleted successfully
             summary: Delete an existing playlist by playlist_id
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         get:
             parameters:
             -   description: ID of the playlist to get
@@ -2540,6 +2765,11 @@ paths:
                                 type: array
                     description: A list of playlist.
             summary: Retrieve playlist by playlist_id
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         put:
             parameters:
             -   description: ID of the playlist to update
@@ -2571,6 +2801,11 @@ paths:
                                 type: array
                     description: playlist updated successfully
             summary: Update an existing playlist by playlist_id
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
     /playlist_track:
         delete:
             parameters:
@@ -2579,14 +2814,14 @@ paths:
                 name: playlist_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by track_id
                 in: query
                 name: track_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             responses:
                 '204':
@@ -2598,6 +2833,11 @@ paths:
                                 type: array
                     description: playlist_track deleted successfully
             summary: Delete many existing playlist_track using query
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         get:
             parameters:
             -   description: Filter by playlist_id
@@ -2605,14 +2845,14 @@ paths:
                 name: playlist_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by track_id
                 in: query
                 name: track_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             responses:
                 '200':
@@ -2624,6 +2864,11 @@ paths:
                                 type: array
                     description: A list of playlist_track.
             summary: Retrieve all playlist_track
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         post:
             requestBody:
                 content:
@@ -2649,6 +2894,11 @@ paths:
                                 type: array
                     description: playlist_track created successfully
             summary: Create a new playlist_track
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         put:
             parameters:
             -   description: Filter by playlist_id
@@ -2656,14 +2906,14 @@ paths:
                 name: playlist_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by track_id
                 in: query
                 name: track_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             requestBody:
                 content:
@@ -2687,6 +2937,11 @@ paths:
                                 type: array
                     description: playlist_track updated successfully
             summary: Update an existing playlist_track by ID
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
     /track:
         delete:
             parameters:
@@ -2695,63 +2950,63 @@ paths:
                 name: track_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by name
                 in: query
                 name: name
                 required: false
                 schema:
-                    pattern: '"^(({0,200})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,200}),|not-between::({0,200}),|in::(({0,200}),)*)$"'
+                    pattern: ^(({0,200})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,200}),|not-between::({0,200}),|in::(({0,200}),)*)$|not-in::(({0,200}),)*)$
                     type: string
             -   description: Filter by album_id
                 in: query
                 name: album_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by media_type_id
                 in: query
                 name: media_type_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by genre_id
                 in: query
                 name: genre_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by composer
                 in: query
                 name: composer
                 required: false
                 schema:
-                    pattern: '"^(({0,220})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,220}),|not-between::({0,220}),|in::(({0,220}),)*)$"'
+                    pattern: ^(({0,220})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,220}),|not-between::({0,220}),|in::(({0,220}),)*)$|not-in::(({0,220}),)*)$
                     type: string
             -   description: Filter by milliseconds
                 in: query
                 name: milliseconds
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by bytes
                 in: query
                 name: bytes
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by unit_price
                 in: query
                 name: unit_price
                 required: false
                 schema:
-                    pattern: '"^((.*)|lt::|le::|eq::|ne::|ge::|gt::|between::(.*),|not-between::(.*),|in::((.*),)*)$"'
+                    pattern: ^((.*)|lt::|le::|eq::|ne::|ge::|gt::|between::(.*),|not-between::(.*),|in::((.*),)*)$|not-in::((.*),)*)$
                     type: number
             responses:
                 '204':
@@ -2763,6 +3018,11 @@ paths:
                                 type: array
                     description: track deleted successfully
             summary: Delete many existing track using query
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         get:
             parameters:
             -   description: Filter by track_id
@@ -2770,63 +3030,63 @@ paths:
                 name: track_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by name
                 in: query
                 name: name
                 required: false
                 schema:
-                    pattern: '"^(({0,200})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,200}),|not-between::({0,200}),|in::(({0,200}),)*)$"'
+                    pattern: ^(({0,200})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,200}),|not-between::({0,200}),|in::(({0,200}),)*)$|not-in::(({0,200}),)*)$
                     type: string
             -   description: Filter by album_id
                 in: query
                 name: album_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by media_type_id
                 in: query
                 name: media_type_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by genre_id
                 in: query
                 name: genre_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by composer
                 in: query
                 name: composer
                 required: false
                 schema:
-                    pattern: '"^(({0,220})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,220}),|not-between::({0,220}),|in::(({0,220}),)*)$"'
+                    pattern: ^(({0,220})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,220}),|not-between::({0,220}),|in::(({0,220}),)*)$|not-in::(({0,220}),)*)$
                     type: string
             -   description: Filter by milliseconds
                 in: query
                 name: milliseconds
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by bytes
                 in: query
                 name: bytes
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by unit_price
                 in: query
                 name: unit_price
                 required: false
                 schema:
-                    pattern: '"^((.*)|lt::|le::|eq::|ne::|ge::|gt::|between::(.*),|not-between::(.*),|in::((.*),)*)$"'
+                    pattern: ^((.*)|lt::|le::|eq::|ne::|ge::|gt::|between::(.*),|not-between::(.*),|in::((.*),)*)$|not-in::((.*),)*)$
                     type: number
             responses:
                 '200':
@@ -2838,6 +3098,11 @@ paths:
                                 type: array
                     description: A list of track.
             summary: Retrieve all track
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         post:
             requestBody:
                 content:
@@ -2883,6 +3148,11 @@ paths:
                                 type: array
                     description: track created successfully
             summary: Create a new track
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         put:
             parameters:
             -   description: Filter by track_id
@@ -2890,63 +3160,63 @@ paths:
                 name: track_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by name
                 in: query
                 name: name
                 required: false
                 schema:
-                    pattern: '"^(({0,200})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,200}),|not-between::({0,200}),|in::(({0,200}),)*)$"'
+                    pattern: ^(({0,200})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,200}),|not-between::({0,200}),|in::(({0,200}),)*)$|not-in::(({0,200}),)*)$
                     type: string
             -   description: Filter by album_id
                 in: query
                 name: album_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by media_type_id
                 in: query
                 name: media_type_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by genre_id
                 in: query
                 name: genre_id
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by composer
                 in: query
                 name: composer
                 required: false
                 schema:
-                    pattern: '"^(({0,220})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,220}),|not-between::({0,220}),|in::(({0,220}),)*)$"'
+                    pattern: ^(({0,220})|lt::|le::|eq::|ne::|ge::|gt::|between::({0,220}),|not-between::({0,220}),|in::(({0,220}),)*)$|not-in::(({0,220}),)*)$
                     type: string
             -   description: Filter by milliseconds
                 in: query
                 name: milliseconds
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by bytes
                 in: query
                 name: bytes
                 required: false
                 schema:
-                    pattern: '"^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$"'
+                    pattern: ^((\d+)|lt::|le::|eq::|ne::|ge::|gt::|between::(\d+),|not-between::(\d+),|in::((\d+),)*)$|not-in::((\d+),)*)$
                     type: integer
             -   description: Filter by unit_price
                 in: query
                 name: unit_price
                 required: false
                 schema:
-                    pattern: '"^((.*)|lt::|le::|eq::|ne::|ge::|gt::|between::(.*),|not-between::(.*),|in::((.*),)*)$"'
+                    pattern: ^((.*)|lt::|le::|eq::|ne::|ge::|gt::|between::(.*),|not-between::(.*),|in::((.*),)*)$|not-in::((.*),)*)$
                     type: number
             requestBody:
                 content:
@@ -2987,6 +3257,11 @@ paths:
                                 type: array
                     description: track updated successfully
             summary: Update an existing track by ID
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
     /track/{track_id}:
         delete:
             parameters:
@@ -3006,6 +3281,11 @@ paths:
                                 type: array
                     description: track deleted successfully
             summary: Delete an existing track by track_id
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         get:
             parameters:
             -   description: ID of the track to get
@@ -3024,6 +3304,11 @@ paths:
                                 type: array
                     description: A list of track.
             summary: Retrieve track by track_id
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
         put:
             parameters:
             -   description: ID of the track to update
@@ -3071,6 +3356,11 @@ paths:
                                 type: array
                     description: track updated successfully
             summary: Update an existing track by track_id
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
     /{proxy+}:
         options:
             consumes:
@@ -3090,19 +3380,10 @@ paths:
                     schema:
                         type: object
             x-amazon-apigateway-integration:
-                passthroughBehavior: when_no_match
-                requestTemplates:
-                    application/json: '{"statusCode": 200}'
-                responses:
-                    default:
-                        responseParameters:
-                            method.response.header.Access-Control-Allow-Headers: '''Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'''
-                            method.response.header.Access-Control-Allow-Methods: '''DELETE,GET,HEAD,OPTIONS,PATCH,POST,PUT'''
-                            method.response.header.Access-Control-Allow-Origin: '''*'''
-                        responseTemplates:
-                            application/json: ''
-                        statusCode: 200
-                type: mock
+                httpMethod: POST
+                type: aws_proxy
+                uri: invoke_arn
+            x-function-name: function_name
 x-amazon-apigateway-cors:
     allowCredentials: true
     allowHeaders:

@@ -9,9 +9,7 @@ class PostgresCursor(Cursor):
     def __init__(self, cursor):
         self.__cursor = cursor
 
-    def execute(
-        self, sql: str, parameters: dict, result_columns: list[str]
-    ) -> list:
+    def execute(self, sql: str, parameters: dict, result_columns: list[str]) -> list:
         """
         Execute SQL statements on the PostgreSQL database.
 
@@ -57,8 +55,8 @@ class PostgresCursor(Cursor):
 
 
 class PostgresConnection(Connection):
-    def __init__(self, db_secret_name: str) -> None:
-        super().__init__(db_secret_name)
+    def __init__(self, db_config: dict) -> None:
+        super().__init__(db_config)
         self.__connection = self.get_connection()
 
     def cursor(self) -> Cursor:
@@ -102,7 +100,5 @@ class PostgresConnection(Connection):
             password=password,
             host=host,
             port=port,
-            options="-c search_path={0}".format(search_path)
-            if search_path
-            else None,
+            options="-c search_path={0}".format(search_path) if search_path else None,
         )

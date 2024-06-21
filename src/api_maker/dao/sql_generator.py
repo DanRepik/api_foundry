@@ -1,4 +1,5 @@
 import re
+from typing import Optional
 from datetime import datetime, date
 
 from api_maker.utils.app_exception import ApplicationException
@@ -10,11 +11,16 @@ log = logger(__name__)
 
 
 class SQLGenerator:
+    operation: Operation
+    schema_object: SchemaObject
+    engine: str
+
     def __init__(
-        self, operation: Operation, schema_object: SchemaObject
+        self, operation: Operation, schema_object: SchemaObject, engine: str
     ) -> None:
         self.operation = operation
         self.schema_object = schema_object
+        self.engine = engine
         self.prefix_map = self.__get_prefix_map(schema_object)
         self.single_table = self.__single_table()
         self.__select_list = None
@@ -109,7 +115,7 @@ class SQLGenerator:
         )
 
     def search_value_assignment(
-        self, property: SchemaObjectProperty, value, prefix: str | None = None
+        self, property: SchemaObjectProperty, value, prefix: Optional[str ] = None
     ) -> tuple[str, dict]:
         operand = "="
         relational_types = {
@@ -229,7 +235,7 @@ class SQLGenerator:
         self,
         regex_list: list[str],
         properties: dict,
-        prefix: str | None = None,
+        prefix: Optional[str] = None,
     ):
         """
         Accepts a prefix string, list of regular expressions, and a
@@ -269,7 +275,7 @@ class SQLGenerator:
         return filtered_dict
 
     def placeholder(self, property: SchemaObjectProperty, param: str) -> str:
-        if property.engine == "oracle":
+        if self.engine == "oracle":
             if property.column_type == "date":
                 return f"TO_DATE(:{param}, 'YYYY-MM-DD')"
             elif property.column_type == "datetime":
@@ -288,9 +294,9 @@ class SQLGenerator:
         elif property.api_type == "integer":
             return f"{property.column_name} + 1"
         elif property.api_type == "string":
-            if property.engine == "oracle":
+            if self.engine == "oracle":
                 return "SYS_GUID()"
-            if property.engine == "mysql":
+            if self.engine == "mysql":
                 return "UUID()"
             return "gen_random_uuid()"
         raise ApplicationException(

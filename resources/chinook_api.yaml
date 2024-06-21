@@ -6,7 +6,6 @@ components:
   schemas:
     album:
       type: object
-      x-am-engine: postgres
       x-am-database: chinook
       properties:
         album_id:
@@ -17,16 +16,12 @@ components:
           maxLength: 160
         artist_id:
           type: integer
-        last_updated:
-          type: string
-          format: date
       required:
         - album_id
         - title
         - artist_id
     artist:
       type: object
-      x-am-engine: postgres
       x-am-database: chinook
       properties:
         artist_id:
@@ -39,7 +34,6 @@ components:
         - artist_id
     customer:
       type: object
-      x-am-engine: postgres
       x-am-database: chinook
       x-am-concurrency-control: version_stamp
       properties:
@@ -90,7 +84,6 @@ components:
         - email
     Employee:
       type: object
-      x-am-engine: postgres
       x-am-database: chinook
       properties:
         employee_id:
@@ -143,7 +136,6 @@ components:
         - first_name
     Genre:
       type: object
-      x-am-engine: postgres
       x-am-database: chinook
       properties:
         genre_id:
@@ -156,7 +148,6 @@ components:
         - genre_id
     invoice:
       type: object
-      x-am-engine: postgres
       x-am-database: chinook
       x-am-concurrency-control: last_updated
       properties:
@@ -204,7 +195,6 @@ components:
         - total
     invoice_line:
       type: object
-      x-am-engine: postgres
       x-am-database: chinook
       properties:
         invoice_line_id:
@@ -227,7 +217,6 @@ components:
         - quantity
     media_type:
       type: object
-      x-am-engine: postgres
       x-am-database: chinook
       properties:
         media_type_id:
@@ -239,7 +228,6 @@ components:
         - media_type_id
     playlist:
       type: object
-      x-am-engine: postgres
       x-am-database: chinook
       properties:
         playlist_id:
@@ -252,7 +240,6 @@ components:
         - playlist_id
     playlist_track:
       type: object
-      x-am-engine: postgres
       x-am-database: chinook
       properties:
         playlist_id:
@@ -264,7 +251,6 @@ components:
         - track_id
     track:
       type: object
-      x-am-engine: postgres
       x-am-database: chinook
       properties:
         track_id:

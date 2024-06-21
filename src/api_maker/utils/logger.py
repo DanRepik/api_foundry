@@ -14,7 +14,6 @@ WARN = logging.WARN
 INFO = logging.INFO
 DEBUG = logging.DEBUG
 
-
 def logger(name=None):
     """
     Function to create a logger with a specified name or default name.
@@ -35,3 +34,25 @@ def logger(name=None):
 
     # Returning a logger object with the specified name or the root logger
     return logging.getLogger(name)
+
+def write_logging_file(file_name, content):
+    """
+    Function to write a given string to a file in the temp/logging folder.
+
+    Parameters:
+        file_name (str): Name of the file to write the content to.
+        content (str): The string content to write to the file.
+
+    """
+    # Define the directory path
+    dir_path = os.path.join("temp", "logging")
+    
+    # Ensure the directory exists
+    os.makedirs(dir_path, exist_ok=True)
+    
+    # Define the file path
+    file_path = os.path.join(dir_path, file_name)
+    
+    # Write the content to the file
+    with open(file_path, "w") as file:
+        file.write(content + "\n")

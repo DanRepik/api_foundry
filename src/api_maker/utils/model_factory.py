@@ -16,7 +16,7 @@ class OpenAPIElement:
         self.required = self.properties.get("required", None)
         self.type = self.properties.get("type", None)
 
-    def resolve_reference(self, reference: str | None) -> dict:
+    def resolve_reference(self, reference: Optional[str]) -> dict:
         """
         Resolves the reference in the OpenAPI specification and returns the referenced element.
 
@@ -30,20 +30,26 @@ class OpenAPIElement:
         if not reference:
             return {}
 
-        components = reference.split("/")
-        current_element = ModelFactory.document
+        try:
+            current_element = ModelFactory.spec
+            if not current_element:
+                return {}
 
-        # Iterate over each component to traverse the specification
-        for component in components:
-            if component == "#":
-                continue
-            elif component in current_element:
-                # Move to the next element
-                current_element = current_element[component]
-            else:
-                raise ApplicationException(500, f"Reference not found: {reference}")
+            # Iterate over each component to traverse the specification
+            for component in reference.lower().split("/"):
+                if component == "#":
+                    continue
+                elif component in current_element:
+                    # Move to the next element
+                    current_element = current_element[component]
+                else:
+                    raise ApplicationException(500, f"Reference not found: {reference}")
 
-        return current_element
+            return current_element
+        except Exception as e:
+            log.error(f"exception: {e}")
+        
+        return {}
 
 
 class SchemaObjectAssociation(OpenAPIElement):
@@ -75,10 +81,8 @@ class SchemaObjectAssociation(OpenAPIElement):
 
 
 class SchemaObjectProperty(OpenAPIElement):
-    def __init__(self, engine: str, entity: str, name: str, properties: Dict[str, Any]):
+    def __init__(self, entity: str, name: str, properties: Dict[str, Any]):
         super().__init__(properties)
-        assert all(arg is not None for arg in (engine, entity, name, properties))
-        self.engine = engine
         self.entity = entity
         self.name = name
         self.column_name = properties.get("x-am-column-name", name)
@@ -136,8 +140,8 @@ class SchemaObjectProperty(OpenAPIElement):
 
 
 class SchemaObjectKey(SchemaObjectProperty):
-    def __init__(self, engine: str, entity: str, name: str, properties: Dict[str, Any]):
-        super().__init__(engine, entity, name, properties)
+    def __init__(self, entity: str, name: str, properties: Dict[str, Any]):
+        super().__init__(entity, name, properties)
         self.key_type = properties.get("x-am-primary-key", "auto")
         if self.key_type not in ["required", "auto", "sequence"]:
             raise ApplicationException(
@@ -161,23 +165,20 @@ class SchemaObjectKey(SchemaObjectProperty):
 
 
 class SchemaObject(OpenAPIElement):
-    concurrency_property: SchemaObjectProperty | None
+    concurrency_property: Optional[SchemaObjectProperty]
 
     def __init__(self, entity: str, schema_object: Dict[str, Any]):
         super().__init__(schema_object)
         self.entity = entity
         self.schema_object = schema_object
-        self.engine = schema_object.get("x-am-engine", "").lower()
-        self.validate_engine(entity)
-        self.database = schema_object["x-am-database"].lower()
+        database = schema_object.get("x-am-database")
+        if database:
+            self.database = database.lower()
         self.properties = {}
         self.relations = {}
         self.primary_key = None
         self.initialize_properties()
         self.set_concurrency_property(schema_object)
-
-    def validate_engine(self, entity: str):
-        assert self.engine in ["postgres", "oracle", "mysql"], f"Unrecognized engine entity: {entity}, engine: {self.engine}"
 
     def initialize_properties(self):
         for property_name, prop in self.schema_object.get("properties", {}).items():
@@ -196,10 +197,10 @@ class SchemaObject(OpenAPIElement):
                 {**(prop if type == "object" else prop["items"]), "type": type}
             )
         else:
-            object_property = SchemaObjectProperty(self.engine, self.entity, property_name, prop)
+            object_property = SchemaObjectProperty(self.entity, property_name, prop)
             self.properties[property_name] = object_property
             if object_property.is_primary_key:
-                self.primary_key = SchemaObjectKey(self.engine, self.entity, property_name, prop)
+                self.primary_key = SchemaObjectKey(self.entity, property_name, prop)
 
     def set_concurrency_property(self, prop: Dict[str, Any]):
         self.concurrency_property = None
@@ -226,19 +227,27 @@ class SchemaObject(OpenAPIElement):
 
 
 class ModelFactory:
+    spec: dict
+
     @classmethod
-    def load_spec(cls, api_spec_path: str = os.environ["API_SPEC"]):
-        cls.schema_objects = dict()
+    def load_yaml(cls, api_spec_path: str):
+        log.info(f"api_spec_path: {api_spec_path}")
         if api_spec_path:
             with open(api_spec_path, "r") as yaml_file:
-                cls.document = yaml.safe_load(yaml_file)
+                spec = yaml.safe_load(yaml_file)
+        cls.set_spec(spec)
 
-            schemas = cls.document.get("components", {}).get("schemas", {})
-            lower_schemas = dict()
-            for name, schema in schemas.items():
-                lower_schemas[name.lower] = schema
-                cls.schema_objects[name.lower()] = schema
-            cls.document.get("components", {})["schemas"] = cls.schema_objects
+    @classmethod
+    def set_spec(cls, spec):
+        cls.spec = spec    
+        cls.schema_objects = dict()
+
+        schemas = cls.spec.get("components", {}).get("schemas", {})
+        lower_schemas = dict()
+        for name, schema in schemas.items():
+            lower_schemas[name.lower] = schema
+            cls.schema_objects[name.lower()] = schema
+        cls.spec.get("components", {})["schemas"] = cls.schema_objects
 
         log.info(f"schemas: {cls.schema_objects.keys()}")
 

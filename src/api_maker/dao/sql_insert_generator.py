@@ -1,3 +1,4 @@
+from typing import Optional
 from api_maker.dao.sql_generator import SQLGenerator
 from api_maker.operation import Operation
 from api_maker.utils.app_exception import ApplicationException
@@ -8,10 +9,10 @@ log = logger(__name__)
 
 
 class SQLInsertGenerator(SQLGenerator):
-    key_property: SchemaObjectKey | None
+    key_property: Optional[SchemaObjectKey]
 
-    def __init__(self, operation: Operation, schema_object: SchemaObject) -> None:
-        super().__init__(operation, schema_object)
+    def __init__(self, operation: Operation, schema_object: SchemaObject, engine: str) -> None:
+        super().__init__(operation, schema_object, engine)
         self.key_property = schema_object.primary_key
         if self.key_property:
             if self.key_property.key_type == "auto":

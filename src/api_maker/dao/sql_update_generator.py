@@ -8,8 +8,8 @@ log = logger(__name__)
 
 
 class SQLUpdateGenerator(SQLGenerator):
-    def __init__(self, operation: Operation, schema_object: SchemaObject) -> None:
-        super().__init__(operation, schema_object)
+    def __init__(self, operation: Operation, schema_object: SchemaObject, engine: str) -> None:
+        super().__init__(operation, schema_object, engine)
 
     @property
     def sql(self) -> str:
