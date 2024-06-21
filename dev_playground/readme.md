@@ -1,6 +1,6 @@
 # Dev Playground
 
-The Dev Playground is a docker compose file that sets up both Localstack and a collection of databases running in Docker.  The playground provides a local environment where API-MAKER deployments can be made.
+The Dev Playground is a docker compose file that sets up both Localstack and a collection of databases running in Docker.  The playground provides a environment where API-MAKER deployments can be made and tested locally.
 
 The Dev Playground runs with Postgres, Oracle, and MySQL databases and they are initialized with the Chinook open source database.
 

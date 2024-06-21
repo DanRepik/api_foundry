@@ -214,6 +214,20 @@ ALTER TABLE track ADD CONSTRAINT track_media_type_id_fkey
 
 CREATE INDEX track_media_type_id_idx ON track (media_type_id);
 
+/*******************************************************************************
+   API-MAKER modifications
+********************************************************************************/
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+ALTER TABLE customer
+  ADD COLUMN version_stamp UUID DEFAULT uuid_generate_v4() NOT NULL;
+
+ALTER TABLE invoice
+  ADD COLUMN last_updated TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE genre
+  ADD COLUMN version INT NOT NULL DEFAULT 1;
 
 /*******************************************************************************
    Populate Tables

@@ -36,7 +36,7 @@ create_secret_if_not_exists(
     json.dumps(
         {
             "engine": "postgres",
-            "dbname": "chinook",
+            "dbname": "chinook_auto_increment",
             "username": "chinook_user",
             "password": "chinook_password",
             "host": "postgres_db",

@@ -18,67 +18,11 @@ source devtools.sh
 
 # Usage
 
-## Dev Playground
+## AWS Configuration
 
-The Dev Playground is a docker compose file that sets up both Localstack and a collection of databases running in Docker.  The playground provides a local environment where API-MAKER deployments can be made.
+In order to make deployments valid AWS credentials must be provided. The devtools.sh script sets AWS_PROFILE to 'localstack' by default however this can be overridden it needed.
 
-The Dev Playground runs with Postgres, Oracle, and MySQL databases and they are initialized with the Chinook open source database.
-
-The playground must be running if your making local deployments and using the Chinook example databases.
-
-**Start Playground**
-
-To start the playground run;
-
-```bash
-playground_up
-```
-
-This is equivalent to;
-
-```bash
-docker-compose -f ../../../dev_playground/playground_compose.yaml up -d'
-```
-
-**Stop the Playground
-
-To stop the playground run;
-
-```bash
-playground down
-```
-
-This is equivalent to;
-
-```bash
-docker-compose -f ../../../dev_playground/playground_compose.yaml down'
-```
-
-**Reset the Playground**
-
-Reset allows restoring the databases back to their original state.
-
-```bash
-playground_reset
-```
-
-This is equivalent to;
-
-```bash
-playground_down; \
-docker volume rm dev_playground_postgres_data dev_playground_oracle_data dev_playground_mysql_data; \
-playground_up
-```
-
-# Running an Example Deployment
-
-**AWS Configuration**
-
-The devtools.sh script sets AWS_PROFILE to 'localstack' by default.
-
-> Other AWS profiles can be used to make deployments to real AWS.
-
-To deploy to Localstack you will need to add that profile to you AWS configuration.  To do that add the following to the '~/.aws/credentials' file;
+To deploy to Localstack you will need to add a 'localstack' profile to you AWS configuration.  To do that add the following to the '~/.aws/credentials' file;
 
 ```
 [localstack]
@@ -94,6 +38,51 @@ region = us-east-1
 endpoint_url = http://localhost.localstack.cloud:4566
 ```
 
+## Dev Playground
+
+The Dev Playground is a docker compose file that sets up both Localstack and a collection of databases running in Docker.  The playground provides a local environment where API-MAKER deployments can be made.
+
+The Dev Playground runs with Postgres, Oracle, and MySQL databases and they are initialized with the Chinook open source database.
+
+The playground must be running when making local deployments and using the Chinook example databases.
+
+**Start Playground**
+
+To start the playground run;
+
+```bash
+playground_up
+```
+
+Individual databases can be started with;
+
+```bash
+playground_postgres
+playground_oracle
+playground_mysql
+```
+
+
+**Stop the Playground**
+
+To stop the playground run;
+
+```bash
+playground_down
+```
+
+**Reset the Playground**
+
+Reset allows restoring the databases back to their original state.
+
+```bash
+playground_reset
+```
+
+Resetting the database shuts down all playground containers and removes the database volumes.
+
+# Running an Example Deployment
+
 **Deploy to the Playground**
 
 To make a deployment run;
@@ -102,22 +91,10 @@ To make a deployment run;
 up
 ```
 
-This is equivalent to;
-
-```bash
-pulumi up --yes --stack local
-```
-
 **Destory a Deployment**
 
 To destroy a deployment run;
 
 ```bash
 down
-```
-
-This is equivalent to;
-
-```bash
-pulumi destroy --yes --stack local
 ```
