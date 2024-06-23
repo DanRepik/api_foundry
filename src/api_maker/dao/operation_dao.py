@@ -71,6 +71,9 @@ class OperationDAO(DAO):
         return result
 
     def __fetch_many(self, parent_set: list[dict], cursor: Cursor):
+        if "properties" not in self.operation.metadata_params:
+            return
+
         for name, relation in self.schema_object.relations.items():
             log.info(f"checking relation: {name}, relation: {vars(relation)}")
             if relation.type == "object":
@@ -85,8 +88,6 @@ class OperationDAO(DAO):
             for parent in parent_set:
                 parent[name] = []
 
-            log.info(f"child_set: {child_set}")
-
             if len(child_set) == 0:
                 continue
 
@@ -95,9 +96,7 @@ class OperationDAO(DAO):
             for parent in parent_set:
                 parents[parent[relation.parent_property.name]] = parent
 
-            log.info(f"parents: {parents}")
             for child in child_set:
-                log.info(f"child {child}")
                 parent_id = child[relation.child_property.name]
                 parent = parents.get(parent_id)
                 if parent:
@@ -112,7 +111,6 @@ class OperationDAO(DAO):
         )
         for record in record_set:
             object = generator.marshal_record(record)
-            log.info(f"object: {object}")
             result.append(object)
 
         return result

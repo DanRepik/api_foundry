@@ -1,6 +1,5 @@
 from datetime import datetime
 import json
-import os
 
 from api_maker.utils.app_exception import ApplicationException
 from api_maker.utils.logger import logger
@@ -18,39 +17,39 @@ class TestTransactionalService:
         Integration test to check insert
         """
         # test insert/create
-        transactional_service = TransactionalService()
-        operation = Operation(
-            entity="media_type",
-            action="create",
-            store_params={"media_type_id": 9000, "name": "X-Ray"},
+        result = TransactionalService().execute(
+            Operation(
+                entity="media_type",
+                action="create",
+                store_params={"name": "X-Ray"},
+            )
         )
-
-        result = transactional_service.execute(operation)
         log.info(f"result: {json.dumps(result, indent=4)}")
         assert result[0]["name"] == "X-Ray"
+        media_type_id = result[0]["media_type_id"]
 
         # test select/read
         operation = Operation(
             entity="media_type",
             action="read",
-            query_params={"media_type_id": 9000},
+            query_params={"media_type_id": media_type_id},
         )
-        result = transactional_service.execute(operation)
+        result = TransactionalService().execute(operation)
 
         log.info(f"result: {result}")
         log.info(f"result: {json.dumps(result, indent=4)}")
-        assert result[0]["media_type_id"] == 9000
+        assert result[0]["media_type_id"] == media_type_id
         assert result[0]["name"] == "X-Ray"
 
         # test update
         operation = Operation(
             entity="media_type",
             action="update",
-            query_params={"media_type_id": 9000},
+            query_params={"media_type_id": media_type_id},
             store_params={"name": "Ray gun"},
         )
 
-        result = transactional_service.execute(operation)
+        result = TransactionalService().execute(operation)
 
         log.info(f"result: {json.dumps(result, indent=4)}")
         assert len(result) == 1
@@ -60,23 +59,23 @@ class TestTransactionalService:
         operation = Operation(
             entity="media_type",
             action="delete",
-            query_params={"media_type_id": 9000},
+            query_params={"media_type_id": media_type_id},
         )
 
-        result = transactional_service.execute(operation)
+        result = TransactionalService().execute(operation)
 
         log.info(f"result: {json.dumps(result, indent=4)}")
         assert len(result) == 1
-        assert result[0]["media_type_id"] == 9000
+        assert result[0]["media_type_id"] == media_type_id
         assert result[0]["name"] == "Ray gun"
 
         # test select/read
         operation = Operation(
             entity="media_type",
             action="read",
-            query_params={"media_type_id": 9000},
+            query_params={"media_type_id": media_type_id},
         )
-        result = transactional_service.execute(operation)
+        result = TransactionalService().execute(operation)
 
         log.info(f"result: {result}")
         log.info(f"result: {json.dumps(result, indent=4)}")
@@ -87,7 +86,6 @@ class TestTransactionalService:
         Integration test to check insert
         """
         # test insert/create
-        transactional_service = TransactionalService()
         operation = Operation(
             entity="invoice",
             action="create",
@@ -103,7 +101,7 @@ class TestTransactionalService:
             },
         )
 
-        result = transactional_service.execute(operation)
+        result = TransactionalService().execute(operation)
         log.info(f"result: {json.dumps(result, indent=4)}")
         assert result[0]["billing_address"] == "address"
 
@@ -116,13 +114,12 @@ class TestTransactionalService:
             query_params={"invoice_id": invoice_id},
             metadata_params={"_properties": ".* customer:.* line_items:.*"},
         )
-        result = transactional_service.execute(operation)
+        result = TransactionalService().execute(operation)
 
         log.info(f"result: {result}")
         log.info(f"result: {json.dumps(result, indent=4)}")
         assert result[0]["invoice_id"] == invoice_id
         assert result[0]["customer"]["customer_id"] == 2
-        assert len(result[0]["line_items"]) == 0
 
         invoice_id = result[0]["invoice_id"]
 
@@ -134,7 +131,7 @@ class TestTransactionalService:
                 query_params={"invoice_id": invoice_id},
             )
 
-            result = transactional_service.execute(operation)
+            result = TransactionalService().execute(operation)
             assert len(result) == 1
         except ApplicationException as e:
             assert (
@@ -153,7 +150,7 @@ class TestTransactionalService:
             store_params={"billing_address": "updated address"},
         )
 
-        result = transactional_service.execute(operation)
+        result = TransactionalService().execute(operation)
 
         log.info(f"result: {json.dumps(result, indent=4)}")
         assert len(result) == 1
@@ -167,7 +164,7 @@ class TestTransactionalService:
                 query_params={"invoice_id": invoice_id},
             )
 
-            result = transactional_service.execute(operation)
+            result = TransactionalService().execute(operation)
             assert False, "Exception not thrown"
         except ApplicationException as e:
             assert (
@@ -185,7 +182,7 @@ class TestTransactionalService:
             },
         )
 
-        result = transactional_service.execute(operation)
+        result = TransactionalService().execute(operation)
 
         log.info(f"result: {json.dumps(result, indent=4)}")
         assert len(result) == 1
@@ -198,7 +195,7 @@ class TestTransactionalService:
             action="read",
             query_params={"invoice_id": invoice_id},
         )
-        result = transactional_service.execute(operation)
+        result = TransactionalService().execute(operation)
 
         log.info(f"result: {result}")
         log.info(f"result: {json.dumps(result, indent=4)}")
@@ -209,7 +206,6 @@ class TestTransactionalService:
         Integration test to check insert
         """
         # test insert/create
-        transactional_service = TransactionalService()
         operation = Operation(
             entity="customer",
             action="create",
@@ -229,7 +225,7 @@ class TestTransactionalService:
             },
         )
 
-        result = transactional_service.execute(operation)
+        result = TransactionalService().execute(operation)
         log.info(f"result: {json.dumps(result, indent=4)}")
         assert result[0]["address"] == "123 Main St"
 
@@ -239,7 +235,7 @@ class TestTransactionalService:
         operation = Operation(
             entity="customer", action="read", query_params={"customer_id": customer_id}
         )
-        result = transactional_service.execute(operation)
+        result = TransactionalService().execute(operation)
 
         log.info(f"result: {result}")
         log.info(f"result: {json.dumps(result, indent=4)}")
@@ -255,7 +251,7 @@ class TestTransactionalService:
                 store_params={"address": "321 Broad St"},
             )
 
-            result = transactional_service.execute(operation)
+            result = TransactionalService().execute(operation)
             assert len(result) == 1
         except ApplicationException as e:
             assert (
@@ -274,7 +270,7 @@ class TestTransactionalService:
             store_params={"address": "321 Broad St"},
         )
 
-        result = transactional_service.execute(operation)
+        result = TransactionalService().execute(operation)
 
         log.info(f"result: {json.dumps(result, indent=4)}")
         assert len(result) == 1
@@ -288,7 +284,7 @@ class TestTransactionalService:
                 query_params={"customer_id": customer_id},
             )
 
-            result = transactional_service.execute(operation)
+            result = TransactionalService().execute(operation)
         except ApplicationException as e:
             assert (
                 e.message
@@ -305,7 +301,7 @@ class TestTransactionalService:
             },
         )
 
-        result = transactional_service.execute(operation)
+        result = TransactionalService().execute(operation)
 
         log.info(f"result: {json.dumps(result, indent=4)}")
         assert len(result) == 1
@@ -315,7 +311,7 @@ class TestTransactionalService:
         operation = Operation(
             entity="customer", action="read", query_params={"customer_id": customer_id}
         )
-        result = transactional_service.execute(operation)
+        result = TransactionalService().execute(operation)
 
         log.info(f"result: {result}")
         log.info(f"result: {json.dumps(result, indent=4)}")

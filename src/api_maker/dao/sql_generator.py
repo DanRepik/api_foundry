@@ -54,7 +54,7 @@ class SQLGenerator:
 
     @property
     def placeholders(self) -> dict:
-        #        log.info(f"search placeholders: {self.search_placeholders}")
+        log.debug(f"search placeholders: {self.search_placeholders}")
         return {**self.search_placeholders, **self.store_placeholders}
 
     def __get_prefix_map(self, schema_object: SchemaObject):
@@ -67,7 +67,7 @@ class SQLGenerator:
                     result[entity] = substring
                     break
 
-        log.info(f"prefix_map: {result}")
+        log.debug(f"prefix_map: {result}")
         return result
 
     @property
@@ -88,7 +88,7 @@ class SQLGenerator:
 
     @property
     def search_condition(self) -> str:
-        log.info(f"query_params: {self.operation.query_params}")
+        log.debug(f"query_params: {self.operation.query_params}")
 
         self.search_placeholders = {}
         conditions = []
@@ -110,12 +110,10 @@ class SQLGenerator:
             conditions.append(assignment)
             self.search_placeholders.update(holders)
 
-        return (
-            f" WHERE {' AND '.join(conditions)}" if len(conditions) > 0 else ""
-        )
+        return f" WHERE {' AND '.join(conditions)}" if len(conditions) > 0 else ""
 
     def search_value_assignment(
-        self, property: SchemaObjectProperty, value, prefix: Optional[str ] = None
+        self, property: SchemaObjectProperty, value, prefix: Optional[str] = None
     ) -> tuple[str, dict]:
         operand = "="
         relational_types = {
@@ -133,9 +131,7 @@ class SQLGenerator:
         if isinstance(value, str):
             parts = value.split("::", 1)
             if parts[0] in relational_types:
-                operand = relational_types[
-                    parts[0] if len(parts) > 1 else "eq"
-                ]
+                operand = relational_types[parts[0] if len(parts) > 1 else "eq"]
                 value_str = parts[-1]
             else:
                 value_str = value
@@ -146,39 +142,29 @@ class SQLGenerator:
         else:
             value_str = str(value)
 
-        column = (
-            f"{prefix}.{property.column_name}"
-            if prefix
-            else property.column_name
-        )
-        placeholder_name = (
-            f"{prefix}_{property.name}" if prefix else property.name
-        )
+        column = f"{prefix}.{property.column_name}" if prefix else property.column_name
+        placeholder_name = f"{prefix}_{property.name}" if prefix else property.name
 
+        log.info(f"operand: {operand}")
         if operand in ["between", "not-between"]:
             value_set = value_str.split(",")
             placeholder_name = (
-                property.name
-                if self.single_table
-                else f"{prefix}_{property.name}"
+                property.name if self.single_table else f"{prefix}_{property.name}"
             )
             sql = (
-                "NOT "
-                if operand == "not-between"
-                else ""
-                + f"{column} "
-                + "BETWEEN "
-                + self.placeholder(property, f"{placeholder_name}_1")
-                + " AND "
-                + self.placeholder(property, f"{placeholder_name}_2")
+                column
+                + (" NOT " if operand == "not-between" else " ")
+                + (
+                    "BETWEEN "
+                    + self.placeholder(property, f"{placeholder_name}_1")
+                    + " AND "
+                    + self.placeholder(property, f"{placeholder_name}_2")
+                )
             )
+
             placeholders = {
-                f"{placeholder_name}_1": property.convert_to_db_value(
-                    value_set[0]
-                ),
-                f"{placeholder_name}_2": property.convert_to_db_value(
-                    value_set[1]
-                ),
+                f"{placeholder_name}_1": property.convert_to_db_value(value_set[0]),
+                f"{placeholder_name}_2": property.convert_to_db_value(value_set[1]),
             }
 
         elif operand in ["in", "not-in"]:
@@ -193,15 +179,13 @@ class SQLGenerator:
                 index += 1
 
             sql = (
-                "NOT "
-                if operand == "not-in"
-                else "" + f"{column} IN ( {', '.join(assigments)}" + ")"
+                column
+                + (" NOT " if operand == "not-in" else " ")
+                + (f"IN ({', '.join(assigments)})")
             )
 
         else:
-            sql = f"{column} {operand} " + self.placeholder(
-                property, placeholder_name
-            )
+            sql = f"{column} {operand} " + self.placeholder(property, placeholder_name)
             placeholders = {
                 f"{placeholder_name}": property.convert_to_db_value(value_str)
             }
@@ -210,9 +194,7 @@ class SQLGenerator:
 
     def selection_result_map(self) -> dict:
         if not self.__selection_result_map:
-            filters = self.operation.metadata_params.get(
-                "_properties", ".*"
-            ).split()
+            filters = self.operation.metadata_params.get("_properties", ".*").split()
 
             # Filter and prefix keys for the current entity and regular
             # expressions
@@ -223,7 +205,6 @@ class SQLGenerator:
         return self.__selection_result_map
 
     def marshal_record(self, record) -> dict:
-        #        log.info(f"selection_results: {self.selection_results}")
         result = {}
         for name, value in record.items():
             property = self.selection_results[name]
@@ -279,9 +260,7 @@ class SQLGenerator:
             if property.column_type == "date":
                 return f"TO_DATE(:{param}, 'YYYY-MM-DD')"
             elif property.column_type == "datetime":
-                return (
-                    f"TO_TIMESTAMP(:{param}, 'YYYY-MM-DD\"T\"HH24:MI:SS.FF')"
-                )
+                return f"TO_TIMESTAMP(:{param}, 'YYYY-MM-DD\"T\"HH24:MI:SS.FF')"
             elif property.column_type == "time":
                 return f"TO_TIME(:{param}, 'HH24:MI:SS.FF')"
             return f":{param}"

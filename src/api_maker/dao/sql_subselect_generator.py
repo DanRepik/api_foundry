@@ -2,25 +2,26 @@ from api_maker.dao.sql_generator import SQLGenerator
 from api_maker.dao.sql_select_generator import SQLSelectGenerator
 from api_maker.operation import Operation
 from api_maker.utils.logger import logger
-from api_maker.utils.model_factory import SchemaObject, SchemaObjectAssociation
+from api_maker.utils.model_factory import SchemaObjectAssociation
 
 log = logger(__name__)
 
 
 class SQLSubselectGenerator(SQLSelectGenerator):
-
     def __init__(
         self,
         operation: Operation,
         relation: SchemaObjectAssociation,
         parent_generator: SQLGenerator,
     ) -> None:
-        super().__init__(operation, relation.child_schema_object, parent_generator.engine)
+        super().__init__(
+            operation, relation.child_schema_object, parent_generator.engine
+        )
         self.relation = relation
         self.parent_generator = parent_generator
 
     def selection_result_map(self) -> dict:
-        filter_str = self.operation.metadata_params.get("_properties", "")
+        filter_str = self.operation.metadata_params.get("properties", "")
         result = {self.relation.child_property.name: self.relation.child_property}
 
         log.info(f"Building map; {self.get_regex_map(filter_str)}")
@@ -58,7 +59,8 @@ class SQLSubselectGenerator(SQLSelectGenerator):
             + f"FROM {self.relation.child_schema_object.table_name} "
             + f"WHERE {self.relation.child_property.column_name} "
             + f"IN ( SELECT {self.relation.parent_property.column_name} "
-            + f"FROM {self.parent_generator.table_expression}{self.parent_generator.search_condition} "
+            + f"FROM {self.parent_generator.table_expression}"
+            + f"{self.parent_generator.search_condition} "
             #            + f"{order_by} {limit} {offset})"
             + ")"
         )

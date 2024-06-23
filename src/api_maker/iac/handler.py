@@ -13,7 +13,7 @@ adapter = GatewayAdapter()
 
 
 def lambda_handler(event, _):
-    log.info(f"event: {event}")
+    log.debug(f"event: {event}")
     try:
         response = adapter.process_event(event)
 

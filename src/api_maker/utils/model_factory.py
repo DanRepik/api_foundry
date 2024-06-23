@@ -1,4 +1,3 @@
-import os
 import yaml
 from typing import Any, Dict, Optional
 from datetime import datetime
@@ -48,7 +47,7 @@ class OpenAPIElement:
             return current_element
         except Exception as e:
             log.error(f"exception: {e}")
-        
+
         return {}
 
 
@@ -59,7 +58,6 @@ class SchemaObjectAssociation(OpenAPIElement):
         self.entity = entity
         self.name = name
 
-        log.info(f"properties: {properties}")
         self.child_schema_object = ModelFactory.get_schema_object(
             properties["$ref"].split("/")[-1]
         )
@@ -182,19 +180,30 @@ class SchemaObject(OpenAPIElement):
 
     def initialize_properties(self):
         for property_name, prop in self.schema_object.get("properties", {}).items():
-            assert prop is not None, f"Property is none entity: {self.entity}, property: {property_name}"
+            assert (
+                prop is not None
+            ), f"Property is none entity: {self.entity}, property: {property_name}"
             self.process_property(property_name, prop)
 
     def process_property(self, property_name: str, prop: Dict[str, Any]):
-        type = prop.get("type") if "type" in prop else self.resolve_reference(prop.get("$ref", None)).get("type") if "$ref" in prop else None
+        type = (
+            prop.get("type")
+            if "type" in prop
+            else self.resolve_reference(prop.get("$ref", None)).get("type")
+            if "$ref" in prop
+            else None
+        )
         if not type:
-            raise ApplicationException(500, f"Cannot resolve type, object_schema: {self.entity}, property: {property_name}")
+            raise ApplicationException(
+                500,
+                f"Cannot resolve type, object_schema: {self.entity}, property: {property_name}",
+            )
 
         if type in ["object", "array"]:
             self.relations[property_name] = SchemaObjectAssociation(
                 self.entity,
                 property_name,
-                {**(prop if type == "object" else prop["items"]), "type": type}
+                {**(prop if type == "object" else prop["items"]), "type": type},
             )
         else:
             object_property = SchemaObjectProperty(self.entity, property_name, prop)
@@ -209,12 +218,17 @@ class SchemaObject(OpenAPIElement):
             try:
                 self.concurrency_property = self.properties[concurrency_prop_name]
             except KeyError:
-                raise ApplicationException(500, f"Concurrency control property does not exist. schema_object: {self.entity}, property: {concurrency_prop_name}")
+                raise ApplicationException(
+                    500,
+                    f"Concurrency control property does not exist. schema_object: {self.entity}, property: {concurrency_prop_name}",
+                )
 
     @property
     def table_name(self) -> str:
         schema = self.schema_object.get("x-am-schema")
-        return (f"{schema}." if schema else "") + f"{self.schema_object.get('x-am-table', self.entity)}"
+        return (
+            f"{schema}." if schema else ""
+        ) + f"{self.schema_object.get('x-am-table', self.entity)}"
 
     def get_property(self, property_name: str) -> Optional[SchemaObjectProperty]:
         return self.properties.get(property_name)
@@ -223,7 +237,9 @@ class SchemaObject(OpenAPIElement):
         try:
             return self.relations[property_name]
         except KeyError:
-            raise ApplicationException(500, f"Unknown relation {property_name}, check api spec.subselect sql:")
+            raise ApplicationException(
+                500, f"Unknown relation {property_name}, check api spec.subselect sql:"
+            )
 
 
 class ModelFactory:
@@ -239,7 +255,7 @@ class ModelFactory:
 
     @classmethod
     def set_spec(cls, spec):
-        cls.spec = spec    
+        cls.spec = spec
         cls.schema_objects = dict()
 
         schemas = cls.spec.get("components", {}).get("schemas", {})

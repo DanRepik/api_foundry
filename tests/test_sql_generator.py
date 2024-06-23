@@ -23,7 +23,6 @@ log = logger(__name__)
 
 
 class TestSQLGenerator:
-
     def test_field_selection(self, load_model):
         sql_generator = SQLSelectGenerator(
             Operation(entity="invoice", action="read"),
@@ -106,7 +105,7 @@ class TestSQLGenerator:
                     query_params={"invoice_id": "24", "line_items.track_id": "gt::5"},
                     metadata_params={"_properties": ".* customer:.*"},
                 ),
-                "postgres"
+                "postgres",
             )
 
             sql_generator = operation_dao.sql_generator
@@ -129,7 +128,7 @@ class TestSQLGenerator:
                     action="read",
                     query_params={"invoice_id": "24", "track_id": "gt::5"},
                 ),
-                "postgres"
+                "postgres",
             )
 
             sql_generator = operation_dao.sql_generator
@@ -154,7 +153,7 @@ class TestSQLGenerator:
                         "customer.customer_id": "gt::5",
                     },
                 ),
-                "postgres"
+                "postgres",
             )
 
             sql_generator = operation_dao.sql_generator
@@ -226,7 +225,7 @@ class TestSQLGenerator:
         print(f"sql: {sql}, properties: {placeholders}")
         assert (
             sql
-            == "i.invoice_id IN ( %(i_invoice_id_0)s, %(i_invoice_id_1)s, %(i_invoice_id_2)s)"
+            == "i.invoice_id IN (%(i_invoice_id_0)s, %(i_invoice_id_1)s, %(i_invoice_id_2)s)"
         )
         assert isinstance(placeholders["i_invoice_id_1"], float)
         assert len(placeholders) == 3
@@ -281,7 +280,7 @@ class TestSQLGenerator:
                 entity="invoice", action="read", query_params={"last-updated": date}
             ),
             schema_object,
-            "postgres"
+            "postgres",
         )
 
         (sql, placeholders) = sql_generator.search_value_assignment(
@@ -311,7 +310,7 @@ class TestSQLGenerator:
                 entity="invoice", action="read", query_params={"last-updated": date}
             ),
             schema_object,
-            "postgres"
+            "postgres",
         )
 
         (sql, placeholders) = sql_generator.search_value_assignment(
@@ -413,7 +412,7 @@ class TestSQLGenerator:
                         "required": ["genre_id"],
                     },
                 ),
-            "postgres"
+                "postgres",
             )
             log.info(
                 f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
@@ -448,7 +447,7 @@ class TestSQLGenerator:
                         "required": ["genre_id"],
                     },
                 ),
-            "postgres"
+                "postgres",
             )
             log.info(
                 f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
@@ -478,7 +477,7 @@ class TestSQLGenerator:
                         "required": ["genre_id"],
                     },
                 ),
-            "postgres"
+                "postgres",
             )
             log.info(
                 f"sql-x: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
@@ -513,12 +512,11 @@ class TestSQLGenerator:
         assert sql_generator.placeholders == {"playlist_id": 2}
 
     def test_relation_search_condition(self, load_model):
-
         operation = Operation(
             entity="invoice",
             action="read",
             query_params={"billing_state": "FL"},
-            metadata_params={"_properties": ".* customer:.* line_items:.*"},
+            metadata_params={"properties": ".* customer:.* line_items:.*"},
         )
         schema_object = ModelFactory.get_schema_object("invoice")
         sql_generator = SQLSelectGenerator(operation, schema_object, "postgres")
