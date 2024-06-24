@@ -45,17 +45,10 @@ class SQLSelectGenerator(SQLGenerator):
                             f"Invalid selection property {self.schema_object.entity} does not have a property {parts[0]}.",
                         )
                     relation = self.schema_object.relations[parts[0]]
-                    if relation.type == "array":
+                    if parts[1] not in relation.child_schema_object.properties:
                         raise ApplicationException(
                             400,
-                            (
-                                "Queries using properties in "
-                                + "arrays is not supported. "
-                                + "schema object: "
-                                + self.schema_object.entity
-                                + ", property: "
-                                + name
-                            ),
+                            f"Property not found, {relation.child_schema_object.entity} does not have property {parts[1]}.",
                         )
                     property = relation.child_schema_object.properties[parts[1]]
                     prefix = self.prefix_map[parts[0]]
@@ -91,21 +84,20 @@ class SQLSelectGenerator(SQLGenerator):
         parent_prefix = self.prefix_map["$default$"]
         for name, relation in self.schema_object.relations.items():
             child_prefix = self.prefix_map[relation.name]
-            if relation.type == "object":
-                joins.append(
-                    "INNER JOIN "
-                    + relation.child_schema_object.table_name
-                    + " AS "
-                    + child_prefix
-                    + " ON "
-                    + parent_prefix
-                    + "."
-                    + relation.parent_property.column_name
-                    + " = "
-                    + child_prefix
-                    + "."
-                    + relation.child_property.column_name
-                )
+            joins.append(
+                "INNER JOIN "
+                + relation.child_schema_object.table_name
+                + " AS "
+                + child_prefix
+                + " ON "
+                + parent_prefix
+                + "."
+                + relation.parent_property.column_name
+                + " = "
+                + child_prefix
+                + "."
+                + relation.child_property.column_name
+            )
 
         return (
             self.schema_object.table_name
@@ -137,7 +129,7 @@ class SQLSelectGenerator(SQLGenerator):
             if relation not in self.prefix_map:
                 raise ApplicationException(
                     400,
-                    f"Bad object associtiaon: {schema_object.entity} does not have a {relation} property",
+                    f"Bad object association: {schema_object.entity} does not have a {relation} property",
                 )
 
             # Filter and prefix keys for the current entity
