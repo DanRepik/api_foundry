@@ -52,7 +52,11 @@ class SQLSubselectGenerator(SQLSelectGenerator):
         return self.search_placeholders
 
     @property
-    def sql(self) -> str:
+    def sql(self) -> str | None:
+        log.info(f"select_list: {self.select_list_columns}")
+        if len(self.select_list_columns) == 1:  # then it only contains the key
+            return None
+
         log.info(f"parent search_condition: {self.parent_generator.search_condition}")
         sql = (
             f"SELECT {self.select_list} "

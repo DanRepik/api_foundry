@@ -75,24 +75,21 @@ class OperationDAO(DAO):
             return
 
         for name, relation in self.schema_object.relations.items():
-            log.info(f"checking relation: {name}, relation: {vars(relation)}")
             if relation.type == "object":
                 continue
 
-            subselect_generator = SQLSubselectGenerator(
+            sql_generator = SQLSubselectGenerator(
                 self.operation, relation, self.sql_generator
             )
-            log.info(f"subselect_sql: {subselect_generator.sql}")
-            child_set = self.__fetch_record_set(subselect_generator, cursor)
+
+            child_set = self.__fetch_record_set(sql_generator, cursor)
+            if len(child_set) == 0:
+                continue
 
             for parent in parent_set:
                 parent[name] = []
 
-            if len(child_set) == 0:
-                continue
-
             parents = {}
-            log.info(f"parent_property: {vars(relation.parent_property)}")
             for parent in parent_set:
                 parents[parent[relation.parent_property.name]] = parent
 
@@ -103,9 +100,13 @@ class OperationDAO(DAO):
                     parent[name].append(child)
 
     def __fetch_record_set(self, generator: SQLGenerator, cursor: Cursor) -> list[dict]:
+        sql = generator.sql
+        if not sql:
+            return []
+
         result = []
         record_set = cursor.execute(
-            generator.sql,
+            sql,
             generator.placeholders,
             generator.select_list_columns,
         )

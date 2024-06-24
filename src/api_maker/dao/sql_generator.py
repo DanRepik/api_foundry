@@ -43,7 +43,7 @@ class SQLGenerator:
         if len(self.prefix_map) == 1 or self.operation.action == "create":
             return True
 
-        if ":" in self.operation.metadata_params.get("_properties", ""):
+        if ":" in self.operation.metadata_params.get("properties", ""):
             return False
 
         for param in self.operation.query_params.keys():

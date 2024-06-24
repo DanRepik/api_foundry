@@ -166,7 +166,7 @@ apigw --> client : API Response
 
 ## Services That API-MAKER Supports
 
-In this section we will explore the API services that API-MAKER provides.
+In this section we will explore the API services that API-MAKER provides.  Most of the examples will be restricted to the abbreviated example API specification.  However some examples will use resources defined in the complete Chinook API specification.
 
 ### Basic Operations
 
@@ -201,7 +201,7 @@ In addition to basic CRUD operations API-MAKER offers a set of services that pro
 /{entity}
 ```
 
-Records are then selected using query string parameters. Where the name for the name value pair of a parameter can be any property from the component schema object.
+Records are then selected using query string parameters. Where the name for the name value pair of a parameter can be any property defined the component schema object.
 
 Thus for the Chinook database we could execute the following operations;
 
@@ -214,13 +214,37 @@ GET /album/album_id=5
 
 # get the albums by an artist
 GET /album/artist_id=3
+
+# using the complete specification
+# get the invoices where the billing country is USA and the total was $3.96
+GET /invoice?total3.96&billing_country=USA
 ```
 
-Additionally a relation operand can be prefixed to the value of the parameter.  Whis these records can be selected to match a criteria.  The relational operands ('lt', 'le', 'eq', 'ne', 'ge', 'gt', 'in', 'between') are denoted with '::' can prefixed to the value.  An example of a parameter with a would be;
+** Relational Expressions**
+
+Additionally, a relational operand can be prefixed to the value of a parameter. These operands allow records to be selected based on specific criteria, rather than being restricted to exact matches. The available relational operands listed below and are used by prefixing them to the value and separated by ::.
+
+* lt (less than)
+* le (less than or equal to)
+* eq (equal to)
+* ne (not equal to)
+* ge (greater than or equal to)
+* gt (greater than)
+* in (in a list of values)
+* between (between a range of values)
+* not-between (not between a range of values)
+
+Below are examples of API requests using these operands:
 
 ```
 # read ablums with an album_id of less than 100
 GET /ablum?album_id=lt::100
+
+# read invoices that total either $3.96 or $5.94
+GET /invoice?total=in::5.94,3.96
+
+# read invoices that are between $3.00 and $6.00
+GET /invoice?total=between::3,6
 ```
 
 
