@@ -1,18 +1,15 @@
-from datetime import datetime
-import json
-
 from api_maker.utils.app_exception import ApplicationException
 from api_maker.utils.logger import logger
 from api_maker.operation import Operation
 from api_maker.services.transactional_service import TransactionalService
 
-from test_fixtures import load_model, db_secrets
+from test_fixtures import load_model, db_secrets  # noqa F401
 
 log = logger(__name__)
 
 
 class TestAssociationOperations:
-    def test_object_property(self, load_model, db_secrets):
+    def test_object_property(self, load_model, db_secrets):  # noqa F811
         result = TransactionalService().execute(
             Operation(
                 entity="invoice",
@@ -30,9 +27,9 @@ class TestAssociationOperations:
         assert invoice["customer_id"] == invoice["customer"]["customer_id"]
         assert invoice["customer"]["city"] == "Boston"
 
-    def test_invalid_object_property(self, load_model, db_secrets):
+    def test_invalid_object_property(self, load_model, db_secrets):  # noqa F811
         try:
-            result = TransactionalService().execute(
+            TransactionalService().execute(
                 Operation(
                     entity="invoice",
                     action="read",
@@ -48,17 +45,17 @@ class TestAssociationOperations:
                 == "Bad object association: invoice does not have a custom property"
             )
 
-    def test_object_property_criteria(self, load_model, db_secrets):
+    def test_object_property_criteria(self, load_model, db_secrets):  # noqa F811
         result = TransactionalService().execute(
             Operation(
                 entity="invoice",
                 action="read",
-                query_params={"customer.customer_id": 5},
+                query_params={"customer.phone": "+420 2 4172 5555"},
             )
         )
 
         log.debug(f"len: {len(result)}")
-        assert len(result) == 38
+        assert len(result) == 7
         invoice = result[3]
         log.debug(f"invoice: {invoice}")
 
@@ -66,9 +63,11 @@ class TestAssociationOperations:
         assert invoice["customer_id"] == 5
         assert invoice["billing_city"] == "Prague"
 
-    def test_invalid_object_property_criteria1(self, load_model, db_secrets):
+    def test_invalid_object_property_criteria1(
+        self, load_model, db_secrets  # noqa F811
+    ):
         try:
-            result = TransactionalService().execute(
+            TransactionalService().execute(
                 Operation(
                     entity="invoice",
                     action="read",
@@ -83,9 +82,11 @@ class TestAssociationOperations:
                 == "Invalid selection property invoice does not have a property custom."
             )
 
-    def test_invalid_object_property_criteria_2(self, load_model, db_secrets):
+    def test_invalid_object_property_criteria_2(
+        self, load_model, db_secrets  # noqa F811
+    ):
         try:
-            result = TransactionalService().execute(
+            TransactionalService().execute(
                 Operation(
                     entity="invoice",
                     action="read",
@@ -100,7 +101,7 @@ class TestAssociationOperations:
                 == "Invalid selection property invoice does not have a property custom."
             )
 
-    def test_array_property(self, load_model, db_secrets):
+    def test_array_property(self, load_model, db_secrets):  # noqa F811
         result = TransactionalService().execute(
             Operation(
                 entity="invoice",
@@ -113,14 +114,14 @@ class TestAssociationOperations:
         log.debug(f"len: {len(result)}")
         invoice = result[0]
         log.debug(f"invoice: {invoice}")
-        log.debug(f"line_item: {invoice["line_items"][0]}")
+        log.debug(f"line_item: {invoice['line_items'][0]}")
 
         assert invoice["line_items"]
         assert invoice["invoice_id"] == invoice["line_items"][0]["invoice_id"]
         assert invoice["line_items"][0]["invoice_id"] == 5
         assert invoice["line_items"][0]["track_id"] == 99
 
-    def test_array_property_criteria(self, load_model, db_secrets):
+    def test_array_property_criteria(self, load_model, db_secrets):  # noqa F811
         result = TransactionalService().execute(
             Operation(
                 entity="invoice",
@@ -138,7 +139,7 @@ class TestAssociationOperations:
         assert result[0]["billing_country"] in ["United Kingdom", "Brazil"]
         assert result[1]["billing_country"] in ["United Kingdom", "Brazil"]
 
-    def test_invalid_array_property(self, load_model, db_secrets):
+    def test_invalid_array_property(self, load_model, db_secrets):  # noqa F811
         try:
             TransactionalService().execute(
                 Operation(
@@ -156,9 +157,11 @@ class TestAssociationOperations:
                 == "Bad object association: invoice does not have a lint_items property"
             )
 
-    def test_invalid_array_property_criteria_1(self, load_model, db_secrets):
+    def test_invalid_array_property_criteria_1(
+        self, load_model, db_secrets  # noqa F811
+    ):
         try:
-            result = TransactionalService().execute(
+            TransactionalService().execute(
                 Operation(
                     entity="invoice",
                     action="read",
@@ -170,12 +173,14 @@ class TestAssociationOperations:
             assert ae.status_code == 400
             assert (
                 ae.message
-                == "Invalid selection property invoice does not have a property line_itms."
+                == "Invalid selection property invoice does not have a property line_itms."  # noqa E501
             )
 
-    def test_invalid_array_property_criteria_2(self, load_model, db_secrets):
+    def test_invalid_array_property_criteria_2(
+        self, load_model, db_secrets  # noqa F811
+    ):
         try:
-            result = TransactionalService().execute(
+            TransactionalService().execute(
                 Operation(
                     entity="invoice",
                     action="read",
@@ -187,5 +192,5 @@ class TestAssociationOperations:
             assert ae.status_code == 400
             assert (
                 ae.message
-                == "Property not found, invoice_line does not have property lint_item_id."
+                == "Property not found, invoice_line does not have property lint_item_id."  # noqa E501
             )

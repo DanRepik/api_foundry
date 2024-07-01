@@ -15,13 +15,12 @@ class SQLSelectGenerator(SQLGenerator):
 
     @property
     def sql(self) -> str:
-        return (
-            "SELECT "
-            + self.select_list
-            + " FROM "
-            + self.table_expression
-            + self.search_condition
-        )
+        # order is important here table_expression must be last
+        select_list = self.select_list
+        search_condition = self.search_condition
+        table_expression = self.table_expression
+
+        return f"SELECT {select_list} FROM {table_expression}{search_condition}"
 
     @property
     def select_list(self) -> str:
@@ -42,13 +41,19 @@ class SQLSelectGenerator(SQLGenerator):
                     if parts[0] not in self.schema_object.relations:
                         raise ApplicationException(
                             400,
-                            f"Invalid selection property {self.schema_object.entity} does not have a property {parts[0]}.",
+                            "Invalid selection property "
+                            + self.schema_object.entity
+                            + " does not have a property "
+                            + parts[0],
                         )
                     relation = self.schema_object.relations[parts[0]]
                     if parts[1] not in relation.child_schema_object.properties:
                         raise ApplicationException(
                             400,
-                            f"Property not found, {relation.child_schema_object.entity} does not have property {parts[1]}.",
+                            "Property not found, "
+                            + relation.child_schema_object.entity
+                            + " does not have property "
+                            + parts[1],
                         )
                     property = relation.child_schema_object.properties[parts[1]]
                     prefix = self.prefix_map[parts[0]]
@@ -82,22 +87,24 @@ class SQLSelectGenerator(SQLGenerator):
 
         joins = []
         parent_prefix = self.prefix_map["$default$"]
+        log.info(f"active_prefixes: {self.active_prefixes}")
         for name, relation in self.schema_object.relations.items():
             child_prefix = self.prefix_map[relation.name]
-            joins.append(
-                "INNER JOIN "
-                + relation.child_schema_object.table_name
-                + " AS "
-                + child_prefix
-                + " ON "
-                + parent_prefix
-                + "."
-                + relation.parent_property.column_name
-                + " = "
-                + child_prefix
-                + "."
-                + relation.child_property.column_name
-            )
+            if child_prefix in self.active_prefixes:
+                joins.append(
+                    "INNER JOIN "
+                    + relation.child_schema_object.table_name
+                    + " AS "
+                    + child_prefix
+                    + " ON "
+                    + parent_prefix
+                    + "."
+                    + relation.parent_property.column_name
+                    + " = "
+                    + child_prefix
+                    + "."
+                    + relation.child_property.column_name
+                )
 
         return (
             self.schema_object.table_name
@@ -129,7 +136,11 @@ class SQLSelectGenerator(SQLGenerator):
             if relation not in self.prefix_map:
                 raise ApplicationException(
                     400,
-                    f"Bad object association: {schema_object.entity} does not have a {relation} property",
+                    "Bad object association: "
+                    + schema_object.entity
+                    + " does not have a "
+                    + relation
+                    + " property",
                 )
 
             # Filter and prefix keys for the current entity

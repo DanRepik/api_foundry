@@ -30,6 +30,9 @@ classifiers = [
 Documentation = "https://github.com/DanRepik/api-maker"
 Source = "https://github.com/DanRepik/api-maker"
 
+
+[project.scripts]
+postgres_to_openapi = "api_maker.scripts.postgres_to_openapi:main"
+
 # [tool.setuptools.packages.find]
 # where = ["src/api_maker"]
-

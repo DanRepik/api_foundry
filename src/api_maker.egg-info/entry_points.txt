@@ -1,0 +1,2 @@
+[console_scripts]
+postgres_to_openapi = api_maker.scripts.postgres_to_openapi:main

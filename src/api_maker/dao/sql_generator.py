@@ -26,8 +26,9 @@ class SQLGenerator:
         self.__select_list = None
         self.__select_list_columns = None
         self.__selection_result_map = None
-        self.search_placeholders = {}
-        self.store_placeholders = {}
+        self.search_placeholders = dict()
+        self.store_placeholders = dict()
+        self.active_prefixes = set()
 
     @property
     def sql(self) -> str:
@@ -145,7 +146,6 @@ class SQLGenerator:
         column = f"{prefix}.{property.column_name}" if prefix else property.column_name
         placeholder_name = f"{prefix}_{property.name}" if prefix else property.name
 
-        log.info(f"operand: {operand}")
         if operand in ["between", "not-between"]:
             value_set = value_str.split(",")
             placeholder_name = (
@@ -190,6 +190,19 @@ class SQLGenerator:
                 f"{placeholder_name}": property.convert_to_db_value(value_str)
             }
 
+        if (
+            self.operation.action != "read"
+            and operand != "="
+            and self.schema_object.concurrency_property
+        ):
+            raise ApplicationException(
+                400,
+                "Concurrency settings prohibit multi-record updates "
+                + self.schema_object.entity
+                + ", property: "
+                + property.name,
+            )
+        self.active_prefixes.add(prefix)
         return sql, placeholders
 
     def selection_result_map(self) -> dict:
@@ -251,6 +264,8 @@ class SQLGenerator:
                         filtered_dict[f"{prefix}.{key}"] = value
                     else:
                         filtered_dict[key] = value
+
+                    self.active_prefixes.add(prefix)
                     break
 
         return filtered_dict

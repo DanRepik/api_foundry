@@ -1,14 +1,11 @@
 import pytest
-import yaml
 
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, timezone
 
 from api_maker.dao.operation_dao import OperationDAO
 from api_maker.dao.sql_delete_generator import SQLDeleteGenerator
-from api_maker.dao.sql_insert_generator import SQLInsertGenerator
 from api_maker.dao.sql_select_generator import SQLSelectGenerator
 from api_maker.dao.sql_subselect_generator import SQLSubselectGenerator
-from api_maker.dao.sql_update_generator import SQLUpdateGenerator
 from api_maker.utils.app_exception import ApplicationException
 from api_maker.utils.model_factory import (
     ModelFactory,
@@ -17,13 +14,13 @@ from api_maker.utils.model_factory import (
 )
 from api_maker.operation import Operation
 from api_maker.utils.logger import logger
-from test_fixtures import load_model
+from test_fixtures import load_model  # noqa F401
 
 log = logger(__name__)
 
 
 class TestSQLGenerator:
-    def test_field_selection(self, load_model):
+    def test_field_selection(self, load_model):  # noqa F811
         sql_generator = SQLSelectGenerator(
             Operation(entity="invoice", action="read"),
             ModelFactory.get_schema_object("invoice"),
@@ -34,9 +31,9 @@ class TestSQLGenerator:
         result_map = sql_generator.selection_result_map()
         log.info(f"result_map: {len(result_map)}")
         assert len(result_map) == 10
-        assert result_map.get("invoice_id") != None
+        assert result_map.get("invoice_id") is not None
 
-    def test_field_selection_with_association(self, load_model):
+    def test_field_selection_with_association(self, load_model):  # noqa F811
         sql_generator = SQLSelectGenerator(
             Operation(
                 entity="invoice",
@@ -50,8 +47,8 @@ class TestSQLGenerator:
         result_map = sql_generator.selection_result_map()
         log.info(f"result_map: {result_map}")
         assert len(result_map) == 24
-        assert result_map.get("i.invoice_id") != None
-        assert result_map.get("c.customer_id") != None
+        assert result_map.get("i.invoice_id") is not None
+        assert result_map.get("c.customer_id") is not None
         log.info(f"select_list: {sql_generator.select_list}")
         assert "i.invoice_id" in sql_generator.select_list
         assert "c.customer_id" in sql_generator.select_list
@@ -92,11 +89,11 @@ class TestSQLGenerator:
 
         assert (
             sql_generator.sql
-            == "SELECT invoice_id, customer_id, invoice_date, billing_address, billing_city, billing_state, billing_country, billing_postal_code, total FROM invoice WHERE invoice_id = %(invoice_id)s AND total > %(total)s"
+            == "SELECT invoice_id, customer_id, invoice_date, billing_address, billing_city, billing_state, billing_country, billing_postal_code, total FROM invoice WHERE invoice_id = %(invoice_id)s AND total > %(total)s"  # noqa E501
         )
         assert sql_generator.placeholders == {"invoice_id": 24, "total": 5.0}
 
-    def test_search_on_m_property(self, load_model):
+    def test_search_on_m_property(self, load_model):  # noqa F811
         try:
             operation_dao = OperationDAO(
                 Operation(
@@ -117,10 +114,10 @@ class TestSQLGenerator:
         except ApplicationException as e:
             assert (
                 e.message
-                == "Queries using properties in arrays is not supported. schema object: invoice, property: line_items.track_id"
+                == "Queries using properties in arrays is not supported. schema object: invoice, property: line_items.track_id"  # noqa E501
             )
 
-    def test_search_invalid_property(self, load_model):
+    def test_search_invalid_property(self, load_model):  # noqa F811
         try:
             operation_dao = OperationDAO(
                 Operation(
@@ -139,10 +136,10 @@ class TestSQLGenerator:
         except ApplicationException as e:
             assert (
                 e.message
-                == "Invalid query parameter, property not found. schema object: invoice, property: track_id"
+                == "Invalid query parameter, property not found. schema object: invoice, property: track_id"  # noqa E501
             )
 
-    def test_search_association_property(self, load_model):
+    def test_search_association_property(self, load_model):  # noqa F811
         try:
             operation_dao = OperationDAO(
                 Operation(
@@ -164,7 +161,7 @@ class TestSQLGenerator:
             )
             assert (
                 sql_generator.sql
-                == "SELECT i.invoice_id, i.customer_id, i.invoice_date, i.billing_address, i.billing_city, i.billing_state, i.billing_country, i.billing_postal_code, i.total, i.last_updated FROM invoice AS i INNER JOIN customer AS c ON i.customer_id = c.customer_id WHERE i.invoice_id > %(i_invoice_id)s AND c.customer_id > %(c_customer_id)s"
+                == "SELECT i.invoice_id, i.customer_id, i.invoice_date, i.billing_address, i.billing_city, i.billing_state, i.billing_country, i.billing_postal_code, i.total, i.last_updated FROM invoice AS i INNER JOIN customer AS c ON i.customer_id = c.customer_id WHERE i.invoice_id > %(i_invoice_id)s AND c.customer_id > %(c_customer_id)s"  # noqa E501
             )
             assert sql_generator.placeholders == {
                 "i_invoice_id": 24,
@@ -173,10 +170,10 @@ class TestSQLGenerator:
         except ApplicationException as e:
             assert (
                 e.message
-                == "Invalid query parameter, property not found. schema object: invoice, property: track_id"
+                == "Invalid query parameter, property not found. schema object: invoice, property: track_id"  # noqa E501
             )
 
-    def test_search_value_assignment_type_relations(self, load_model):
+    def test_search_value_assignment_type_relations(self, load_model):  # noqa F811
         schema_object = ModelFactory.get_schema_object("invoice")
         operation = Operation(
             entity="invoice",
@@ -225,7 +222,7 @@ class TestSQLGenerator:
         print(f"sql: {sql}, properties: {placeholders}")
         assert (
             sql
-            == "i.invoice_id IN (%(i_invoice_id_0)s, %(i_invoice_id_1)s, %(i_invoice_id_2)s)"
+            == "i.invoice_id IN (%(i_invoice_id_0)s, %(i_invoice_id_1)s, %(i_invoice_id_2)s)"  # noqa E501
         )
         assert isinstance(placeholders["i_invoice_id_1"], float)
         assert len(placeholders) == 3
@@ -284,7 +281,7 @@ class TestSQLGenerator:
         )
 
         (sql, placeholders) = sql_generator.search_value_assignment(
-            schema_object.get_property("last_updated"), "gt::2000-12-12T12:34:56Z", "i"  # type: ignore
+            schema_object.get_property("last_updated"), "gt::2000-12-12T12:34:56Z", "i"  # type: ignore # noqa E501
         )
         log.info(f"sql: {sql}, properties: {placeholders}")
         assert sql == "i.last_updated > %(i_last_updated)s"
@@ -314,7 +311,7 @@ class TestSQLGenerator:
         )
 
         (sql, placeholders) = sql_generator.search_value_assignment(
-            schema_object.get_property("last_updated"), "gt::2000-12-12", "i"  # type: ignore
+            schema_object.get_property("last_updated"), "gt::2000-12-12", "i"  # type: ignore # noqa E501
         )
         log.info(f"sql: {sql}, properties: {placeholders}")
         assert sql == "i.last_updated > %(i_last_updated)s"
@@ -356,13 +353,13 @@ class TestSQLGenerator:
         except ApplicationException as e:
             assert e.status_code == 500
 
-    def test_select_single_joined_table(self, load_model):
+    def test_select_single_joined_table(self, load_model):  # noqa F811
         schema_object = ModelFactory.get_schema_object("invoice")
         operation = Operation(
             entity="invoice",
             action="read",
             query_params={"billing_state": "FL"},
-            metadata_params={"_properties": ".* customer:.* line_items:.*"},
+            metadata_params={"properties": ".* customer:.* line_items:.*"},
         )
         sql_generator = SQLSelectGenerator(operation, schema_object, "postgres")
 
@@ -372,17 +369,17 @@ class TestSQLGenerator:
 
         assert (
             sql_generator.sql
-            == "SELECT i.invoice_id, i.customer_id, i.invoice_date, i.billing_address, i.billing_city, i.billing_state, i.billing_country, i.billing_postal_code, i.total, i.last_updated, c.customer_id, c.first_name, c.last_name, c.company, c.address, c.city, c.state, c.country, c.postal_code, c.phone, c.fax, c.email, c.support_rep_id, c.version_stamp FROM invoice AS i INNER JOIN customer AS c ON i.customer_id = c.customer_id WHERE i.billing_state = %(i_billing_state)s"
+            == "SELECT i.invoice_id, i.customer_id, i.invoice_date, i.billing_address, i.billing_city, i.billing_state, i.billing_country, i.billing_postal_code, i.total, i.last_updated, c.customer_id, c.first_name, c.last_name, c.company, c.address, c.city, c.state, c.country, c.postal_code, c.phone, c.fax, c.email, c.support_rep_id, c.version_stamp FROM invoice AS i INNER JOIN customer AS c ON i.customer_id = c.customer_id WHERE i.billing_state = %(i_billing_state)s"  # noqa E501
         )
         assert sql_generator.placeholders == {"i_billing_state": "FL"}
 
-    def test_select_schema_handling_table(self, load_model):
+    def test_select_schema_handling_table(self, load_model):  # noqa F811
         schema_object = ModelFactory.get_schema_object("invoice")
         operation = Operation(
             entity="invoice",
             action="read",
             query_params={"billing_state": "FL"},
-            metadata_params={"_properties": ".* customer:.* line_items:.*"},
+            metadata_params={"properties": ".* customer:.* line_items:.*"},
         )
         sql_generator = SQLSelectGenerator(operation, schema_object, "postgres")
 
@@ -392,7 +389,7 @@ class TestSQLGenerator:
 
         assert (
             sql_generator.sql
-            == "SELECT i.invoice_id, i.customer_id, i.invoice_date, i.billing_address, i.billing_city, i.billing_state, i.billing_country, i.billing_postal_code, i.total, i.last_updated, c.customer_id, c.first_name, c.last_name, c.company, c.address, c.city, c.state, c.country, c.postal_code, c.phone, c.fax, c.email, c.support_rep_id, c.version_stamp FROM invoice AS i INNER JOIN customer AS c ON i.customer_id = c.customer_id WHERE i.billing_state = %(i_billing_state)s"
+            == "SELECT i.invoice_id, i.customer_id, i.invoice_date, i.billing_address, i.billing_city, i.billing_state, i.billing_country, i.billing_postal_code, i.total, i.last_updated, c.customer_id, c.first_name, c.last_name, c.company, c.address, c.city, c.state, c.country, c.postal_code, c.phone, c.fax, c.email, c.support_rep_id, c.version_stamp FROM invoice AS i INNER JOIN customer AS c ON i.customer_id = c.customer_id WHERE i.billing_state = %(i_billing_state)s"  # noqa E501
         )
         assert sql_generator.placeholders == {"i_billing_state": "FL"}
 
@@ -433,7 +430,7 @@ class TestSQLGenerator:
                     entity="genre",
                     action="read",
                     query_params={"genre_id": "gt::10"},
-                    metadata_params={"_count": True},
+                    metadata_params={"count": True},
                 ),
                 SchemaObject(
                     "genre",
@@ -480,7 +477,7 @@ class TestSQLGenerator:
                 "postgres",
             )
             log.info(
-                f"sql-x: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
+                f"sql-x: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"  # noqa E501
             )
 
             assert sql_generator.sql == "SELECT genre_id, name FROM genre"
@@ -489,7 +486,7 @@ class TestSQLGenerator:
         except ApplicationException as e:
             assert False, e.message
 
-    def test_delete(self, load_model):
+    def test_delete(self, load_model):  # noqa F811
         schema_object = ModelFactory.get_schema_object("playlist_track")
         operation = Operation(
             entity="playlist_track",
@@ -507,11 +504,11 @@ class TestSQLGenerator:
 
         assert (
             sql_generator.sql
-            == "DELETE FROM playlist_track WHERE playlist_id = %(playlist_id)s RETURNING track_id"
+            == "DELETE FROM playlist_track WHERE playlist_id = %(playlist_id)s RETURNING track_id"  # noqa E501
         )
         assert sql_generator.placeholders == {"playlist_id": 2}
 
-    def test_relation_search_condition(self, load_model):
+    def test_relation_search_condition(self, load_model):  # noqa F811
         operation = Operation(
             entity="invoice",
             action="read",
@@ -524,7 +521,7 @@ class TestSQLGenerator:
         log.info(f"sql_generator: {sql_generator.sql}")
         assert (
             sql_generator.sql
-            == "SELECT i.invoice_id, i.customer_id, i.invoice_date, i.billing_address, i.billing_city, i.billing_state, i.billing_country, i.billing_postal_code, i.total, i.last_updated, c.customer_id, c.first_name, c.last_name, c.company, c.address, c.city, c.state, c.country, c.postal_code, c.phone, c.fax, c.email, c.support_rep_id, c.version_stamp FROM invoice AS i INNER JOIN customer AS c ON i.customer_id = c.customer_id WHERE i.billing_state = %(i_billing_state)s"
+            == "SELECT i.invoice_id, i.customer_id, i.invoice_date, i.billing_address, i.billing_city, i.billing_state, i.billing_country, i.billing_postal_code, i.total, i.last_updated, c.customer_id, c.first_name, c.last_name, c.company, c.address, c.city, c.state, c.country, c.postal_code, c.phone, c.fax, c.email, c.support_rep_id, c.version_stamp FROM invoice AS i INNER JOIN customer AS c ON i.customer_id = c.customer_id WHERE i.billing_state = %(i_billing_state)s"  # noqa E501
         )
 
         subselect_sql_generator = SQLSubselectGenerator(
@@ -536,7 +533,7 @@ class TestSQLGenerator:
         log.info(f"subselect_sql_generator: {subselect_sql_generator.sql}")
         assert (
             subselect_sql_generator.sql
-            == "SELECT invoice_id, invoice_line_id, track_id, unit_price, quantity FROM invoice_line WHERE invoice_id IN ( SELECT invoice_id FROM invoice AS i INNER JOIN customer AS c ON i.customer_id = c.customer_id WHERE i.billing_state = %(i_billing_state)s )"
+            == "SELECT invoice_id, invoice_line_id, track_id, unit_price, quantity FROM invoice_line WHERE invoice_id IN ( SELECT invoice_id FROM invoice AS i INNER JOIN customer AS c ON i.customer_id = c.customer_id WHERE i.billing_state = %(i_billing_state)s )"  # noqa E501
         )
 
         select_map = subselect_sql_generator.selection_result_map()
