@@ -11,72 +11,112 @@ components:
         album_id:
           type: integer
           x-am-primary-key: auto
+          description: Unique identifier for the album.
+          example: 1
         title:
           type: string
           maxLength: 160
+          description: Title of the album.
+          example: "Abbey Road"
         artist_id:
           type: integer
+          description: Unique identifier for the artist.
+          example: 42
       required:
         - album_id
         - title
         - artist_id
     artist:
       type: object
+      x-am-engine: postgres
       x-am-database: chinook
       properties:
         artist_id:
           type: integer
           x-am-primary-key: auto
+          description: Unique identifier for the artist.
+          example: 42
         name:
           type: string
           maxLength: 120
+          description: Name of the artist.
+          example: "The Beatles"
       required:
         - artist_id
     customer:
       type: object
+      x-am-engine: postgres
       x-am-database: chinook
       x-am-concurrency-control: version_stamp
       properties:
         customer_id:
           type: integer
           x-am-primary-key: auto
+          description: Unique identifier for the customer.
+          example: 1
         first_name:
           type: string
           maxLength: 40
+          description: First name of the customer.
+          example: "John"
         last_name:
           type: string
           maxLength: 20
+          description: Last name of the customer.
+          example: "Doe"
         company:
           type: string
           maxLength: 80
+          description: Company name of the customer.
+          example: "Acme Corporation"
         address:
           type: string
           maxLength: 70
+          description: Address of the customer.
+          example: "123 Main St"
         city:
           type: string
           maxLength: 40
+          description: City of the customer.
+          example: "Anytown"
         state:
           type: string
           maxLength: 40
+          description: State or province of the customer.
+          example: "CA"
         country:
           type: string
           maxLength: 40
+          description: Country of the customer.
+          example: "USA"
         postal_code:
           type: string
           maxLength: 10
+          description: Postal code of the customer.
+          example: "12345"
         phone:
           type: string
           maxLength: 24
+          description: Phone number of the customer.
+          example: "555-1234"
         fax:
           type: string
           maxLength: 24
+          description: Fax number of the customer.
+          example: "555-5678"
         email:
           type: string
           maxLength: 60
+          description: Email address of the customer.
+          example: "john.doe@example.com"
         support_rep_id:
           type: integer
+          description: Unique identifier for the support representative.
+          example: 5
         version_stamp:
           type: string
+          description: Concurrency control version stamp.
+          example: "2023-01-01T00:00:00Z"
       required:
         - customer_id
         - first_name
@@ -84,110 +124,169 @@ components:
         - email
     Employee:
       type: object
+      x-am-engine: postgres
       x-am-database: chinook
       properties:
         employee_id:
           type: integer
           x-am-primary-key: auto
+          description: Unique identifier for the employee.
+          example: 1
         last_name:
           type: string
           maxLength: 20
+          description: Last name of the employee.
+          example: "Smith"
         first_name:
           type: string
           maxLength: 20
+          description: First name of the employee.
+          example: "Jane"
         title:
           type: string
           maxLength: 30
+          description: Job title of the employee.
+          example: "Manager"
         reports_to:
           type: integer
+          description: Unique identifier of the employee's manager.
+          example: 2
         birth_date:
           type: string
           format: date-time
+          description: Birth date of the employee.
+          example: "1980-01-01T00:00:00Z"
         hire_date:
           type: string
           format: date-time
+          description: Hire date of the employee.
+          example: "2005-03-15T00:00:00Z"
         address:
           type: string
           maxLength: 70
+          description: Address of the employee.
+          example: "456 Elm St"
         city:
           type: string
           maxLength: 40
+          description: City of the employee.
+          example: "Anytown"
         state:
           type: string
           maxLength: 40
+          description: State or province of the employee.
+          example: "CA"
         country:
           type: string
           maxLength: 40
+          description: Country of the employee.
+          example: "USA"
         postal_code:
           type: string
           maxLength: 10
+          description: Postal code of the employee.
+          example: "67890"
         phone:
           type: string
           maxLength: 24
+          description: Phone number of the employee.
+          example: "555-6789"
         fax:
           type: string
           maxLength: 24
+          description: Fax number of the employee.
+          example: "555-4321"
         email:
           type: string
           maxLength: 60
+          description: Email address of the employee.
+          example: "jane.smith@example.com"
       required:
         - employee_id
         - last_name
         - first_name
     Genre:
       type: object
+      x-am-engine: postgres
       x-am-database: chinook
       properties:
         genre_id:
           type: integer
           x-am-primary-key: auto
+          description: Unique identifier for the genre.
+          example: 1
         name:
           type: string
           maxLength: 120
+          description: Name of the genre.
+          example: "Rock"
       required:
         - genre_id
     invoice:
       type: object
+      x-am-engine: postgres
       x-am-database: chinook
       x-am-concurrency-control: last_updated
       properties:
         invoice_id:
           type: integer
           x-am-primary-key: auto
+          description: Unique identifier for the invoice.
+          example: 1001
         customer_id:
           type: integer
+          description: Unique identifier for the customer.
+          example: 1
         customer:
           $ref: '#/components/schemas/customer'
           x-am-parent-property: customer_id
+          description: Customer associated with the invoice.
         invoice_date:
           type: string
           format: date-time
+          description: Date of the invoice.
+          example: "2023-01-01T00:00:00Z"
         billing_address:
           type: string
           maxLength: 70
+          description: Billing address for the invoice.
+          example: "789 Maple St"
         billing_city:
           type: string
           maxLength: 40
+          description: Billing city for the invoice.
+          example: "Anytown"
         billing_state:
           type: string
           maxLength: 40
+          description: Billing state or province for the invoice.
+          example: "CA"
         billing_country:
           type: string
           maxLength: 40
+          description: Billing country for the invoice.
+          example: "USA"
         billing_postal_code:
           type: string
           maxLength: 10
+          description: Billing postal code for the invoice.
+          example: "12345"
         line_items:
           type: array
           items:
             $ref: "#/components/schemas/invoice_line"
             x-am-child-property: invoice_id
+          description: Line items associated with the invoice.
         total:
           type: number
           format: float
+          description: Total amount of the invoice.
+          example: 100.50
         last_updated:
           type: string
           format: date-time
+          description: Timestamp of the last update.
+          example: "2023-01-02T12:00:00Z"
       required:
         - invoice_id
         - customer_id
@@ -195,89 +294,28 @@ components:
         - total
     invoice_line:
       type: object
+      x-am-engine: postgres
       x-am-database: chinook
       properties:
         invoice_line_id:
           type: integer
           x-am-primary-key: auto
+          description: Unique identifier for the invoice line item.
+          example: 1
         invoice_id:
           type: integer
+          description: Unique identifier for the invoice.
+          example: 1001
         track_id:
           type: integer
+          description: Unique identifier for the track.
+          example: 2001
         unit_price:
           type: number
           format: float
+          description: Unit price of the item.
+          example: 0.99
         quantity:
           type: integer
-      required:
-        - invoice_line_id
-        - invoice_id
-        - track_id
-        - unit_price
-        - quantity
-    media_type:
-      type: object
-      x-am-database: chinook
-      properties:
-        media_type_id:
-          type: integer
-        name:
-          type: string
-          maxLength: 120
-      required:
-        - media_type_id
-    playlist:
-      type: object
-      x-am-database: chinook
-      properties:
-        playlist_id:
-          type: integer
-          x-am-primary-key: auto
-        name:
-          type: string
-          maxLength: 120
-      required:
-        - playlist_id
-    playlist_track:
-      type: object
-      x-am-database: chinook
-      properties:
-        playlist_id:
-          type: integer
-        track_id:
-          type: integer
-      required:
-        - playlist_id
-        - track_id
-    track:
-      type: object
-      x-am-database: chinook
-      properties:
-        track_id:
-          type: integer
-          x-am-primary-key: auto
-        name:
-          type: string
-          maxLength: 200
-        album_id:
-          type: integer
-        media_type_id:
-          type: integer
-        genre_id:
-          type: integer
-        composer:
-          type: string
-          maxLength: 220
-        milliseconds:
-          type: integer
-        bytes:
-          type: integer
-        unit_price:
-          type: number
-          format: float
-      required:
-        - track_id
-        - name
-        - media_type_id
-        - milliseconds
-        - unit_price
+          description: Quantity of the item.
+          example: 2

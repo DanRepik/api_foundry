@@ -247,7 +247,7 @@ class GatewaySpec:
     def generate_create_operation(
         self, path: str, schema_name: str, schema_object: SchemaObject
     ):
-        log.info(
+        log.debug(
             f"schema_name: {schema_name}, schema_object: {schema_object.schema_object}"
         )
         self.add_operation(

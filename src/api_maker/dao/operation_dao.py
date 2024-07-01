@@ -71,48 +71,47 @@ class OperationDAO(DAO):
         return result
 
     def __fetch_many(self, parent_set: list[dict], cursor: Cursor):
+        if "properties" not in self.operation.metadata_params:
+            return
+
         for name, relation in self.schema_object.relations.items():
-            log.info(f"checking relation: {name}, relation: {vars(relation)}")
             if relation.type == "object":
                 continue
 
-            subselect_generator = SQLSubselectGenerator(
+            sql_generator = SQLSubselectGenerator(
                 self.operation, relation, self.sql_generator
             )
-            log.info(f"subselect_sql: {subselect_generator.sql}")
-            child_set = self.__fetch_record_set(subselect_generator, cursor)
+
+            child_set = self.__fetch_record_set(sql_generator, cursor)
+            if len(child_set) == 0:
+                continue
 
             for parent in parent_set:
                 parent[name] = []
 
-            log.info(f"child_set: {child_set}")
-
-            if len(child_set) == 0:
-                continue
-
             parents = {}
-            log.info(f"parent_property: {vars(relation.parent_property)}")
             for parent in parent_set:
                 parents[parent[relation.parent_property.name]] = parent
 
-            log.info(f"parents: {parents}")
             for child in child_set:
-                log.info(f"child {child}")
                 parent_id = child[relation.child_property.name]
                 parent = parents.get(parent_id)
                 if parent:
                     parent[name].append(child)
 
     def __fetch_record_set(self, generator: SQLGenerator, cursor: Cursor) -> list[dict]:
+        sql = generator.sql
+        if not sql:
+            return []
+
         result = []
         record_set = cursor.execute(
-            generator.sql,
+            sql,
             generator.placeholders,
             generator.select_list_columns,
         )
         for record in record_set:
             object = generator.marshal_record(record)
-            log.info(f"object: {object}")
             result.append(object)
 
         return result

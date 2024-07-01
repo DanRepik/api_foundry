@@ -229,6 +229,7 @@ components:
       properties:
         media_type_id:
           type: integer
+          x-am-primary-key: auto
         name:
           type: string
           maxLength: 120

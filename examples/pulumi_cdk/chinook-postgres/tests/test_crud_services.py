@@ -6,13 +6,13 @@ import requests
 from api_maker.utils.app_exception import ApplicationException
 from api_maker.utils.logger import logger
 
-from test_secrets_fixture_cp import gateway_endpoint, db_secrets
+from test_secrets_fixture_cp import gateway_endpoint
 
 log = logger(__name__)
 
 
 class TestCrudService:
-    def test_crud_service(self, db_secrets, gateway_endpoint):
+    def test_crud_service(self, gateway_endpoint):
         """
         Integration test to check basic crud services.  Media type does not have
         a primary key so query strings are required.
@@ -76,7 +76,7 @@ class TestCrudService:
 
         assert len(result) == 0
 
-    def test_crud_with_timestamp_service(self, db_secrets, gateway_endpoint):
+    def test_crud_with_timestamp_service(self, gateway_endpoint):
         """
         Integration test to check insert
         """

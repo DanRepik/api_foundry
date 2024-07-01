@@ -1,18 +1,25 @@
-from zipfile import ZipFile
-import os
 import pulumi
 import pulumi_aws as aws
-from api_maker.utils.logger import logger, DEBUG
+from api_maker.utils.logger import logger
 
 log = logger(__name__)
+
 
 class PythonFunctionCloudprint(pulumi.ComponentResource):
     name: str
     handler: str
     lambda_: aws.lambda_.Function
 
-    def __init__(self, name, hash: str, archive_location: str, handler: str, environment=None, opts=None):
-        super().__init__('custom:resource:PythonFunctionCloudprint', name, {}, opts)
+    def __init__(
+        self,
+        name,
+        hash: str,
+        archive_location: str,
+        handler: str,
+        environment=None,
+        opts=None,
+    ):
+        super().__init__("custom:resource:PythonFunctionCloudprint", name, {}, opts)
         self.name = name
         self.handler = handler
         self.environment = environment or {}
@@ -21,7 +28,7 @@ class PythonFunctionCloudprint(pulumi.ComponentResource):
 
     def create_execution_role(self) -> aws.iam.Role:
         log.debug("creating execution role")
-        assume_role = aws.iam.get_policy_document(
+        assume_role_policy = aws.iam.get_policy_document(
             statements=[
                 aws.iam.GetPolicyDocumentStatementArgs(
                     effect="Allow",
@@ -38,30 +45,33 @@ class PythonFunctionCloudprint(pulumi.ComponentResource):
 
         role = aws.iam.Role(
             f"{self.name}-lambda-execution",
-            name=f"{pulumi.get_project()}-{self.name}-lambda-execution",
-            assume_role_policy=assume_role.json,
+            assume_role_policy=assume_role_policy.json,
         )
 
-        # Add CloudWatch Logs and Secrets Manager access to the role
+        aws.iam.get_policy_document(
+            statements=[
+                aws.iam.GetPolicyDocumentStatementArgs(
+                    effect="Allow",
+                    actions=[
+                        "secretsmanager:GetSecretValue",
+                        "secretsmanager:DescribeSecret",
+                        "logs:CreateLogGroup",
+                        "logs:CreateLogStream",
+                        "logs:PutLogEvents",
+                    ],
+                    resources=["*"],  # Allow access to all secrets and logs
+                )
+            ]
+        )
+
+        """
         aws.iam.RolePolicy(
             f"{self.name}-lambda-policy",
             role=role.id,
-            policy=aws.iam.get_policy_document(
-                statements=[
-                    aws.iam.GetPolicyDocumentStatementArgs(
-                        effect="Allow",
-                        actions=[
-                            "secretsmanager:GetSecretValue",
-                            "secretsmanager:DescribeSecret",
-                            "logs:CreateLogGroup",
-                            "logs:CreateLogStream",
-                            "logs:PutLogEvents"
-                        ],
-                        resources=["*"]  # Allow access to all secrets and logs
-                    )
-                ]
-            ).json,
+            policy=policy_document.json,
+            opts=pulumi.ResourceOptions(depends_on=[role])
         )
+        """
 
         return role
 
@@ -81,13 +91,16 @@ class PythonFunctionCloudprint(pulumi.ComponentResource):
 
         log_group = self.create_log_group()
 
+        execution_role = self.create_execution_role()
+
         self.lambda_ = aws.lambda_.Function(
             f"{self.name}-lambda",
             code=pulumi.FileArchive(archive_location),
             name=f"{pulumi.get_project()}-{self.name}",
-            role=self.create_execution_role().arn,
+            role=execution_role.arn,
             handler=self.handler,
             source_code_hash=hash,
             runtime=aws.lambda_.Runtime.PYTHON3D9,
             environment=aws.lambda_.FunctionEnvironmentArgs(variables=self.environment),
+            opts=pulumi.ResourceOptions(depends_on=[execution_role, log_group]),
         )

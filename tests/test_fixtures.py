@@ -16,7 +16,7 @@ def load_model():
     ModelFactory.load_yaml("resources/chinook_api.yaml")
 
 
-def create_secret_if_not_exists(secret_name, secret_value):
+def create_secret_if_not_exists(name, value):
     log.info("creating secret")
     # Create a Secrets Manager client
     client = boto3.client(
@@ -25,22 +25,21 @@ def create_secret_if_not_exists(secret_name, secret_value):
 
     try:
         # Check if the secret already exists
-        response = client.describe_secret(SecretId=secret_name)
-        log.info(f"secret: {response}")
-        log.info(f"Secret '{secret_name}' already exists!")
+        response = client.describe_secret(SecretId=name)
+        log.info(f"Secret '{name}' already exists!")
         return response["ARN"]
     except client.exceptions.ResourceNotFoundException:
         # Secret does not exist, proceed with creating it
         try:
             # Create the secret
-            response = client.create_secret(Name=secret_name, SecretString=secret_value)
-            log.info(f"Secret '{secret_name}' created successfully!")
+            response = client.create_secret(Name=name, SecretString=value)
+            log.info(f"Secret '{name}' created successfully!")
             return response["ARN"]
         except ClientError as e:
-            log.error(f"Failed to create secret '{secret_name}': {e}")
+            log.error(f"Failed to create secret '{name}': {e}")
             return None
     except ClientError as e:
-        log.error(f"Failed to check for secret '{secret_name}': {e}")
+        log.error(f"Failed to check for secret '{name}': {e}")
         return None
 
 
@@ -54,7 +53,7 @@ def db_secrets():
         json.dumps(
             {
                 "engine": "postgres",
-                "dbname": "chinook",
+                "dbname": "chinook_auto_increment",
                 "username": "chinook_user",
                 "password": "chinook_password",
                 "host": "localhost",

@@ -1,0 +1,308 @@
+openapi: 3.0.0
+info:
+  title: Generated API
+  version: 1.0.0
+components:
+  schemas:
+    artist:
+      type: object
+      properties:
+        artist_id:
+          type: integer
+          x-am-primary-key: auto
+        name:
+          type: string
+          maxLength: 120
+      required:
+      - artist_id
+    album:
+      type: object
+      properties:
+        album_id:
+          type: integer
+          x-am-primary-key: auto
+        title:
+          type: string
+          maxLength: 160
+        artist_id:
+          type: integer
+        artist:
+          $ref: '#/components/schemas/artist'
+          x-am-parent-property: artist_id
+          description: Artist associated with the album.
+      required:
+      - album_id
+      - title
+      - artist_id
+    employee:
+      type: object
+      properties:
+        employee_id:
+          type: integer
+          x-am-primary-key: auto
+        employee:
+          $ref: '#/components/schemas/employee'
+          x-am-parent-property: employee_id
+          description: Employee associated with the employee.
+        last_name:
+          type: string
+          maxLength: 20
+        first_name:
+          type: string
+          maxLength: 20
+        title:
+          type: string
+          maxLength: 30
+        reports_to:
+          type: integer
+        birth_date:
+          type: string
+          format: date-time
+        hire_date:
+          type: string
+          format: date-time
+        address:
+          type: string
+          maxLength: 70
+        city:
+          type: string
+          maxLength: 40
+        state:
+          type: string
+          maxLength: 40
+        country:
+          type: string
+          maxLength: 40
+        postal_code:
+          type: string
+          maxLength: 10
+        phone:
+          type: string
+          maxLength: 24
+        fax:
+          type: string
+          maxLength: 24
+        email:
+          type: string
+          maxLength: 60
+      required:
+      - employee_id
+      - last_name
+      - first_name
+    invoice:
+      type: object
+      properties:
+        invoice_id:
+          type: integer
+          x-am-primary-key: auto
+        customer_id:
+          type: integer
+        customer:
+          $ref: '#/components/schemas/customer'
+          x-am-parent-property: customer_id
+          description: Customer associated with the invoice.
+        invoice_date:
+          type: string
+          format: date-time
+        billing_address:
+          type: string
+          maxLength: 70
+        billing_city:
+          type: string
+          maxLength: 40
+        billing_state:
+          type: string
+          maxLength: 40
+        billing_country:
+          type: string
+          maxLength: 40
+        billing_postal_code:
+          type: string
+          maxLength: 10
+        total:
+          type: number
+        last_updated:
+          type: string
+          format: date-time
+      required:
+      - invoice_id
+      - customer_id
+      - invoice_date
+      - total
+      - last_updated
+    genre:
+      type: object
+      properties:
+        genre_id:
+          type: integer
+          x-am-primary-key: auto
+        name:
+          type: string
+          maxLength: 120
+        version:
+          type: integer
+      required:
+      - genre_id
+      - version
+    invoice_line:
+      type: object
+      properties:
+        invoice_line_id:
+          type: integer
+          x-am-primary-key: auto
+        invoice_id:
+          type: integer
+        invoice:
+          $ref: '#/components/schemas/invoice'
+          x-am-parent-property: invoice_id
+          description: Invoice associated with the invoice_line.
+        track_id:
+          type: integer
+        track:
+          $ref: '#/components/schemas/track'
+          x-am-parent-property: track_id
+          description: Track associated with the invoice_line.
+        unit_price:
+          type: number
+        quantity:
+          type: integer
+      required:
+      - invoice_line_id
+      - invoice_id
+      - track_id
+      - unit_price
+      - quantity
+    track:
+      type: object
+      properties:
+        track_id:
+          type: integer
+          x-am-primary-key: auto
+        name:
+          type: string
+          maxLength: 200
+        album_id:
+          type: integer
+        album:
+          $ref: '#/components/schemas/album'
+          x-am-parent-property: album_id
+          description: Album associated with the track.
+        media_type_id:
+          type: integer
+        media_type:
+          $ref: '#/components/schemas/media_type'
+          x-am-parent-property: media_type_id
+          description: Media_type associated with the track.
+        genre_id:
+          type: integer
+        genre:
+          $ref: '#/components/schemas/genre'
+          x-am-parent-property: genre_id
+          description: Genre associated with the track.
+        composer:
+          type: string
+          maxLength: 220
+        milliseconds:
+          type: integer
+        bytes:
+          type: integer
+        unit_price:
+          type: number
+      required:
+      - track_id
+      - name
+      - media_type_id
+      - milliseconds
+      - unit_price
+    playlist:
+      type: object
+      properties:
+        playlist_id:
+          type: integer
+          x-am-primary-key: auto
+        name:
+          type: string
+          maxLength: 120
+      required:
+      - playlist_id
+    playlist_track:
+      type: object
+      properties:
+        playlist_id:
+          type: integer
+          x-am-primary-key: 'true'
+        playlist:
+          $ref: '#/components/schemas/playlist'
+          x-am-parent-property: playlist_id
+          description: Playlist associated with the playlist_track.
+        track_id:
+          type: integer
+          x-am-primary-key: 'true'
+        track:
+          $ref: '#/components/schemas/track'
+          x-am-parent-property: track_id
+          description: Track associated with the playlist_track.
+      required:
+      - playlist_id
+      - track_id
+    media_type:
+      type: object
+      properties:
+        media_type_id:
+          type: integer
+          x-am-primary-key: auto
+        name:
+          type: string
+          maxLength: 120
+      required:
+      - media_type_id
+    customer:
+      type: object
+      properties:
+        customer_id:
+          type: integer
+          x-am-primary-key: auto
+        first_name:
+          type: string
+          maxLength: 40
+        last_name:
+          type: string
+          maxLength: 20
+        company:
+          type: string
+          maxLength: 80
+        address:
+          type: string
+          maxLength: 70
+        city:
+          type: string
+          maxLength: 40
+        state:
+          type: string
+          maxLength: 40
+        country:
+          type: string
+          maxLength: 40
+        postal_code:
+          type: string
+          maxLength: 10
+        phone:
+          type: string
+          maxLength: 24
+        fax:
+          type: string
+          maxLength: 24
+        email:
+          type: string
+          maxLength: 60
+        support_rep_id:
+          type: integer
+        version_stamp:
+          type: string
+          format: uuid
+      required:
+      - customer_id
+      - first_name
+      - last_name
+      - email
+      - version_stamp
