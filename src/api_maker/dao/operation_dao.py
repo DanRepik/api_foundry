@@ -49,7 +49,7 @@ class OperationDAO(DAO):
             400, f"Invalid operation action: {self.operation.action}"
         )
 
-    def execute(self, cursor: Cursor) -> list[dict]:
+    def execute(self, cursor: Cursor) -> list[dict] | dict:
         """
         Execute the database operation based on the provided cursor.
 
@@ -64,6 +64,8 @@ class OperationDAO(DAO):
         result = self.__fetch_record_set(self.sql_generator, cursor)
 
         if self.operation.action == "read":
+            if self.operation.metadata_params.get("count", False):
+                return result[0]
             self.__fetch_many(result, cursor)
         elif self.operation.action in ["update", "delete"] and len(result) == 0:
             raise ApplicationException(400, "No records were modified")

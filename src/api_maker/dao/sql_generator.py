@@ -214,7 +214,6 @@ class SQLGenerator:
             self.__selection_result_map = self.filter_and_prefix_keys(
                 filters, self.schema_object.properties
             )
-
         return self.__selection_result_map
 
     def marshal_record(self, record) -> dict:

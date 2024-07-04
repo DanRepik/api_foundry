@@ -2,7 +2,6 @@ import json
 
 from api_maker.utils.logger import logger
 from api_maker.adapters.adapter import Adapter
-from api_maker.utils.model_factory import ModelFactory
 from api_maker.operation import Operation
 
 log = logger(__name__)
@@ -109,10 +108,9 @@ class GatewayAdapter(Adapter):
         metadata_params = {}
 
         for key, value in parameters.items():
-            if key.startswith("_"):
+            if key.startswith("__"):
                 metadata_params[key] = value
             else:
                 query_params[key] = value
 
         return query_params, metadata_params
-

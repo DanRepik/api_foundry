@@ -257,8 +257,60 @@ Metadata parameters are always prefixed with a double underscore '__'.
 
 This parameter allows restricting the contents of objects returned.  The value of this paremeter is a spce delimited list of regular expressions.  When provided result sets are restricted to only properties that match any of the expressions provided.
 
- are included in the result.
-Optional, if omitted all properties are
+
+By default API-Maker returns all properties excluding object and array properties.  The retrieve those types properties must be explicitly selected.
+
+
+**__count**
+
+When the __count parameter is present the count of the records selected is returned instead of the list of records.  This parameter only applies to 'GET' requests.  The result is a JSON object with a single attribute of 'count'.
+
+An example of a request for the count of invoices for customer_id of five would be;
+
+```
+GET {endpoint}/invoices?customer_id=5&__count
+```
+
+The response would be;
+
+```json
+{'count': 7}
+```
+
+**__sort**
+
+The __sort parameter allows specifying the order of records returned in the response.  This parameter only applies to 'GET' requests.
+
+The sort order is specified with a comma delimited list of property names.  Optionally the sort direction can be appended to the property name using a ':' delimiter.  Valid sort directions are either 'asc' for ascending and 'desc' for descending order, if omitted 'asc' is default.
+
+An example of a request that would return invoices order by most recent date and value would be;
+
+```
+GET {endpoint}/invoice?__sort=invoice_date:desc,value
+```
+
+Additionally sorting can be applied to properties found in object fields.  In this case the object and property should be delimited with a '.'.
+
+For example the following requests returns invoices ordered by support representative;
+
+```
+GET {endpoint}/invoice?__sort=customer.support_rep_id
+```
+
+> Sorting on properties of array properties is not supported.
+
+**__offset**
+
+**__limit**
+
+This property allows limiting the number of records returned.
+
+**__case**
+
+### Object and Array Properties
+
+API-Maker supports returning objects that can have properties that are objects or an array of objects.  The availability of these types of properties depends the configuration in the API specfication.  An example of such properties can be found in the invoice schema object where the 'customer' property is a customer object and the 'line_items' is a array of line_item objects.
+
 
 
 # Developing
