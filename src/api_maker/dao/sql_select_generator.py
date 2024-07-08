@@ -80,9 +80,7 @@ class SQLSelectGenerator(SQLGenerator):
                     ),
                 )
 
-            assignment, holders = self.search_value_assignment(
-                property, value, prefix
-            )
+            assignment, holders = self.search_value_assignment(property, value, prefix)
             conditions.append(assignment)
             self.search_placeholders.update(holders)
 

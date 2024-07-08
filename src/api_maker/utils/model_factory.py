@@ -63,7 +63,9 @@ class SchemaObjectAssociation(OpenAPIElement):
 
     @property
     def child_property(self) -> Any:
-        child_schema_object = ModelFactory.get_schema_object(self.child_schema_object_name)
+        child_schema_object = ModelFactory.get_schema_object(
+            self.child_schema_object_name
+        )
         if self.child:
             return child_schema_object.get_property(self.child)
         return child_schema_object.primary_key
@@ -74,7 +76,7 @@ class SchemaObjectAssociation(OpenAPIElement):
         if self.parent:
             return parent_schema_object.get_property(self.parent)
         return parent_schema_object.primary_key
-    
+
     @property
     def child_schema_object(self):
         return ModelFactory.get_schema_object(self.child_schema_object_name)
@@ -282,7 +284,7 @@ class ModelFactory:
     def get_schema_object(cls, name: str) -> SchemaObject:
         if name not in cls.schema_object_cache:
             cls.schema_object_cache[name] = SchemaObject(name, cls.schema_objects[name])
-        
+
         return cls.schema_object_cache[name]
 
     @classmethod

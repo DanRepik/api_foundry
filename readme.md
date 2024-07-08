@@ -424,9 +424,9 @@ API-Maker integrates component schema objects with database tables using the fol
 - **Property Mapping**: Object properties are mapped to table columns. In addition to data types, properties can indicate primary keys and support concurrency management.
 - **Defining Object and Array Properties**: Schema objects can have properties that are either objects or arrays or objects.  Some additional configuration is needed to enable this capability.
 
-Since most schema object definitions involve a straightforward mapping between database table columns and schema object properties, 
+Since most schema object definitions involve a straightforward mapping between database table columns and schema object properties,
 
-> API-Maker provides [tooling](#generating-openapi -schemas) to build an initial starting point API specification. This specification should be considered a starting point. 
+> API-Maker provides [tooling](#generating-openapi -schemas) to build an initial starting point API specification. This specification should be considered a starting point.
 
 > **Note**: The gateway API has limitations on the number of operation paths (routes) allowed in a single API. As of this writing, the limit is 300 routes (extensions are available). Each schema object definition results in seven operation paths or routes, so the effective limit per API is approximately 40 schema objects.
 
@@ -592,11 +592,11 @@ Here is an example of the primary key for the invoice schema object;
           example: 1
 ```
 
-If the key generation strategy is 'sequence' the the 'x-am-sequence-name' attribute must also be defined. 
+If the key generation strategy is 'sequence' the the 'x-am-sequence-name' attribute must also be defined.
 
 ### Concurrency Management Columns
 
-Optionally, a property within the schema component can be identified as a concurrency control property.  This property is utilized to prevent clients from overriding mutations to objects made by other clients. 
+Optionally, a property within the schema component can be identified as a concurrency control property.  This property is utilized to prevent clients from overriding mutations to objects made by other clients.
 
 When a schema object includes a concurrency control property the following occurs;
 
@@ -778,7 +778,7 @@ With API-Maker
 
 # Appendix
 
-# Generating OpenAPI Schemas 
+# Generating OpenAPI Schemas
 
 ## PostgreSQL Database Schemas
 

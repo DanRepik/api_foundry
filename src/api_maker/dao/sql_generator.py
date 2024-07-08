@@ -10,23 +10,96 @@ from api_maker.utils.model_factory import SchemaObject, SchemaObjectProperty
 log = logger(__name__)
 
 SQL_RESERVED_WORDS = {
-    'select', 'from', 'where', 'insert', 'update', 'delete', 'join', 'on', 'order', 
-    'group', 'having', 'union', 'distinct', 'into', 'as', 'and', 'or', 'not', 'in', 
-    'is', 'null', 'like', 'between', 'by', 'case', 'when', 'then', 'else', 'end', 
-    'exists', 'all', 'any', 'some', 'limit', 'offset', 'fetch', 'for', 'create', 
-    'alter', 'drop', 'table', 'index', 'view', 'trigger', 'procedure', 'function', 
-    'database', 'schema', 'grant', 'revoke', 'primary', 'key', 'foreign', 'references', 
-    'check', 'unique', 'default', 'with', 'values', 'set', 'transaction', 'commit', 
-    'rollback', 'savepoint', 'lock', 'tablespace', 'sequence', 'if', 'else', 'elsif', 
-    'loop', 'begin', 'declare', 'end', 'open', 'fetch', 'close', 'cursor', 'next'
+    "select",
+    "from",
+    "where",
+    "insert",
+    "update",
+    "delete",
+    "join",
+    "on",
+    "order",
+    "group",
+    "having",
+    "union",
+    "distinct",
+    "into",
+    "as",
+    "and",
+    "or",
+    "not",
+    "in",
+    "is",
+    "null",
+    "like",
+    "between",
+    "by",
+    "case",
+    "when",
+    "then",
+    "else",
+    "end",
+    "exists",
+    "all",
+    "any",
+    "some",
+    "limit",
+    "offset",
+    "fetch",
+    "for",
+    "create",
+    "alter",
+    "drop",
+    "table",
+    "index",
+    "view",
+    "trigger",
+    "procedure",
+    "function",
+    "database",
+    "schema",
+    "grant",
+    "revoke",
+    "primary",
+    "key",
+    "foreign",
+    "references",
+    "check",
+    "unique",
+    "default",
+    "with",
+    "values",
+    "set",
+    "transaction",
+    "commit",
+    "rollback",
+    "savepoint",
+    "lock",
+    "tablespace",
+    "sequence",
+    "if",
+    "else",
+    "elsif",
+    "loop",
+    "begin",
+    "declare",
+    "end",
+    "open",
+    "fetch",
+    "close",
+    "cursor",
+    "next",
 }
+
 
 class SQLGenerator:
     operation: Operation
     schema_object: SchemaObject
     engine: str
 
-    def __init__(self, operation: Operation, schema_object: SchemaObject, engine: str) -> None:
+    def __init__(
+        self, operation: Operation, schema_object: SchemaObject, engine: str
+    ) -> None:
         self.operation = operation
         self.schema_object = schema_object
         self.engine = engine
@@ -60,7 +133,10 @@ class SQLGenerator:
             entity_lower = entity.lower()
             for i in range(1, len(entity_lower) + 1):
                 substring = entity_lower[:i]
-                if substring not in result.values() and substring not in SQL_RESERVED_WORDS:
+                if (
+                    substring not in result.values()
+                    and substring not in SQL_RESERVED_WORDS
+                ):
                     result[entity] = substring
                     break
         log.debug(f"prefix_map: {result}")
@@ -99,16 +175,22 @@ class SQLGenerator:
         conditions = []
         for name, value in self.operation.query_params.items():
             if "." in name:
-                raise ApplicationException(400, "Selection on relations is not supported")
+                raise ApplicationException(
+                    400, "Selection on relations is not supported"
+                )
             property = self.schema_object.properties.get(name)
             if not property:
-                raise ApplicationException(500, f"Search condition column not found {name}")
+                raise ApplicationException(
+                    500, f"Search condition column not found {name}"
+                )
             assignment, holders = self.search_value_assignment(property, value)
             conditions.append(assignment)
             self.search_placeholders.update(holders)
         return f" WHERE {' AND '.join(conditions)}" if conditions else ""
 
-    def search_value_assignment(self, property: SchemaObjectProperty, value, prefix: Optional[str] = None) -> tuple[str, dict]:
+    def search_value_assignment(
+        self, property: SchemaObjectProperty, value, prefix: Optional[str] = None
+    ) -> tuple[str, dict]:
         operand = "="
         relational_types = {
             "lt": "<",
@@ -136,7 +218,9 @@ class SQLGenerator:
 
         if operand in ["between", "not-between"]:
             value_set = value_str.split(",")
-            placeholder_name = f"{property.name}" if self.single_table else f"{prefix}_{property.name}"
+            placeholder_name = (
+                f"{property.name}" if self.single_table else f"{prefix}_{property.name}"
+            )
             sql = f"{column} {'NOT ' if operand == 'not-between' else ''}BETWEEN {self.placeholder(property, f'{placeholder_name}_1')} AND {self.placeholder(property, f'{placeholder_name}_2')}"
             placeholders = {
                 f"{placeholder_name}_1": property.convert_to_db_value(value_set[0]),
@@ -155,7 +239,11 @@ class SQLGenerator:
             sql = f"{column} {operand} {self.placeholder(property, placeholder_name)}"
             placeholders = {placeholder_name: property.convert_to_db_value(value_str)}
 
-        if self.operation.action != "read" and operand != "=" and self.schema_object.concurrency_property:
+        if (
+            self.operation.action != "read"
+            and operand != "="
+            and self.schema_object.concurrency_property
+        ):
             raise ApplicationException(
                 400,
                 "Concurrency settings prohibit multi-record updates "
@@ -170,7 +258,9 @@ class SQLGenerator:
     def selection_result_map(self) -> dict:
         if not self.__selection_result_map:
             filters = self.operation.metadata_params.get("_properties", ".*").split()
-            self.__selection_result_map = self.filter_and_prefix_keys(filters, self.schema_object.properties)
+            self.__selection_result_map = self.filter_and_prefix_keys(
+                filters, self.schema_object.properties
+            )
         return self.__selection_result_map
 
     def marshal_record(self, record: dict) -> dict:
@@ -180,7 +270,9 @@ class SQLGenerator:
             result[property.name] = property.convert_to_api_value(value)
         return result
 
-    def filter_and_prefix_keys(self, regex_list: List[str], properties: dict, prefix: Optional[str] = None) -> dict:
+    def filter_and_prefix_keys(
+        self, regex_list: List[str], properties: dict, prefix: Optional[str] = None
+    ) -> dict:
         """
         Accepts a prefix string, list of regular expressions, and a dictionary.
         Returns a new dictionary containing items whose keys match any of the regular expressions, with the prefix string

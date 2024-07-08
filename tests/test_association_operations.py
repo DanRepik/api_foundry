@@ -192,5 +192,5 @@ class TestAssociationOperations:
             assert ae.status_code == 400
             assert (
                 ae.message
-                == "Invalid selection property invoice does not have a property line_items" # noqa E501
+                == "Invalid selection property invoice does not have a property line_items"  # noqa E501
             )

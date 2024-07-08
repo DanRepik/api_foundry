@@ -38,7 +38,9 @@ class PostgresSchemaToOpenAPI:
         FROM information_schema.columns AS c
         WHERE table_schema = %s AND table_name = %s
         """
-        with self.connection.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
+        with self.connection.cursor(
+            cursor_factory=psycopg2.extras.DictCursor
+        ) as cursor:
             cursor.execute(query, (table_name, self.schema, self.schema, table_name))
             columns = cursor.fetchall()
         return columns
@@ -58,13 +60,17 @@ class PostgresSchemaToOpenAPI:
         AND tc.table_name = %s
         AND tc.table_schema = %s
         """
-        with self.connection.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
+        with self.connection.cursor(
+            cursor_factory=psycopg2.extras.DictCursor
+        ) as cursor:
             cursor.execute(query, (table_name, self.schema))
             pks = cursor.fetchall()
 
         primary_keys = {}
         for pk in pks:
-            primary_keys[pk["column_name"]] = "auto" if pk["is_identity"] == "YES" else True
+            primary_keys[pk["column_name"]] = (
+                "auto" if pk["is_identity"] == "YES" else True
+            )
 
         return primary_keys
 
@@ -112,7 +118,9 @@ class PostgresSchemaToOpenAPI:
                 if column_name in primary_keys:
                     column_info["x-am-primary-key"] = primary_keys[column_name]
                     if primary_keys[column_name] == "auto":
-                        column_info["description"] = f"Unique identifier for the {table}."
+                        column_info[
+                            "description"
+                        ] = f"Unique identifier for the {table}."
                         column_info["example"] = 1
 
                 if (
