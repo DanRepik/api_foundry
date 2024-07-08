@@ -113,7 +113,7 @@ def test_schema_object_property_conversion():
                     "TestSchema": {
                         "type": "object",
                         "properties": {
-                            "id": {"type": "integer", "x-am-primary-key": True},
+                            "id": {"type": "integer", "x-am-primary-key": "auto"},
                             "name": {"type": "string"},
                         },
                     }

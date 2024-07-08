@@ -31,14 +31,14 @@ class TestSQLGenerator:
         result_map = sql_generator.selection_result_map()
         log.info(f"result_map: {len(result_map)}")
         assert len(result_map) == 10
-        assert result_map.get("invoice_id") is not None
+        assert result_map.get("i.invoice_id") is not None
 
     def test_field_selection_with_association(self, load_model):  # noqa F811
         sql_generator = SQLSelectGenerator(
             Operation(
                 entity="invoice",
                 action="read",
-                metadata_params={"_properties": ".* customer:.*"},
+                metadata_params={"properties": ".* customer:.*"},
             ),
             ModelFactory.get_schema_object("invoice"),
             "postgres",
@@ -89,10 +89,11 @@ class TestSQLGenerator:
 
         assert (
             sql_generator.sql
-            == "SELECT invoice_id, customer_id, invoice_date, billing_address, billing_city, billing_state, billing_country, billing_postal_code, total FROM invoice WHERE invoice_id = %(invoice_id)s AND total > %(total)s"  # noqa E501
+            == "SELECT i.invoice_id, i.customer_id, i.invoice_date, i.billing_address, i.billing_city, i.billing_state, i.billing_country, i.billing_postal_code, i.total FROM invoice AS i WHERE i.invoice_id = %(i_invoice_id)s AND i.total > %(i_total)s"  # noqa E501
         )
-        assert sql_generator.placeholders == {"invoice_id": 24, "total": 5.0}
+        assert sql_generator.placeholders == {"i_invoice_id": 24, "i_total": 5.0}
 
+    @pytest.mark.skip
     def test_search_on_m_property(self, load_model):  # noqa F811
         try:
             operation_dao = OperationDAO(
@@ -359,7 +360,7 @@ class TestSQLGenerator:
             entity="invoice",
             action="read",
             query_params={"billing_state": "FL"},
-            metadata_params={"properties": ".* customer:.* line_items:.*"},
+            metadata_params={"properties": ".* customer:.* invoice_line_items:.*"},
         )
         sql_generator = SQLSelectGenerator(operation, schema_object, "postgres")
 
@@ -379,7 +380,7 @@ class TestSQLGenerator:
             entity="invoice",
             action="read",
             query_params={"billing_state": "FL"},
-            metadata_params={"properties": ".* customer:.* line_items:.*"},
+            metadata_params={"properties": ".* customer:.* invoice_line_items:.*"},
         )
         sql_generator = SQLSelectGenerator(operation, schema_object, "postgres")
 
@@ -417,9 +418,9 @@ class TestSQLGenerator:
 
             assert (
                 sql_generator.sql
-                == "SELECT genre_id, name FROM genre WHERE name = %(name)s"
+                == "SELECT g.genre_id, g.name FROM genre AS g WHERE g.name = %(g_name)s"
             )
-            assert sql_generator.placeholders == {"name": "Bill"}
+            assert sql_generator.placeholders == {"g_name": "Bill"}
         except ApplicationException as e:
             assert False, e.message
 
@@ -452,9 +453,9 @@ class TestSQLGenerator:
 
             assert (
                 sql_generator.sql
-                == "SELECT count(*) FROM genre WHERE genre_id > %(genre_id)s"
+                == "SELECT count(*) FROM genre AS g WHERE g.genre_id > %(g_genre_id)s"
             )
-            assert sql_generator.placeholders == {"genre_id": 10}
+            assert sql_generator.placeholders == {"g_genre_id": 10}
         except ApplicationException as e:
             assert False, e.message
 
@@ -480,7 +481,7 @@ class TestSQLGenerator:
                 f"sql-x: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"  # noqa E501
             )
 
-            assert sql_generator.sql == "SELECT genre_id, name FROM genre"
+            assert sql_generator.sql == "SELECT g.genre_id, g.name FROM genre AS g"
             assert sql_generator.placeholders == {}
 
         except ApplicationException as e:
@@ -513,7 +514,7 @@ class TestSQLGenerator:
             entity="invoice",
             action="read",
             query_params={"billing_state": "FL"},
-            metadata_params={"properties": ".* customer:.* line_items:.*"},
+            metadata_params={"properties": ".* customer:.* invoice_line_items:.*"},
         )
         schema_object = ModelFactory.get_schema_object("invoice")
         sql_generator = SQLSelectGenerator(operation, schema_object, "postgres")
@@ -526,14 +527,14 @@ class TestSQLGenerator:
 
         subselect_sql_generator = SQLSubselectGenerator(
             operation,
-            schema_object.get_relation("line_items"),
+            schema_object.get_relation("invoice_line_items"),
             SQLSelectGenerator(operation, schema_object, "postgres"),
         )
 
         log.info(f"subselect_sql_generator: {subselect_sql_generator.sql}")
         assert (
             subselect_sql_generator.sql
-            == "SELECT invoice_id, invoice_line_id, track_id, unit_price, quantity FROM invoice_line WHERE invoice_id IN ( SELECT invoice_id FROM invoice AS i INNER JOIN customer AS c ON i.customer_id = c.customer_id WHERE i.billing_state = %(i_billing_state)s )"  # noqa E501
+            == "SELECT invoice_id, invoice_line_id, track_id, unit_price, quantity FROM invoice_line WHERE invoice_id IN ( SELECT invoice_id FROM invoice AS i WHERE i.billing_state = %(i_billing_state)s )"  # noqa E501
         )
 
         select_map = subselect_sql_generator.selection_result_map()

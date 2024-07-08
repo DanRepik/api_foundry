@@ -63,7 +63,7 @@ class TestAssociationOperations:
         assert invoice["customer_id"] == 5
         assert invoice["billing_city"] == "Prague"
 
-    def test_invalid_object_property_criteria1(
+    def test_invalid_object_property_criteria_1(
         self, load_model, db_secrets  # noqa F811
     ):
         try:
@@ -79,7 +79,7 @@ class TestAssociationOperations:
             assert ae.status_code == 400
             assert (
                 ae.message
-                == "Invalid selection property invoice does not have a property custom."
+                == "Invalid selection property invoice does not have a property custom"
             )
 
     def test_invalid_object_property_criteria_2(
@@ -98,7 +98,7 @@ class TestAssociationOperations:
             assert ae.status_code == 400
             assert (
                 ae.message
-                == "Invalid selection property invoice does not have a property custom."
+                == "Invalid selection property invoice does not have a property custom"
             )
 
     def test_array_property(self, load_model, db_secrets):  # noqa F811
@@ -107,26 +107,26 @@ class TestAssociationOperations:
                 entity="invoice",
                 action="read",
                 query_params={"invoice_id": 5},
-                metadata_params={"properties": ".* line_items:.*"},
+                metadata_params={"properties": ".* invoice_line_items:.*"},
             )
         )
 
         log.debug(f"len: {len(result)}")
         invoice = result[0]
         log.debug(f"invoice: {invoice}")
-        log.debug(f"line_item: {invoice['line_items'][0]}")
+        log.debug(f"line_item: {invoice['invoice_line_items'][0]}")
 
-        assert invoice["line_items"]
-        assert invoice["invoice_id"] == invoice["line_items"][0]["invoice_id"]
-        assert invoice["line_items"][0]["invoice_id"] == 5
-        assert invoice["line_items"][0]["track_id"] == 99
+        assert invoice["invoice_line_items"]
+        assert invoice["invoice_id"] == invoice["invoice_line_items"][0]["invoice_id"]
+        assert invoice["invoice_line_items"][0]["invoice_id"] == 5
+        assert invoice["invoice_line_items"][0]["track_id"] == 99
 
     def test_array_property_criteria(self, load_model, db_secrets):  # noqa F811
         result = TransactionalService().execute(
             Operation(
                 entity="invoice",
                 action="read",
-                query_params={"line_items.track_id": 298},
+                query_params={"invoice_line_items.track_id": 298},
             )
         )
 
@@ -173,7 +173,7 @@ class TestAssociationOperations:
             assert ae.status_code == 400
             assert (
                 ae.message
-                == "Invalid selection property invoice does not have a property line_itms."  # noqa E501
+                == "Invalid selection property invoice does not have a property line_itms"  # noqa E501
             )
 
     def test_invalid_array_property_criteria_2(
@@ -192,5 +192,5 @@ class TestAssociationOperations:
             assert ae.status_code == 400
             assert (
                 ae.message
-                == "Property not found, invoice_line does not have property lint_item_id."  # noqa E501
+                == "Invalid selection property invoice does not have a property line_items" # noqa E501
             )

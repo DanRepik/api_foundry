@@ -23,7 +23,7 @@ class SQLSelectGenerator(SQLGenerator):
 
         return (
             f"SELECT {select_list}"
-            + f"FROM {table_expression}"
+            + f" FROM {table_expression}"
             + search_condition
             + order_by_expression
             + self.limit_expression
@@ -81,7 +81,7 @@ class SQLSelectGenerator(SQLGenerator):
                 )
 
             assignment, holders = self.search_value_assignment(
-                property, value, prefix if not self.single_table else None
+                property, value, prefix
             )
             conditions.append(assignment)
             self.search_placeholders.update(holders)

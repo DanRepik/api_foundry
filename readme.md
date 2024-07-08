@@ -73,7 +73,7 @@ components:
         - artist_id
 ```
 
-The above is standard OpenAPI specification with the except ion of the custom attributes.  API-MAKER always prefixes its custom attributes with 'x-am-'.
+The above is standard OpenAPI specification with additional custom attributes.  API-MAKER always prefixes custom attributes it uses with 'x-am-'.
 
 In this example the following API-MAKER attributes have been added;
 
@@ -166,17 +166,22 @@ apigw --> client : API Response
 
 ## Using API-Maker Services
 
-In this section we will explore the API services that API-MAKER provides.  Most of the examples will be restricted to the abbreviated example API specification.  However some examples will use resources defined in the complete Chinook API specification.
+API-Maker provides a robust API that allows clients flexibility in selecting and modifying records. This section explores the API services offered by API-Maker.
+
+There are four sections that cover the available services:
+1. **Basic Operations**: CRUD operations on single records.
+2. **Enhanced Record Selection**: Advanced querying capabilities.
+3. **Metadata Parameters**: Tailoring the content of responses.
+
+Most examples will use an abbreviated API specification, but some will reference the complete Chinook API specification.
 
 ### Basic Operations
 
-First basic CRUD services are supported.
+API-Maker supports basic CRUD services using RESTful HTTP methods. Data passed via requests and responses is in JSON format.
 
-These services are RESTful using the HTTP method to determine the operation.  Data passed via requests and response is of course in JSON.
+Successful operations return the status via response headers. The response body contains an array of the selected objects. For POST, PUT, and DELETE operations, the body contains the modified or deleted records.
 
-Services return the operation status via response headers.  For successful operations the response body contains an array of the selected objects.  When mutating records via POST, PUT, and DELETE the body contains the array of modified or deleted records.
-
-For these sevices the operation path is of the form;
+The operation paths are as follows:
 
 ```
 # for POST
@@ -185,25 +190,22 @@ For these sevices the operation path is of the form;
 /{entity}/{id}
 ```
 
-Where;
-
-* entity - is the schema compoenent object name from the API  specification.  In the example case this would be either album or artist.
-* id - is the primary key of the selected record.
-
-> TODO: put link to tests
+Where:
+- **entity**: The schema component object name from the API specification (e.g., album, artist).
+- **id**: The primary key of the selected record.
 
 ### Enhanced Record Selection
 
-In addition to basic CRUD operations API-MAKER offers a set of services that provide enhanced record selection using query strings.  With this feature multiple records can be selected and does not apply to create operations.  The path for these services is;
+In addition to basic CRUD operations, API-Maker offers enhanced record selection using query strings. This feature allows selection of multiple records and does not apply to create operations. The path for these services is:
 
 ```
 # for GET, PUT and DELETE
 /{entity}
 ```
 
-Records are then selected using query string parameters. Where the name for the name value pair of a parameter can be any property defined the component schema object.
+Records are selected using query string parameters, where the name can be any property defined in the component schema object.
 
-Thus for the Chinook database we could execute the following operations;
+Examples for the Chinook database:
 
 ```
 # get an artist, same as /artist/3
@@ -213,32 +215,31 @@ GET /artist?artist_id=3
 GET /album/album_id=5
 
 # get the albums by an artist
-GET /album/artist_id=3
+GET /album?artist_id=3
 
-# using the complete specification
 # get the invoices where the billing country is USA and the total was $3.96
-GET /invoice?total3.96&billing_country=USA
+GET /invoice?total=3.96&billing_country=USA
 ```
 
 **Relational Expressions**
 
-Additionally, a relational operand can be prefixed to the value of a parameter. These operands allow records to be selected based on specific criteria, rather than being restricted to exact matches. The available relational operands listed below and are used by prefixing them to the value and separated by ::.
+Relational operands can be prefixed to the value of a parameter. These operands allow selecting records based on criteria rather than exact matches. The available operands are:
 
-* lt (less than)
-* le (less than or equal to)
-* eq (equal to)
-* ne (not equal to)
-* ge (greater than or equal to)
-* gt (greater than)
-* in (in a list of values)
-* between (between a range of values)
-* not-between (not between a range of values)
+- `lt` (less than)
+- `le` (less than or equal to)
+- `eq` (equal to)
+- `ne` (not equal to)
+- `ge` (greater than or equal to)
+- `gt` (greater than)
+- `in` (in a list of values)
+- `between` (between a range of values)
+- `not-between` (not between a range of values)
 
-Below are examples of API requests using these operands:
+Examples:
 
 ```
-# read ablums with an album_id of less than 100
-GET /ablum?album_id=lt::100
+# read albums with an album_id of less than 100
+GET /album?album_id=lt::100
 
 # read invoices that total either $3.96 or $5.94
 GET /invoice?total=in::5.94,3.96
@@ -249,49 +250,69 @@ GET /invoice?total=between::3,6
 
 ### Using Metadata Parameters
 
-Additionally requests can include metadata parameters in query strings.  These parameters allow the requesting application to send additional instructions to apply to the request.
-
-Metadata parameters are always prefixed with a double underscore '__'.
+Requests can include metadata parameters in query strings to provide additional instructions. Metadata parameters are prefixed with double underscores `__`.
 
 **__properties**
 
-This parameter allows restricting the contents of objects returned.  The value of this paremeter is a spce delimited list of regular expressions.  When provided result sets are restricted to only properties that match any of the expressions provided.
+The `__properties` metadata parameter restricts the properties of objects returned by API-Maker. By default, API-Maker returns all properties of an object, excluding object and array properties. These properties must be explicitly selected using this parameter.
 
+The format of the parameter value is a space-delimited list of regular expressions. Only properties matching any of the expressions are included in the result set.
 
-By default API-Maker returns all properties excluding object and array properties.  The retrieve those types properties must be explicitly selected.
+When this parameter is omitted, API-Maker uses the expression `.*` to select all non-object or non-array properties. When included, API-Maker does not include any properties by default, and all properties must be explicitly selected.
 
+For example, to select specific properties of the Chinook invoice, you could use the following request:
+
+```yaml
+GET {endpoint}/invoice?__properties=invoice_id%20billing_.*%20price
+```
+
+With this expression, the `invoice_id`, `price`, and all billing address properties will be included in the result set objects.
+
+When selecting properties from object or array objects, the property selection regular expression must be prefixed with the property name, delimited by a colon (`:`). An example of selecting the `customer` property in an invoice would be:
+
+```yaml
+GET {endpoint}/invoice?__properties=.*%20customer:.*
+```
+
+In this example, there are two regular expressions: `.*` and `customer:.*`. The first expression, `.*`, selects all the invoice's non-object or array fields. The second expression selects all the properties of the `customer` object.
+
+To select both the `customer` and `invoice_line_items` properties in an invoice, you would use:
+
+```yaml
+GET {endpoint}/invoice?__properties=.*%20customer:.*%20invoice_line_items:.*
+```
+
+> Nesting of property selectors for objects and arrays is not supported. For example, in the Chinook invoice, invoices have `invoice_line_items`, and `invoice_line_items` then have a `track`. The expression `invoice_line_items:track:.*` logically sets the `track` property on the `invoice_line_items` in each invoice. This is not supported at this time.
 
 **__count**
 
-When the __count parameter is present the count of the records selected is returned instead of the list of records.  This parameter only applies to 'GET' requests.  The result is a JSON object with a single attribute of 'count'.
+When present, returns the count of the records selected instead of the list of records. This parameter applies only to `GET` requests. The result is a JSON object with a single attribute `count`.
 
-An example of a request for the count of invoices for customer_id of five would be;
+Example:
 
 ```
 GET {endpoint}/invoices?customer_id=5&__count
 ```
 
-The response would be;
+Response:
 
 ```json
-{'count': 7}
+{"count": 7}
 ```
 
 **__sort**
 
-The __sort parameter allows specifying the order of records returned in the response.  This parameter only applies to 'GET' requests.
+Specifies the order of records returned in the response. This parameter applies only to `GET` requests. The sort order is specified with a comma-delimited list of property names. Optionally, append `:asc` or `:desc` to the property name to specify ascending or descending order, respectively. The default is ascending.
 
-The sort order is specified with a comma delimited list of property names.  Optionally the sort direction can be appended to the property name using a ':' delimiter.  Valid sort directions are either 'asc' for ascending and 'desc' for descending order, if omitted 'asc' is default.
-
-An example of a request that would return invoices order by most recent date and value would be;
+Example:
 
 ```
-GET {endpoint}/invoice?__sort=invoice_date:desc,value
+GET {endpoint}/invoice?__sort=invoice_date:desc,total
 ```
 
-Additionally sorting can be applied to properties found in object fields.  In this case the object and property should be delimited with a '.'.
+Sorting can also be applied to properties in object fields using a dot `.` delimiter.
 
-For example the following requests returns invoices ordered by support representative;
+Example:
 
 ```
 GET {endpoint}/invoice?__sort=customer.support_rep_id
@@ -301,27 +322,33 @@ GET {endpoint}/invoice?__sort=customer.support_rep_id
 
 **__offset**
 
+Skips records before beginning the response result set. This parameter applies only to `GET` requests. The value must be a positive integer. If the offset is greater than the total records selected, an empty result set is returned.
+
+Example:
+
+```
+GET {endpoint}/invoice?__sort=invoice_id&__offset=50
+```
+
 **__limit**
 
-This property allows limiting the number of records returned.
+Limits the number of records returned. This parameter applies only to `GET` requests. The value must be a positive integer. The response result set maximum length will be the specified limit.
 
-**__case**
+Example:
 
-### Object and Array Properties
-
-API-Maker supports returning objects that can have properties that are objects or an array of objects.  The availability of these types of properties depends the configuration in the API specfication.  An example of such properties can be found in the invoice schema object where the 'customer' property is a customer object and the 'line_items' is a array of line_item objects.
-
-
+```
+GET {endpoint}/invoice?__sort=invoice_id&__limit=20
+```
 
 # Developing
 
 As illustrated in the example there are three main parts to a APIU-Maker implementation;
 
-First is the development of the application API specification.  Here the focus will be on mapping SQL tables and other resources into OpenAPI elements.
+* **Build the API Specification** First is the development of the API specification for the application.  The focus will be on mapping SQL tables and any custom SQL into OpenAPI elements.
 
-Then we will look at how connection configuration is managed using secrets.
+* **Configuration** Then we will look at how API-Maker accesses databases the application reference and how to setup the configuration needed for making connections.
 
-Finally we will look at deployment and the resulting provisioned infrastructure.
+* **Deployment** Finally we will look at the deployment and how the resulting provisioned infrastructure integrates into the cloud environment.
 
 ## Building an API Definition
 
@@ -397,82 +424,11 @@ API-Maker integrates component schema objects with database tables using the fol
 - **Property Mapping**: Object properties are mapped to table columns. In addition to data types, properties can indicate primary keys and support concurrency management.
 - **Defining Object and Array Properties**: Schema objects can have properties that are either objects or arrays or objects.  Some additional configuration is needed to enable this capability.
 
-Since most schema object definitions involve a straightforward mapping between database table columns and schema object properties, API-Maker provides scripts to build an initial best-guess application API specification. This specification should be considered a starting point.
+Since most schema object definitions involve a straightforward mapping between database table columns and schema object properties, 
+
+> API-Maker provides [tooling](#generating-openapi -schemas) to build an initial starting point API specification. This specification should be considered a starting point. 
 
 > **Note**: The gateway API has limitations on the number of operation paths (routes) allowed in a single API. As of this writing, the limit is 300 routes (extensions are available). Each schema object definition results in seven operation paths or routes, so the effective limit per API is approximately 40 schema objects.
-
-### Generating OpenAPI Schemas from PostgreSQL Database Schemas
-
-This section provides instructions on how to use the `postgres_to_openapi` script, which is included in the `api_maker` package, to generate OpenAPI schemas from PostgreSQL database schemas. The generated OpenAPI schemas will include the necessary components to represent the database tables, columns, primary keys, and foreign key relationships.
-
-#### Prerequisites
-
-- Python 3.x
-- `psycopg2-binary` library for PostgreSQL connectivity
-- `pyyaml` library for YAML processing
-
-You can install the `api_maker` package and its dependencies using the following command:
-```sh
-pip install api_maker psycopg2-binary
-```
-
-#### Script Overview
-
-The `postgres_to_openapi` script connects to a PostgreSQL database, queries the schema information, and generates an OpenAPI specification. The generated specification includes component schema objects that map to database tables and their columns. It also adds references to related schemas when foreign key relationships are detected.
-
-#### Usage
-
-1. **Run the Script**
-
-   You can run the script from the command line using the entry point provided by the `api_make` package. The script requires arguments to connect to your PostgreSQL database and generate the OpenAPI schema. The output will be saved to the specified file path.
-
-   ```sh
-   python -m api_make.postgres_schema_to_openapi --host <db_host> --database <db_name> --user <db_user> --password <db_password> --schema <db_schema> --output <output_file>
-   ```
-
-   Replace `<db_host>`, `<db_name>`, `<db_user>`, `<db_password>`, `<db_schema>`, and `<output_file>` with your PostgreSQL database connection details and desired output file path.
-
-#### Example
-
-To generate an OpenAPI schema for a PostgreSQL database hosted at `localhost`, with the database name `mydatabase`, user `myuser`, password `mypassword`, and schema `public`, and save the output to `openapi_schema.yaml`, run:
-
-```sh
-postgres_to_openapi --host localhost --database mydatabase --user myuser --password mypassword --schema public --output openapi_schema.yaml
-```
-
-#### Generated OpenAPI Schema
-
-The generated OpenAPI schema will include component schema objects representing the database tables and their columns. Primary keys will be marked with the `x-am-primary-key` attribute, and foreign key relationships will include references to related schemas with the `x-am-parent-property` attribute.
-
-Here is an example of the generated schema for a table named `invoice`:
-
-```yaml
-components:
-  schemas:
-    # The name of the schema object is used for
-    # both the API path (/invoice) and the table
-    # name
-    invoice:
-      type: object
-      x-am-database: chinook-auto-increment
-      properties:
-        invoice_id:
-          type: integer
-          # indicates the property is a primary key
-          x-am-primary-key: auto
-          description: Unique identifier for the invoice.
-          example: 1001
-        customer_id:
-          type: integer
-          description: Unique identifier for the customer.
-          example: 1
-        # This property is an customer object, it can be
-        # included in query results.
-        customer:
-          $ref: '#/components/schemas/customer'
-          x-am-parent-property: customer_id
-          description: Customer associated with the invoice.
-```
 
 ### Schema Object Naming
 
@@ -484,16 +440,13 @@ At a minimum API-Maker requires that a database be specified using an 'x-am-data
 
 ### Property Mapping
 
-### Database to OpenAPI Type Conversion
+API-Maker leverages the property types from the schema object to generate SQL and convert query result sets into JSON responses. The set of types in OpenAPI is simpler compared to the larger set of database types.
 
-Property Type Mapping in API-Maker
-API-Maker leverages the property types from the schema object to generate SQL and convert query result sets into JSON responses. The set of types in OpenAPI is simpler compared to the more complex database types.
-
-For each table column exposed in the API, a corresponding property must be defined in the properties section of the schema object. This property definition maps the database column type to its corresponding OpenAPI schema type.
+For each table column exposed in the API, a corresponding property must be defined in the properties section of the schema object. These property definitions map database column types to their corresponding OpenAPI schema type.
 
 > It is also a good time and a good practice to include descriptions and examples for the properties.
 
-Below is an illustration of how different PostgreSQL, Oracle, and MySQL types are converted to OpenAPI types:
+Below is an illustration of how different PostgreSQL, Oracle, and MySQL types are mapped into OpenAPI types:
 
 
 | PostgreSQL Type                     | Oracle Type               | MySQL Type                    | OpenAPI Type            | Description |
@@ -508,6 +461,8 @@ Below is an illustration of how different PostgreSQL, Oracle, and MySQL types ar
 | `timestamp without time zone`       | `TIMESTAMP`               | `TIMESTAMP`                   | `string`, `format: date-time` | Timestamp without time zone (ISO 8601 format) |
 | `timestamp with time zone`          | `TIMESTAMP WITH TIME ZONE`| `TIMESTAMP`                   | `string`, `format: date-time` | Timestamp with time zone (ISO 8601 format) |
 | `uuid`                              | `RAW`                     | `CHAR(36)`                    | `string`, `format: uuid` | Universally unique identifier (UUID) |
+
+
 
 #### Example Conversion
 
@@ -554,27 +509,102 @@ components:
         - name
 ```
 
-### Custom Attributes
-
-In addition to standard OpenAPI properties, the script also adds custom attributes for specific functionalities:
-
-- **`x-am-primary-key`**: Indicates that the property is a primary key. If the key is auto-generated, it is marked with the value `auto`.
-- **`x-am-parent-property`**: Used to indicate foreign key relationships with other schema objects.
 
 
-To accomplish this, attention must be given to several configuration aspects:
 
-- **Database Configuration**: This involves addressing three primary configuration components:
-  - The engine: This determines the SQL dialect to be employed.
-  - The database: Indicates the database where the table resides.
-  - Table name: Specifies the name of the table.
 
-- **Primary Key**: Within the schema component, a property can be designated as the primary key. API-Maker offers support for three primary key generation strategies:
-  - Manual: The responsibility for providing the key rests with the requesting application.
-  - Auto: The database table autonomously generates the key.
-  - Sequences: Employed in databases like Oracle, where sequence objects serve as the source of keys.
+### Object and Array Properties
 
-- **Concurrency Control**: Optionally, a property within the schema component can be identified as a concurrency control property this is utilized to prevent service requests from overriding updates made by earlier requests. When a schema object includes a concurrency control property, that property must be provided as a query parameter. If the value provided does not match the one in the database, the update request will fail.  API-Maker applies the following strategies depending on the property type and format:
+API-Maker supports returning objects that can have properties as objects or arrays of objects. From a relational database perspective, an object property represents a one-to-one relationship, while an array of objects represents a one-to-many relationship.
+
+Additional configuration in the API specification document can incorporate these types of properties into service result sets. The schema object types for these properties must refer to the same database.
+
+By default, these properties are not included in the result set. They must be explicitly selected in the request using the `__properties` metadata parameter. This allows for the specification of circular properties in the application API. For example, in the Chinook API, an invoice has a customer object property, and a customer, in turn, has an array of invoices property. In this case, services returning invoices can include the customer as a property, but that object will not include the invoices associated with the customer. Similarly, when selecting customers, the invoices associated with the customer can be included, but those invoices cannot contain a customer property.
+
+#### Object Properties
+
+In OpenAPI specifications, object properties typically use a `$ref` attribute to reference the component schema object for the property. When the referenced schema object is part of the same database, API-Maker can automatically populate that property with additional configuration. Specifically, the keys that define the relationship must be identified. The following attributes allow configuring object properties:
+
+* **x-am-parent-property**: Identifies the schema object property containing the key used to select the referenced property value. This attribute is required for object properties.
+
+* **x-am-child-property**: Identifies the property in the referenced schema object to select on. This attribute is optional and defaults to the primary key if omitted. Normally, the parent property key references the primary key, but this attribute can be used if that is not the case.
+
+Here's an example of the customer field from the Chinook invoice schema object:
+
+```yaml
+customer_id:
+  type: integer
+customer:
+  $ref: '#/components/schemas/customer'
+  x-am-parent-property: customer_id
+  description: Customer associated with the invoice.
+```
+
+Note how the `x-am-parent-property` identifies the `customer_id` property to use as the key value for selecting the customer.
+
+#### Array of Object Properties
+
+Array properties allow the inclusion of lists of related records representing one-to-many relations within the database. Most of the setup for these properties uses standard OpenAPI conventions. Like object properties, these properties must reference a schema object accessing the same database.
+
+The same additional attributes for defining the relationship as object properties are used:
+
+* **x-am-parent-property**: Identifies the schema object property containing the key used to select the referenced property value. This attribute is optional and defaults to the primary key property.
+
+* **x-am-child-property**: Required attribute that identifies the property in the referenced schema object to select on.
+
+The following illustrates the specification of an `invoice_line_items` property in the invoice schema object. In this example, the `invoice_line` schema object has a property `invoice_id` (x-am-child-property). API-Maker will use the invoice primary key property `invoice_id` to select `invoice_line` records with the matching `invoice_id`.
+
+```yaml
+invoice_line_items:
+  type: array
+  items:
+    $ref: '#/components/schemas/invoice_line'
+    x-am-child-property: invoice_id
+  description: List of invoice_line items associated with this invoice.
+```
+
+### Handling Primary Keys
+
+Within the schema component, a property can be designated as the primary key.   API-Maker offers support for multiple primary key generation strategies.
+
+
+> Schema objects with multiple primary keys is not currently supported.
+
+A property can be specified as a primary key by adding the 'x-am-primary-key' attribute to the property.  In the value the key generation strategy must be definied it can be any of;
+
+| Value    | Description |
+|----------|-------------|
+| manual   | The responsibility for providing the key rests with the requesting application. |
+| guid     | The database guid generator is usted to  generate the key. |
+|auto      | The database table automatically generates the key.
+| sequence | Employed in databases like Oracle, where a sequence object serve as the source of keys. |
+
+Here is an example of the primary key for the invoice schema object;
+
+```
+    invoice:
+      type: object
+      properties:
+        invoice_id:
+          type: integer
+          x-am-primary-key: auto
+          description: Unique identifier for the invoice.
+          example: 1
+```
+
+If the key generation strategy is 'sequence' the the 'x-am-sequence-name' attribute must also be defined. 
+
+### Concurrency Management Columns
+
+Optionally, a property within the schema component can be identified as a concurrency control property.  This property is utilized to prevent clients from overriding mutations to objects made by other clients. 
+
+When a schema object includes a concurrency control property the following occurs;
+
+* API-Maker manages the value of the property, clients may not change the value.
+* For each mutation of the object the value of the property is changed.
+* Clients making mutations to objects must provide both the key and the control property.  If the control property does not match the request will fail.
+
+A concurrency control property is set by adding the 'x-am-concurrency-control' attribute to the schema object definition.  The value must be the name of either a string or integer property of the schema object. API-Maker applies the following strategies depending on the property type and format specified for the control property:
 
 | Property Type | Property Format | Column Type | Description |
 |---------------|-----------------|-------------|-------------|
@@ -582,16 +612,23 @@ To accomplish this, attention must be given to several configuration aspects:
 | string        |                 |string       | Uses database UUID function in the control value. |
 | interger      |                 | integer     |  When created the value is set to one.  Incremented by one on subsequent updates |
 
+Here is an example of using a timestamp as a control object;
 
-
-When building the application API specification
-Within the API specification being built there are two main
-
-### Handling Primary Keys
-
-### Concurrency Management Columns
-
-### Object and Array Properties
+```yaml
+    invoice:
+      type: object
+      x-am-database: chinook
+      x-am-concurrency-control: last_updated
+      properties:
+        invoice_id:
+          type: integer
+          x-am-primary-key: auto
+          description: Unique identifier for the invoice.
+          example: 1
+        last_updated:
+          type: string
+          format: date-time
+```
 
 ## Custom SQL Integration
 
@@ -738,6 +775,84 @@ With API-Maker
 | x-am-parent-property | Required | The name of the sibling property to use as the selection key in the relation |
 | x-am-child-property | Optional |
 
+
+# Appendix
+
+# Generating OpenAPI Schemas 
+
+## PostgreSQL Database Schemas
+
+
+This section provides instructions on how to use the `postgres_to_openapi` script, which is included in the `api_maker` package, to generate OpenAPI schemas from PostgreSQL database schemas. The generated OpenAPI schemas will include the necessary components to represent the database tables, columns, primary keys, and foreign key relationships.
+
+#### Prerequisites
+
+- Python 3.x
+- `psycopg2-binary` library for PostgreSQL connectivity
+- `pyyaml` library for YAML processing
+
+You can install the `api_maker` package and its dependencies using the following command:
+```sh
+pip install api_maker psycopg2-binary
+```
+
+#### Script Overview
+
+The `postgres_to_openapi` script connects to a PostgreSQL database, queries the schema information, and generates an OpenAPI specification. The generated specification includes component schema objects that map to database tables and their columns. It also adds references to related schemas when foreign key relationships are detected.
+
+#### Usage
+
+1. **Run the Script**
+
+   You can run the script from the command line using the entry point provided by the `api_make` package. The script requires arguments to connect to your PostgreSQL database and generate the OpenAPI schema. The output will be saved to the specified file path.
+
+   ```sh
+   python -m api_make.postgres_schema_to_openapi --host <db_host> --database <db_name> --user <db_user> --password <db_password> --schema <db_schema> --output <output_file>
+   ```
+
+   Replace `<db_host>`, `<db_name>`, `<db_user>`, `<db_password>`, `<db_schema>`, and `<output_file>` with your PostgreSQL database connection details and desired output file path.
+
+#### Example
+
+To generate an OpenAPI schema for a PostgreSQL database hosted at `localhost`, with the database name `mydatabase`, user `myuser`, password `mypassword`, and schema `public`, and save the output to `openapi_schema.yaml`, run:
+
+```sh
+postgres_to_openapi --host localhost --database mydatabase --user myuser --password mypassword --schema public --output openapi_schema.yaml
+```
+
+#### Generated OpenAPI Schema
+
+The generated OpenAPI schema will include component schema objects representing the database tables and their columns. Primary keys will be marked with the `x-am-primary-key` attribute, and foreign key relationships will include references to related schemas with the `x-am-parent-property` attribute.
+
+Here is an example of the generated schema for a table named `invoice`:
+
+```yaml
+components:
+  schemas:
+    # The name of the schema object is used for
+    # both the API path (/invoice) and the table
+    # name
+    invoice:
+      type: object
+      x-am-database: chinook-auto-increment
+      properties:
+        invoice_id:
+          type: integer
+          # indicates the property is a primary key
+          x-am-primary-key: auto
+          description: Unique identifier for the invoice.
+          example: 1001
+        customer_id:
+          type: integer
+          description: Unique identifier for the customer.
+          example: 1
+        # This property is an customer object, it can be
+        # included in query results.
+        customer:
+          $ref: '#/components/schemas/customer'
+          x-am-parent-property: customer_id
+          description: Customer associated with the invoice.
+```
 
 
 # Attic
