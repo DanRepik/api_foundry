@@ -118,6 +118,7 @@ components:
       x-am-database: chinook
     invoice:
       type: object
+      x-am-database: chinook
       x-am-concurrency-control: last_updated
       properties:
         invoice_id:
@@ -160,16 +161,12 @@ components:
             $ref: '#/components/schemas/invoice_line'
             x-am-child-property: invoice_id
           description: List of invoice_line items associated with this invoice.
-        last_updated:
-          type: string
-          format: date-time
       required:
       - invoice_id
       - customer_id
       - invoice_date
       - total
       - last_updated
-      x-am-database: chinook
     genre:
       type: object
       properties:

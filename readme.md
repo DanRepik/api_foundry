@@ -342,13 +342,13 @@ GET {endpoint}/invoice?__sort=invoice_id&__limit=20
 
 # Developing
 
-As illustrated in the example there are three main parts to a APIU-Maker implementation;
+As illustrated in the example there are three main components to implementing an API using API-Maker;
 
-* **Build the API Specification** First is the development of the API specification for the application.  The focus will be on mapping SQL tables and any custom SQL into OpenAPI elements.
+* **Build the API Specification** First is the development of the API specification for the application.  The focus will be on mapping SQL tables along with any custom SQL into the OpenAPI specification.
 
-* **Configuration** Then we will look at how API-Maker accesses databases the application reference and how to setup the configuration needed for making connections.
+* **Configuration** Then we will look at how API-Maker accesses databases the application references, and how to setup the configuration needed for making connections.
 
-* **Deployment** Finally we will look at the deployment and how the resulting provisioned infrastructure integrates into the cloud environment.
+* **Deployment** Finally we will look at the deployment and how to integrate the resulting provisioned infrastructure the cloud environment.
 
 ## Building an API Definition
 
@@ -413,9 +413,9 @@ package "Relational Database" {
 @enduml
 ```
 
-## Table Integration
+### Table Integration
 
-### API-Maker Integration Guidelines
+#### API-Maker Integration Guidelines
 
 API-Maker integrates component schema objects with database tables using the following guidelines:
 
@@ -430,15 +430,15 @@ Since most schema object definitions involve a straightforward mapping between d
 
 > **Note**: The gateway API has limitations on the number of operation paths (routes) allowed in a single API. As of this writing, the limit is 300 routes (extensions are available). Each schema object definition results in seven operation paths or routes, so the effective limit per API is approximately 40 schema objects.
 
-### Schema Object Naming
+#### Schema Object Naming
 
 The name of the schema object by default is always used as the API path and by default the table name.  If needed name of the table can be changed using the 'x-am-table-name' attribute.
 
-### Database Specification
+#### Database Specification
 
 At a minimum API-Maker requires that a database be specified using an 'x-am-database' attribute.  Only schema objects with this attribute will have services built.  This attribute is used to obtain the AWS secret that contains the engine type (Postgres, Oracle or MySQL) and the connection configuration.
 
-### Property Mapping
+#### Property Mapping
 
 API-Maker leverages the property types from the schema object to generate SQL and convert query result sets into JSON responses. The set of types in OpenAPI is simpler compared to the larger set of database types.
 
@@ -464,7 +464,7 @@ Below is an illustration of how different PostgreSQL, Oracle, and MySQL types ar
 
 
 
-#### Example Conversion
+##### Example Conversion
 
 Given a PostgreSQL table with the following definition:
 
@@ -513,7 +513,7 @@ components:
 
 
 
-### Object and Array Properties
+#### Object and Array Properties
 
 API-Maker supports returning objects that can have properties as objects or arrays of objects. From a relational database perspective, an object property represents a one-to-one relationship, while an array of objects represents a one-to-many relationship.
 
@@ -563,7 +563,7 @@ invoice_line_items:
   description: List of invoice_line items associated with this invoice.
 ```
 
-### Handling Primary Keys
+#### Handling Primary Keys
 
 Within the schema component, a property can be designated as the primary key.   API-Maker offers support for multiple primary key generation strategies.
 
@@ -594,7 +594,7 @@ Here is an example of the primary key for the invoice schema object;
 
 If the key generation strategy is 'sequence' the the 'x-am-sequence-name' attribute must also be defined.
 
-### Concurrency Management Columns
+#### Concurrency Management
 
 Optionally, a property within the schema component can be identified as a concurrency control property.  This property is utilized to prevent clients from overriding mutations to objects made by other clients.
 
@@ -630,7 +630,37 @@ Here is an example of using a timestamp as a control object;
           format: date-time
 ```
 
-## Custom SQL Integration
+### Custom SQL Integration
+
+# Configuration
+
+During the implementation of the API specification, schema objects and operation paths were associated with a database name using the `x-am-database` attribute.
+
+In this section, we will cover how API-Maker uses that attribute to connect to the database and perform the operations needed to complete requests.
+
+First, the connection data that API-Maker uses to establish database connections is never 'built-in' to the Lambda function or any other part of the deployment. Instead, API-Maker obtains the connection data from an AWS Secrets Manager secret. Secrets are loaded on demand and only once per instance.
+
+As part of the deployment, a secrets map will need to be provided. This mapping allows API-Maker to determine the secret name using the `x-am-database` attribute value as the key.  An API can span multiple databases and the secrets map must contain a mapping for all databases referenced.
+
+Thus, there are two main configuration tasks: creating the secrets and providing the secrets map in the deployment code.
+
+## Configuring Secrets
+
+When API-Maker accesses connection data in a secret, it expects a JSON string containing the required connection parameters.
+
+| Parameter     | Description                                               | Value                                                           |
+|---------------|-----------------------------------------------------------|-----------------------------------------------------------------|
+| engine        | Designates the SQL dialect to use for the database.       | Required; must be one of: `postgres`, `oracle`, `mysql`         |
+| host          | The host name of the database.                            | Required                                                        |
+| port          | The port for the database.                                | Optional; defaults to the default for the database engine       |
+| database      | The database name to access.                              | Optional; defaults to the same as the username                  |
+| username      | The username to connect as.                               | Required                                                        |
+| password      | The password to connect with.                             | Required                                                        |
+| configuration | Additional database-specific configuration parameters.    | Optional; an object mapping parameters to values                |
+
+[Postgres Connection](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING)
+
+# Deployment
 
 # Reference
 
