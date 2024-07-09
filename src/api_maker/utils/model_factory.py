@@ -57,18 +57,18 @@ class SchemaObjectAssociation(OpenAPIElement):
         assert all(arg is not None for arg in (entity, name, properties))
         self.entity = entity
         self.name = name
-
-        self.child_schema_object = ModelFactory.get_schema_object(
-            properties["$ref"].split("/")[-1]
-        )
+        self.child_schema_object_name = properties["$ref"].split("/")[-1]
         self.parent = properties.get("x-am-parent-property", None)
         self.child = properties.get("x-am-child-property", None)
 
     @property
     def child_property(self) -> Any:
+        child_schema_object = ModelFactory.get_schema_object(
+            self.child_schema_object_name
+        )
         if self.child:
-            return self.child_schema_object.get_property(self.child)
-        return self.child_schema_object.primary_key
+            return child_schema_object.get_property(self.child)
+        return child_schema_object.primary_key
 
     @property
     def parent_property(self) -> Any:
@@ -76,6 +76,10 @@ class SchemaObjectAssociation(OpenAPIElement):
         if self.parent:
             return parent_schema_object.get_property(self.parent)
         return parent_schema_object.primary_key
+
+    @property
+    def child_schema_object(self):
+        return ModelFactory.get_schema_object(self.child_schema_object_name)
 
 
 class SchemaObjectProperty(OpenAPIElement):
@@ -244,6 +248,8 @@ class SchemaObject(OpenAPIElement):
 
 class ModelFactory:
     spec: dict
+    schema_object_cache: Dict[str, SchemaObject] = {}
+    deferred_associations = []
 
     @classmethod
     def load_yaml(cls, api_spec_path: str):
@@ -261,15 +267,25 @@ class ModelFactory:
         schemas = cls.spec.get("components", {}).get("schemas", {})
         lower_schemas = dict()
         for name, schema in schemas.items():
-            lower_schemas[name.lower] = schema
+            lower_schemas[name.lower()] = schema
             cls.schema_objects[name.lower()] = schema
         cls.spec.get("components", {})["schemas"] = cls.schema_objects
 
         log.info(f"schemas: {cls.schema_objects.keys()}")
 
+        cls.initialize_schema_objects()
+
+    @classmethod
+    def initialize_schema_objects(cls):
+        for name, schema in cls.schema_objects.items():
+            cls.schema_object_cache[name] = SchemaObject(name, schema)
+
     @classmethod
     def get_schema_object(cls, name: str) -> SchemaObject:
-        return SchemaObject(name, cls.schema_objects[name])
+        if name not in cls.schema_object_cache:
+            cls.schema_object_cache[name] = SchemaObject(name, cls.schema_objects[name])
+
+        return cls.schema_object_cache[name]
 
     @classmethod
     def get_schema_names(cls) -> list[str]:

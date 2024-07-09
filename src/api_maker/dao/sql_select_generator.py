@@ -2,7 +2,7 @@ from api_maker.dao.sql_generator import SQLGenerator
 from api_maker.operation import Operation
 from api_maker.utils.app_exception import ApplicationException
 from api_maker.utils.logger import logger
-from api_maker.utils.model_factory import SchemaObject
+from api_maker.utils.model_factory import SchemaObject, SchemaObjectProperty
 
 log = logger(__name__)
 
@@ -16,11 +16,19 @@ class SQLSelectGenerator(SQLGenerator):
     @property
     def sql(self) -> str:
         # order is important here table_expression must be last
-        select_list = self.select_list
         search_condition = self.search_condition
+        order_by_expression = self.order_by_expression
+        select_list = self.select_list
         table_expression = self.table_expression
 
-        return f"SELECT {select_list} FROM {table_expression}{search_condition}"
+        return (
+            f"SELECT {select_list}"
+            + f" FROM {table_expression}"
+            + search_condition
+            + order_by_expression
+            + self.limit_expression
+            + self.offset_expression
+        )
 
     @property
     def select_list(self) -> str:
@@ -72,9 +80,7 @@ class SQLSelectGenerator(SQLGenerator):
                     ),
                 )
 
-            assignment, holders = self.search_value_assignment(
-                property, value, prefix if not self.single_table else None
-            )
+            assignment, holders = self.search_value_assignment(property, value, prefix)
             conditions.append(assignment)
             self.search_placeholders.update(holders)
 
@@ -82,8 +88,8 @@ class SQLSelectGenerator(SQLGenerator):
 
     @property
     def table_expression(self) -> str:
-        if self.single_table:
-            return self.schema_object.table_name
+        #        if self.single_table:
+        #            return self.schema_object.table_name
 
         joins = []
         parent_prefix = self.prefix_map["$default$"]
@@ -114,13 +120,19 @@ class SQLSelectGenerator(SQLGenerator):
         )
 
     def selection_result_map(self) -> dict:
-        if self.single_table:
-            return super().selection_result_map()
+        if "count" in self.operation.metadata_params:
+            self.__selection_result_map = {
+                "count": SchemaObjectProperty(
+                    self.operation.entity, "count", {"type": "int"}
+                )
+            }
+            return self.__selection_result_map
 
         filter_str = self.operation.metadata_params.get("properties", ".*")
-        self.__select_list_map = {}
+        self.__selection_result_map = {}
 
         for relation, reg_exs in self.get_regex_map(filter_str).items():
+            log.info(f"xx relation: {relation}, reg_exs: {reg_exs}")
             # Extract the schema object for the current entity
             relation_property = self.schema_object.relations.get(relation)
 
@@ -150,9 +162,10 @@ class SQLSelectGenerator(SQLGenerator):
             )
 
             # Extend the result map with the filtered keys
-            self.__select_list_map.update(filtered_keys)
+            self.__selection_result_map.update(filtered_keys)
 
-        return self.__select_list_map
+        log.debug(f"xx select_list_map: {self.__selection_result_map}")
+        return self.__selection_result_map
 
     def get_regex_map(self, filter_str: str) -> dict[str, list]:
         result = {}
@@ -189,3 +202,109 @@ class SQLSelectGenerator(SQLGenerator):
                 result[name] = object_set[prefix]
 
         return result
+
+    @property
+    def order_by_expression(self) -> str:
+        fields_str = self.operation.metadata_params.get("sort", None)
+        if not fields_str:
+            return ""
+
+        # determine the columns requested
+        fields = fields_str.replace(",", " ").split()
+        log.debug(f"fields: {fields}")
+
+        order_set = []
+        use_prefixes = False
+        for field in fields:
+            # handle order
+            field_parts = field.split(":")
+            field_name = field_parts[0]
+
+            order = "asc" if len(field_parts) == 1 else field_parts[1]
+            if order != "desc" and order != "asc":
+                raise ApplicationException(400, f"unrecognized sorting order: {field}")
+
+            # handle entity prefix
+            field_parts = field_name.split(".")
+            log.info(f"xx field_parts: {field_parts}")
+            if len(field_parts) == 1:
+                prefix = self.prefix_map["$default$"]
+                property = self.schema_object.properties.get(field_parts[0])
+                if not property:
+                    raise ApplicationException(
+                        400,
+                        f"Invalid order by property, schema object: {self.schema_object.entity} does not have a property: {field_parts[0]}",  # noqa E501
+                    )
+                column = property.column_name
+            else:
+                # Extract the schema object for the current entity
+                relation_property = self.schema_object.relations.get(field_parts[0])
+                if not relation_property:
+                    raise ApplicationException(
+                        400,
+                        f"Invalid order by property, schema object: {self.schema_object.entity} does not have a property: {field_parts[0]}",  # noqa E501
+                    )
+
+                log.info(f"relation_property: {relation_property}")
+                if relation_property:
+                    if relation_property.type == "array":
+                        raise ApplicationException(
+                            400,
+                            f"Invalid order by array property is not supported, schema object: {self.schema_object.entity} property: {field_parts[0]}",  # noqa E501
+                        )
+
+                    # Use a default value if relation_property is None
+                    schema_object = relation_property.child_schema_object
+                else:
+                    schema_object = self.schema_object
+
+                prefix = self.prefix_map[field_parts[0]]
+                property = schema_object.properties.get(field_parts[1])
+                if not property:
+                    raise ApplicationException(
+                        400,
+                        f"Invalid order by property, schema object: {schema_object.entity} does not have a property: {field_parts[1]}",  # noqa E501
+                    )
+                column = property.column_name
+                self.active_prefixes.add(prefix)
+                use_prefixes = True
+
+            order_set.append((prefix, column, order))
+
+        if len(order_set) == 0:
+            return ""
+        order_parts = []
+        for prefix, column, order in order_set:
+            if use_prefixes:
+                order_parts.append(f"{prefix}.{column} {order}")
+            else:
+                order_parts.append(f"{column} {order}")
+        return " ORDER BY " + ", ".join(order_parts)
+
+    @property
+    def limit_expression(self) -> str:
+        limit_str = self.operation.metadata_params.get("limit", None)
+        if not limit_str:
+            return ""
+
+        if isinstance(limit_str, str) and not limit_str.isdigit():
+            raise ApplicationException(
+                400, f"Limit is not an valid integer {limit_str}"
+            )
+
+        return f" LIMIT {limit_str}"
+
+    @property
+    def offset_expression(self) -> str:
+        offset_str = self.operation.metadata_params.get("offset", None)
+        log.debug(f"xx offset: {offset_str}")
+        if not offset_str:
+            return ""
+
+        log.debug(f"xxx offset: {offset_str}")
+        if isinstance(offset_str, str) and not offset_str.isdigit():
+            raise ApplicationException(
+                400, f"Offset is not an valid integer {offset_str}"
+            )
+
+        return f" offset {offset_str}"

@@ -113,7 +113,7 @@ def test_schema_object_property_conversion():
                     "TestSchema": {
                         "type": "object",
                         "properties": {
-                            "id": {"type": "integer", "x-am-primary-key": True},
+                            "id": {"type": "integer", "x-am-primary-key": "auto"},
                             "name": {"type": "string"},
                         },
                     }
@@ -128,9 +128,7 @@ def test_schema_object_property_conversion():
         "x-am-column-type": "string",
         "x-am-primary-key": False,
     }
-    property_object = SchemaObjectProperty(
-        "test_entity", "name", properties
-    )
+    property_object = SchemaObjectProperty("test_entity", "name", properties)
     db_value = property_object.convert_to_db_value("test_value")
     assert db_value == "test_value"
     api_value = property_object.convert_to_api_value("test_value")

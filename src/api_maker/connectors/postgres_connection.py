@@ -86,19 +86,20 @@ class PostgresConnection(Connection):
         password = self.db_config["password"]
         host = self.db_config["host"]
         port = self.db_config.get("port", 5432)
-        search_path = self.db_config.get("search_path", None)
+        additional_config = self.db_config.get("configuration", {})
 
-        log.info(
-            f"dbname={dbname}, user={user}, host={host},"
-            + f" port={port}, search_path={search_path}"
-        )
+        # Merge additional configuration parameters with the main connection parameters
+        connection_params = {
+            "dbname": dbname,
+            "user": user,
+            "password": password,
+            "host": host,
+            "port": port,
+        }
+
+        connection_params.update(additional_config)
+
+        log.info(f"connection_params: {connection_params}")
 
         # Create a connection to the PostgreSQL database
-        return connect(
-            dbname=dbname,
-            user=user,
-            password=password,
-            host=host,
-            port=port,
-            options="-c search_path={0}".format(search_path) if search_path else None,
-        )
+        return connect(**connection_params)

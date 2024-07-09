@@ -10,6 +10,7 @@ class PostgresSchemaToOpenAPI:
             host=host, database=database, user=user, password=password
         )
         self.schema = schema
+        self.database = database
 
     def get_tables(self):
         query = """
@@ -67,10 +68,9 @@ class PostgresSchemaToOpenAPI:
 
         primary_keys = {}
         for pk in pks:
-            if pk["is_identity"] == "YES":
-                primary_keys[pk["column_name"]] = "auto"
-            else:
-                primary_keys[pk["column_name"]] = "true"
+            primary_keys[pk["column_name"]] = (
+                "auto" if pk["is_identity"] == "YES" else True
+            )
 
         return primary_keys
 
@@ -103,6 +103,8 @@ class PostgresSchemaToOpenAPI:
         }
 
         tables = self.get_tables()
+        foreign_key_map = {}  # To track foreign key relationships
+
         for table in tables:
             columns = self.get_columns(table)
             primary_keys = self.get_primary_keys(table)
@@ -112,35 +114,62 @@ class PostgresSchemaToOpenAPI:
             for column in columns:
                 column_name = column["column_name"]
                 column_info = self.map_data_type(column["data_type"])
+
                 if column_name in primary_keys:
                     column_info["x-am-primary-key"] = primary_keys[column_name]
-                properties[column_name] = column_info
+                    if primary_keys[column_name] == "auto":
+                        column_info[
+                            "description"
+                        ] = f"Unique identifier for the {table}."
+                        column_info["example"] = 1
+
                 if (
                     column_info["type"] == "string"
                     and "character_maximum_length" in column
                     and column["character_maximum_length"]
                 ):
-                    properties[column_name]["maxLength"] = column[
-                        "character_maximum_length"
-                    ]
+                    column_info["maxLength"] = column["character_maximum_length"]
+
                 if column["is_nullable"] == "NO":
                     required.append(column_name)
+
+                properties[column_name] = column_info
+
                 if column["foreign_table"]:
                     foreign_table = column["foreign_table"]
                     properties[foreign_table] = {
                         "$ref": f"#/components/schemas/{foreign_table}",
                         "x-am-parent-property": column_name,
-                        "description": (
-                            f"{foreign_table.capitalize()} associated with the {table}."
-                        ),
+                        "description": f"{foreign_table.capitalize()} associated with the {table}.",
                     }
+
+                    # Track the foreign key relationship
+                    if foreign_table not in foreign_key_map:
+                        foreign_key_map[foreign_table] = []
+                    foreign_key_map[foreign_table].append((table, column_name))
 
             schema_object = {
                 "type": "object",
                 "properties": properties,
                 "required": required,
+                "x-am-database": self.database,
             }
             openapi_schema["components"]["schemas"][table] = schema_object
+
+        # Add array properties for foreign key relationships
+        for parent_table, foreign_keys in foreign_key_map.items():
+            if parent_table in openapi_schema["components"]["schemas"]:
+                for child_table, foreign_key in foreign_keys:
+                    openapi_schema["components"]["schemas"][parent_table]["properties"][
+                        f"{child_table}_items"
+                    ] = {
+                        "type": "array",
+                        "items": {
+                            "$ref": f"#/components/schemas/{child_table}",
+                            "x-am-child-property": foreign_key,
+                        },
+                        "description": f"List of {child_table} items associated with this {parent_table}.",
+                    }
 
         return openapi_schema
 
