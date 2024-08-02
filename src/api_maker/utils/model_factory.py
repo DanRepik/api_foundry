@@ -1,5 +1,5 @@
 import yaml
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 from datetime import datetime
 from api_maker.utils.app_exception import ApplicationException
 from api_maker.utils.logger import logger
@@ -16,16 +16,6 @@ class OpenAPIElement:
         self.type = self.properties.get("type", None)
 
     def resolve_reference(self, reference: Optional[str]) -> dict:
-        """
-        Resolves the reference in the OpenAPI specification and returns the referenced element.
-
-        Args:
-            openapi_spec (dict): The OpenAPI specification document as a Python dictionary.
-            reference (str): The reference string to resolve (e.g., '#/components/schemas/SchemaA').
-
-        Returns:
-            object: The referenced element from the OpenAPI specification.
-        """
         if not reference:
             return {}
 
@@ -34,12 +24,10 @@ class OpenAPIElement:
             if not current_element:
                 return {}
 
-            # Iterate over each component to traverse the specification
             for component in reference.lower().split("/"):
                 if component == "#":
                     continue
                 elif component in current_element:
-                    # Move to the next element
                     current_element = current_element[component]
                 else:
                     raise ApplicationException(500, f"Reference not found: {reference}")
@@ -138,6 +126,7 @@ class SchemaObjectProperty(OpenAPIElement):
             "time": lambda x: x.time().isoformat() if x else None,
         }
         conversion_func = conversion_mapping.get(self.api_type, lambda x: x)
+
         return conversion_func(value)
 
 
@@ -193,9 +182,11 @@ class SchemaObject(OpenAPIElement):
         type = (
             prop.get("type")
             if "type" in prop
-            else self.resolve_reference(prop.get("$ref", None)).get("type")
-            if "$ref" in prop
-            else None
+            else (
+                self.resolve_reference(prop.get("$ref", None)).get("type")
+                if "$ref" in prop
+                else None
+            )
         )
         if not type:
             raise ApplicationException(
@@ -246,10 +237,77 @@ class SchemaObject(OpenAPIElement):
             )
 
 
+class PathOperation(OpenAPIElement):
+    def __init__(self, path: str, method: str, path_operation: Dict[str, Any]):
+        super().__init__(path_operation)
+        self.path = path
+        self.method = method
+        self.path_operation = path_operation
+
+    @property
+    def database(self):
+        return self.path_operation["x-am-database"]
+
+    @property
+    def sql(self):
+        return self.path_operation["x-am-sql"]
+
+    @property
+    def inputs(self):
+        if not hasattr(self, "_inputs"):
+            self._inputs = self._extract_properties(
+                self.path_operation, "requestBody"
+            ) + self._extract_properties(self.path_operation, "parameters")
+        return self._inputs
+
+    @property
+    def outputs(self):
+        if not hasattr(self, "_outputs"):
+            self._outputs = self._extract_properties(self.path_operation, "responses")
+        return self._outputs
+
+    def _extract_properties(
+        self, operation: Dict[str, Any], section: str
+    ) -> List[SchemaObjectProperty]:
+        properties = []
+        if section == "requestBody" and "requestBody" in operation:
+            content = operation["requestBody"].get("content", {})
+            for media_type, media_spec in content.items():
+                schema = media_spec.get("schema", {})
+                properties.extend(self._get_schema_properties(schema))
+        elif section == "parameters" and "parameters" in operation:
+            for param in operation["parameters"]:
+                schema = param.get("schema", {})
+                properties.extend(
+                    self._get_schema_properties(schema, param.get("name"))
+                )
+        elif section == "responses" and "responses" in operation:
+            for status_code, response in operation["responses"].items():
+                content = response.get("content", {})
+                for media_type, media_spec in content.items():
+                    schema = media_spec.get("schema", {})
+                    properties.extend(self._get_schema_properties(schema))
+        return properties
+
+    def _get_schema_properties(
+        self, schema: Dict[str, Any], param_name: str = None
+    ) -> List[SchemaObjectProperty]:
+        properties = []
+        schema_ref = schema.get("$ref")
+        if schema_ref:
+            schema = self.resolve_reference(schema_ref)
+        if "properties" in schema:
+            for prop_name, prop_spec in schema["properties"].items():
+                properties.append(SchemaObjectProperty(self.path, prop_name, prop_spec))
+        elif param_name:
+            properties.append(SchemaObjectProperty(self.path, param_name, schema))
+        return properties
+
+
 class ModelFactory:
     spec: dict
     schema_object_cache: Dict[str, SchemaObject] = {}
-    deferred_associations = []
+    path_operations: List[PathOperation] = []
 
     @classmethod
     def load_yaml(cls, api_spec_path: str):
@@ -267,18 +325,28 @@ class ModelFactory:
         schemas = cls.spec.get("components", {}).get("schemas", {})
         lower_schemas = dict()
         for name, schema in schemas.items():
-            lower_schemas[name.lower()] = schema
-            cls.schema_objects[name.lower()] = schema
+            if "x-am-database" in schema:
+                lower_schemas[name.lower()] = schema
+                cls.schema_objects[name.lower()] = schema
         cls.spec.get("components", {})["schemas"] = cls.schema_objects
 
         log.info(f"schemas: {cls.schema_objects.keys()}")
 
         cls.initialize_schema_objects()
+        cls.initialize_path_operations()
 
     @classmethod
     def initialize_schema_objects(cls):
         for name, schema in cls.schema_objects.items():
             cls.schema_object_cache[name] = SchemaObject(name, schema)
+
+    @classmethod
+    def initialize_path_operations(cls):
+        paths = cls.spec.get("paths", {})
+        for path, operations in paths.items():
+            for method, operation in operations.items():
+                if "x-am-database" in operation:
+                    cls.path_operations.append(PathOperation(path, method, operation))
 
     @classmethod
     def get_schema_object(cls, name: str) -> SchemaObject:
@@ -288,5 +356,9 @@ class ModelFactory:
         return cls.schema_object_cache[name]
 
     @classmethod
-    def get_schema_names(cls) -> list[str]:
+    def get_schema_names(cls) -> List[str]:
         return list(cls.schema_objects.keys())
+
+    @classmethod
+    def get_path_operations(cls) -> List[PathOperation]:
+        return cls.path_operations

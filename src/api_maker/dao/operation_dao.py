@@ -9,7 +9,7 @@ from api_maker.dao.dao import DAO
 from api_maker.connectors.connection import Cursor
 from api_maker.operation import Operation
 from api_maker.utils.model_factory import ModelFactory
-from api_maker.dao.sql_generator import SQLGenerator
+from api_maker.dao.sql_generator import SQLOperation
 
 log = logger(__name__)
 
@@ -33,9 +33,9 @@ class OperationDAO(DAO):
         super().__init__()
         self.operation = operation
         self.schema_object = ModelFactory.get_schema_object(self.operation.entity)
-        self.sql_generator = self.__sql_generator(engine)
+        self.sql_operation = self.__sql_operation(engine)
 
-    def __sql_generator(self, engine: str) -> SQLGenerator:
+    def __sql_operation(self, engine: str) -> SQLOperation:
         if self.operation.action == "read":
             return SQLSelectGenerator(self.operation, self.schema_object, engine)
         elif self.operation.action == "create":
@@ -61,7 +61,7 @@ class OperationDAO(DAO):
             of the operation.
         """
 
-        result = self.__fetch_record_set(self.sql_generator, cursor)
+        result = self.__fetch_record_set(self.sql_operation, cursor)
 
         if self.operation.action == "read":
             if self.operation.metadata_params.get("count", False):
@@ -81,7 +81,7 @@ class OperationDAO(DAO):
                 continue
 
             sql_generator = SQLSubselectGenerator(
-                self.operation, relation, self.sql_generator
+                self.operation, relation, self.sql_operation  # type: ignore
             )
 
             child_set = self.__fetch_record_set(sql_generator, cursor)
@@ -101,17 +101,13 @@ class OperationDAO(DAO):
                 if parent:
                     parent[name].append(child)
 
-    def __fetch_record_set(self, generator: SQLGenerator, cursor: Cursor) -> list[dict]:
+    def __fetch_record_set(self, generator: SQLOperation, cursor: Cursor) -> list[dict]:
         sql = generator.sql
         if not sql:
             return []
 
         result = []
-        record_set = cursor.execute(
-            sql,
-            generator.placeholders,
-            generator.select_list_columns,
-        )
+        record_set = cursor.execute(sql, generator.placeholders)
         for record in record_set:
             object = generator.marshal_record(record)
             result.append(object)

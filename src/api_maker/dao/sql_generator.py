@@ -92,21 +92,66 @@ SQL_RESERVED_WORDS = {
 }
 
 
-class SQLGenerator:
+class SQLOperation:
     operation: Operation
-    schema_object: SchemaObject
     engine: str
+
+    def __init__(self, operation: Operation, engine: str):
+        self.operation = operation
+        self.__select_list_columns = None
+        self.engine = engine
+
+    @property
+    def sql(self) -> str:
+        raise NotImplementedError("Subclasses must implement this method")
+
+    @property
+    def placeholders(self) -> Dict[str, SchemaObjectProperty]:
+        raise NotImplementedError("Subclasses must implement this method")
+
+    @property
+    def selection_results(self) -> Dict:
+        raise NotImplementedError("Subclasses must implement this method")
+
+    @property
+    def select_list_columns(self) -> List[str]:
+        if not self.__select_list_columns:
+            self.__select_list_columns = list(self.selection_results.keys())
+        return self.__select_list_columns
+
+    def marshal_record(self, record: dict) -> dict:
+        result = {}
+        for name, value in record.items():
+            property = self.selection_results[name]
+            result[property.name] = property.convert_to_api_value(value)
+        return result
+
+    def placeholder(self, property: SchemaObjectProperty, param: str = "") -> str:
+        if len(param) == 0:
+            param = property.name
+
+        if self.engine == "oracle":
+            if property.column_type == "date":
+                return f"TO_DATE(:{param}, 'YYYY-MM-DD')"
+            elif property.column_type == "datetime":
+                return f"TO_TIMESTAMP(:{param}, 'YYYY-MM-DD\"T\"HH24:MI:SS.FF')"
+            elif property.column_type == "time":
+                return f"TO_TIME(:{param}, 'HH24:MI:SS.FF')"
+            return f":{param}"
+        return f"%({param})s"
+
+
+class SQLGenerator(SQLOperation):
+    schema_object: SchemaObject
 
     def __init__(
         self, operation: Operation, schema_object: SchemaObject, engine: str
     ) -> None:
-        self.operation = operation
+        super().__init__(operation, engine)
         self.schema_object = schema_object
-        self.engine = engine
         self.prefix_map = self.__get_prefix_map(schema_object)
         self.single_table = self.__single_table()
         self.__select_list = None
-        self.__select_list_columns = None
         self.__selection_result_map = None
         self.search_placeholders = dict()
         self.store_placeholders = dict()
@@ -151,12 +196,6 @@ class SQLGenerator:
             if "." in param:
                 return False
         return True
-
-    @property
-    def select_list_columns(self) -> List[str]:
-        if not self.__select_list_columns:
-            self.__select_list_columns = list(self.selection_results.keys())
-        return self.__select_list_columns
 
     @property
     def select_list(self) -> str:
@@ -263,13 +302,6 @@ class SQLGenerator:
             )
         return self.__selection_result_map
 
-    def marshal_record(self, record: dict) -> dict:
-        result = {}
-        for name, value in record.items():
-            property = self.selection_results[name]
-            result[property.name] = property.convert_to_api_value(value)
-        return result
-
     def filter_and_prefix_keys(
         self, regex_list: List[str], properties: dict, prefix: Optional[str] = None
     ) -> dict:
@@ -295,17 +327,6 @@ class SQLGenerator:
                     self.active_prefixes.add(prefix)
                     break
         return filtered_dict
-
-    def placeholder(self, property: SchemaObjectProperty, param: str) -> str:
-        if self.engine == "oracle":
-            if property.column_type == "date":
-                return f"TO_DATE(:{param}, 'YYYY-MM-DD')"
-            elif property.column_type == "datetime":
-                return f"TO_TIMESTAMP(:{param}, 'YYYY-MM-DD\"T\"HH24:MI:SS.FF')"
-            elif property.column_type == "time":
-                return f"TO_TIME(:{param}, 'HH24:MI:SS.FF')"
-            return f":{param}"
-        return f"%({param})s"
 
     def concurrency_generator(self, property: SchemaObjectProperty) -> str:
         log.debug(f"api_type: {property.api_type}")

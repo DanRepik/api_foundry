@@ -1,4 +1,4 @@
-from api_maker.dao.sql_generator import SQLGenerator
+from api_maker.dao.sql_generator import SQLGenerator, SQLOperation
 from api_maker.dao.sql_select_generator import SQLSelectGenerator
 from api_maker.operation import Operation
 from api_maker.utils.logger import logger

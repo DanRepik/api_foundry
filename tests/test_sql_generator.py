@@ -19,7 +19,7 @@ from test_fixtures import load_model  # noqa F401
 log = logger(__name__)
 
 
-class TestSQLGenerator:
+class TestCustomSQLGenerator:
     def test_field_selection(self, load_model):  # noqa F811
         sql_generator = SQLSelectGenerator(
             Operation(entity="invoice", action="read"),
@@ -106,7 +106,7 @@ class TestSQLGenerator:
                 "postgres",
             )
 
-            sql_generator = operation_dao.sql_generator
+            sql_generator = operation_dao.sql_operation
             log.info(f"sql_generator: {sql_generator}")
 
             log.info(f"sql: {sql_generator.sql}")
@@ -129,10 +129,10 @@ class TestSQLGenerator:
                 "postgres",
             )
 
-            sql_generator = operation_dao.sql_generator
-            log.info(f"sql_generator: {sql_generator}")
+            sql_operation = operation_dao.sql_operation
+            log.info(f"sql_operation: {sql_operation}")
 
-            log.info(f"sql: {sql_generator.sql}")
+            log.info(f"sql: {sql_operation.sql}")
             assert False
         except ApplicationException as e:
             assert (
@@ -154,17 +154,17 @@ class TestSQLGenerator:
                 "postgres",
             )
 
-            sql_generator = operation_dao.sql_generator
-            log.info(f"sql_generator: {sql_generator}")
+            sql_operation = operation_dao.sql_operation
+            log.info(f"sql_generator: {sql_operation}")
 
             log.info(
-                f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
+                f"sql: {sql_operation.sql}, placeholders: {sql_operation.placeholders}"
             )
             assert (
-                sql_generator.sql
+                sql_operation.sql
                 == "SELECT i.invoice_id, i.customer_id, i.invoice_date, i.billing_address, i.billing_city, i.billing_state, i.billing_country, i.billing_postal_code, i.total, i.last_updated FROM invoice AS i INNER JOIN customer AS c ON i.customer_id = c.customer_id WHERE i.invoice_id > %(i_invoice_id)s AND c.customer_id > %(c_customer_id)s"  # noqa E501
             )
-            assert sql_generator.placeholders == {
+            assert sql_operation.placeholders == {
                 "i_invoice_id": 24,
                 "c_customer_id": 5,
             }
