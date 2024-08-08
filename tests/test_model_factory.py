@@ -1,6 +1,3 @@
-import os
-import yaml
-import boto3
 import pytest
 from unittest.mock import patch, MagicMock
 from api_maker.utils.app_exception import ApplicationException
@@ -10,11 +7,12 @@ from api_maker.utils.model_factory import (
     SchemaObject,
     SchemaObjectProperty,
     OpenAPIElement,
-)  # Replace 'your_module' with the actual module name
+)
 
 log = logger(__name__)
 
 
+@pytest.mark.unit
 def test_set_spec():
     # Mock the file content of api_spec.yaml
     ModelFactory.set_spec(

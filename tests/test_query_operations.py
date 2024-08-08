@@ -1,5 +1,5 @@
-from datetime import datetime
 import json
+import pytest
 
 from api_maker.utils.app_exception import ApplicationException
 from api_maker.utils.logger import logger
@@ -11,6 +11,7 @@ from test_fixtures import load_model, db_secrets
 log = logger(__name__)
 
 
+@pytest.mark.integration
 class TestQueryOperations:
     def test_select_all(self, load_model, db_secrets):
         result = TransactionalService().execute(

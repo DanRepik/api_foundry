@@ -1,6 +1,8 @@
+import pytest
+
 from datetime import datetime
 
-from api_maker.dao.sql_update_generator import SQLUpdateGenerator
+from api_maker.dao.sql_update_query_handler import SQLUpdateSchemaQueryHandler
 from api_maker.utils.app_exception import ApplicationException
 from api_maker.utils.model_factory import ModelFactory
 from api_maker.operation import Operation
@@ -13,9 +15,10 @@ from test_schema_objects_fixtures import invoice_no_concurrency  # noqa F401
 log = logger(__name__)
 
 
+@pytest.mark.unit
 class TestUpdateSQLGenerator:
     def test_update_uuid(self, invoice_with_version_stamp):  # noqa E811
-        sql_generator = SQLUpdateGenerator(
+        sql_generator = SQLUpdateSchemaQueryHandler(
             Operation(
                 entity="invoice",
                 action="update",
@@ -46,7 +49,7 @@ class TestUpdateSQLGenerator:
 
     def test_update_bulk_on_concurrency(self, load_model):  # noqa E811
         try:
-            SQLUpdateGenerator(
+            SQLUpdateSchemaQueryHandler(
                 Operation(
                     entity="invoice",
                     action="update",
@@ -68,7 +71,7 @@ class TestUpdateSQLGenerator:
             )
 
     def test_update_bulk(self, load_model, invoice_no_concurrency):  # noqa E811
-        sql_generator = SQLUpdateGenerator(
+        sql_generator = SQLUpdateSchemaQueryHandler(
             Operation(
                 entity="invoice",
                 action="update",
@@ -96,7 +99,7 @@ class TestUpdateSQLGenerator:
         }
 
     def test_update_timestamp(self, load_model):  # noqa E811
-        sql_generator = SQLUpdateGenerator(
+        sql_generator = SQLUpdateSchemaQueryHandler(
             Operation(
                 entity="invoice",
                 action="update",
@@ -125,7 +128,7 @@ class TestUpdateSQLGenerator:
             "total": 2.63,
         }
 
-    def test_update_missing_version(self):
+    def test_update_missing_version(self, load_model):
         schema_object = ModelFactory.get_schema_object("invoice")
         operation = Operation(
             entity="invoice",
@@ -137,18 +140,23 @@ class TestUpdateSQLGenerator:
         )
         sql_generator = None
         try:
-            sql_generator = SQLUpdateGenerator(operation, schema_object, "postgres")
+            sql_generator = SQLUpdateSchemaQueryHandler(
+                operation, schema_object, "postgres"
+            )
             log.info(
                 f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
             )
             assert False, "Missing exception"
         except ApplicationException as err:
             assert err.status_code == 400
-            assert err.message == "fixme"
+            assert (
+                err.message
+                == "Missing required concurrency management property.  schema_object: invoice, property: last_updated"
+            )
 
-    def test_update_overwrite_version(self):
+    def test_update_overwrite_version(self, load_model):
         try:
-            sql_generator = SQLUpdateGenerator(
+            sql_generator = SQLUpdateSchemaQueryHandler(
                 Operation(
                     entity="invoice",
                     action="update",
@@ -171,4 +179,7 @@ class TestUpdateSQLGenerator:
             assert False, "Missing exception"
         except ApplicationException as err:
             assert err.status_code == 400
-            assert err.message == "fixme"
+            assert (
+                err.message
+                == "Missing required concurrency management property.  schema_object: invoice, property: last_updated"
+            )

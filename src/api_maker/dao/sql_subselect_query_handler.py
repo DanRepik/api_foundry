@@ -1,5 +1,5 @@
-from api_maker.dao.sql_generator import SQLGenerator, SQLOperation
-from api_maker.dao.sql_select_generator import SQLSelectGenerator
+from api_maker.dao.sql_query_handler import SQLSchemaQueryHandler, SQLQueryHandler
+from api_maker.dao.sql_select_query_handler import SQLSelectSchemaQueryHandler
 from api_maker.operation import Operation
 from api_maker.utils.logger import logger
 from api_maker.utils.model_factory import SchemaObjectAssociation
@@ -7,12 +7,12 @@ from api_maker.utils.model_factory import SchemaObjectAssociation
 log = logger(__name__)
 
 
-class SQLSubselectGenerator(SQLSelectGenerator):
+class SQLSubselectSchemaQueryHandler(SQLSelectSchemaQueryHandler):
     def __init__(
         self,
         operation: Operation,
         relation: SchemaObjectAssociation,
-        parent_generator: SQLGenerator,
+        parent_generator: SQLSchemaQueryHandler,
     ) -> None:
         super().__init__(
             operation, relation.child_schema_object, parent_generator.engine

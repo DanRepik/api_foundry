@@ -3,9 +3,9 @@ import pytest
 from datetime import date, datetime, timezone
 
 from api_maker.dao.operation_dao import OperationDAO
-from api_maker.dao.sql_delete_generator import SQLDeleteGenerator
-from api_maker.dao.sql_select_generator import SQLSelectGenerator
-from api_maker.dao.sql_subselect_generator import SQLSubselectGenerator
+from api_maker.dao.sql_delete_query_handler import SQLDeleteSchemaQueryHandler
+from api_maker.dao.sql_select_query_handler import SQLSelectSchemaQueryHandler
+from api_maker.dao.sql_subselect_query_handler import SQLSubselectSchemaQueryHandler
 from api_maker.utils.app_exception import ApplicationException
 from api_maker.utils.model_factory import (
     ModelFactory,
@@ -21,7 +21,7 @@ log = logger(__name__)
 
 class TestCustomSQLGenerator:
     def test_field_selection(self, load_model):  # noqa F811
-        sql_generator = SQLSelectGenerator(
+        sql_generator = SQLSelectSchemaQueryHandler(
             Operation(entity="invoice", action="read"),
             ModelFactory.get_schema_object("invoice"),
             "postgres",
@@ -34,7 +34,7 @@ class TestCustomSQLGenerator:
         assert result_map.get("i.invoice_id") is not None
 
     def test_field_selection_with_association(self, load_model):  # noqa F811
-        sql_generator = SQLSelectGenerator(
+        sql_generator = SQLSelectSchemaQueryHandler(
             Operation(
                 entity="invoice",
                 action="read",
@@ -54,7 +54,7 @@ class TestCustomSQLGenerator:
         assert "c.customer_id" in sql_generator.select_list
 
     def test_search_condition(self):
-        sql_generator = SQLSelectGenerator(
+        sql_generator = SQLSelectSchemaQueryHandler(
             Operation(
                 entity="invoice",
                 action="read",
@@ -106,7 +106,7 @@ class TestCustomSQLGenerator:
                 "postgres",
             )
 
-            sql_generator = operation_dao.sql_operation
+            sql_generator = operation_dao.query_handler
             log.info(f"sql_generator: {sql_generator}")
 
             log.info(f"sql: {sql_generator.sql}")
@@ -129,7 +129,7 @@ class TestCustomSQLGenerator:
                 "postgres",
             )
 
-            sql_operation = operation_dao.sql_operation
+            sql_operation = operation_dao.query_handler
             log.info(f"sql_operation: {sql_operation}")
 
             log.info(f"sql: {sql_operation.sql}")
@@ -154,7 +154,7 @@ class TestCustomSQLGenerator:
                 "postgres",
             )
 
-            sql_operation = operation_dao.sql_operation
+            sql_operation = operation_dao.query_handler
             log.info(f"sql_generator: {sql_operation}")
 
             log.info(
@@ -182,7 +182,9 @@ class TestCustomSQLGenerator:
             query_params={"invoice_id": 24, "line_items.price": "gt::5"},
         )
 
-        sql_generator = SQLSelectGenerator(operation, schema_object, "postgres")
+        sql_generator = SQLSelectSchemaQueryHandler(
+            operation, schema_object, "postgres"
+        )
 
         property = SchemaObjectProperty(
             entity="invoice",
@@ -239,7 +241,9 @@ class TestCustomSQLGenerator:
             query_params={"invoice_id": 24, "line_items.price": "gt::5"},
         )
 
-        sql_generator = SQLSelectGenerator(operation, schema_object, "postgres")
+        sql_generator = SQLSelectSchemaQueryHandler(
+            operation, schema_object, "postgres"
+        )
 
         property = SchemaObjectProperty(
             entity="invoice",
@@ -273,7 +277,7 @@ class TestCustomSQLGenerator:
             },
         )
 
-        sql_generator = SQLSelectGenerator(
+        sql_generator = SQLSelectSchemaQueryHandler(
             Operation(
                 entity="invoice", action="read", query_params={"last-updated": date}
             ),
@@ -303,7 +307,7 @@ class TestCustomSQLGenerator:
             },
         )
 
-        sql_generator = SQLSelectGenerator(
+        sql_generator = SQLSelectSchemaQueryHandler(
             Operation(
                 entity="invoice", action="read", query_params={"last-updated": date}
             ),
@@ -325,7 +329,9 @@ class TestCustomSQLGenerator:
         operation = Operation(
             entity="invoice", action="read", query_params={"is_active": "true"}
         )
-        sql_generator = SQLSelectGenerator(operation, schema_object, "postgres")
+        sql_generator = SQLSelectSchemaQueryHandler(
+            operation, schema_object, "postgres"
+        )
 
         property = SchemaObjectProperty(
             entity="invoice",
@@ -348,7 +354,9 @@ class TestCustomSQLGenerator:
         )
 
         try:
-            sql_generator = SQLSelectGenerator(operation, schema_object, "postgres")
+            sql_generator = SQLSelectSchemaQueryHandler(
+                operation, schema_object, "postgres"
+            )
             log.info(f"sql: {sql_generator.sql}")
             assert False
         except ApplicationException as e:
@@ -362,7 +370,9 @@ class TestCustomSQLGenerator:
             query_params={"billing_state": "FL"},
             metadata_params={"properties": ".* customer:.* invoice_line_items:.*"},
         )
-        sql_generator = SQLSelectGenerator(operation, schema_object, "postgres")
+        sql_generator = SQLSelectSchemaQueryHandler(
+            operation, schema_object, "postgres"
+        )
 
         log.info(
             f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
@@ -382,7 +392,9 @@ class TestCustomSQLGenerator:
             query_params={"billing_state": "FL"},
             metadata_params={"properties": ".* customer:.* invoice_line_items:.*"},
         )
-        sql_generator = SQLSelectGenerator(operation, schema_object, "postgres")
+        sql_generator = SQLSelectSchemaQueryHandler(
+            operation, schema_object, "postgres"
+        )
 
         log.info(
             f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
@@ -396,7 +408,7 @@ class TestCustomSQLGenerator:
 
     def test_select_simple_table(self):
         try:
-            sql_generator = SQLSelectGenerator(
+            sql_generator = SQLSelectSchemaQueryHandler(
                 Operation(entity="genre", action="read", query_params={"name": "Bill"}),
                 SchemaObject(
                     "genre",
@@ -426,7 +438,7 @@ class TestCustomSQLGenerator:
 
     def test_select_condition_with_count(self):
         try:
-            sql_generator = SQLSelectGenerator(
+            sql_generator = SQLSelectSchemaQueryHandler(
                 Operation(
                     entity="genre",
                     action="read",
@@ -461,7 +473,7 @@ class TestCustomSQLGenerator:
 
     def test_select_single_table_no_conditions(self):
         try:
-            sql_generator = SQLSelectGenerator(
+            sql_generator = SQLSelectSchemaQueryHandler(
                 Operation(entity="genre", action="read"),
                 SchemaObject(
                     "genre",
@@ -497,7 +509,9 @@ class TestCustomSQLGenerator:
             },
             metadata_params={"_properties": "track_id"},
         )
-        sql_generator = SQLDeleteGenerator(operation, schema_object, "postgres")
+        sql_generator = SQLDeleteSchemaQueryHandler(
+            operation, schema_object, "postgres"
+        )
 
         log.info(
             f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
@@ -517,7 +531,9 @@ class TestCustomSQLGenerator:
             metadata_params={"properties": ".* customer:.* invoice_line_items:.*"},
         )
         schema_object = ModelFactory.get_schema_object("invoice")
-        sql_generator = SQLSelectGenerator(operation, schema_object, "postgres")
+        sql_generator = SQLSelectSchemaQueryHandler(
+            operation, schema_object, "postgres"
+        )
 
         log.info(f"sql_generator: {sql_generator.sql}")
         assert (
@@ -525,10 +541,10 @@ class TestCustomSQLGenerator:
             == "SELECT i.invoice_id, i.customer_id, i.invoice_date, i.billing_address, i.billing_city, i.billing_state, i.billing_country, i.billing_postal_code, i.total, i.last_updated, c.customer_id, c.first_name, c.last_name, c.company, c.address, c.city, c.state, c.country, c.postal_code, c.phone, c.fax, c.email, c.support_rep_id, c.version_stamp FROM invoice AS i INNER JOIN customer AS c ON i.customer_id = c.customer_id WHERE i.billing_state = %(i_billing_state)s"  # noqa E501
         )
 
-        subselect_sql_generator = SQLSubselectGenerator(
+        subselect_sql_generator = SQLSubselectSchemaQueryHandler(
             operation,
             schema_object.get_relation("invoice_line_items"),
-            SQLSelectGenerator(operation, schema_object, "postgres"),
+            SQLSelectSchemaQueryHandler(operation, schema_object, "postgres"),
         )
 
         log.info(f"subselect_sql_generator: {subselect_sql_generator.sql}")

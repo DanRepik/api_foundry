@@ -3,7 +3,7 @@ info:
   title: Generated API
   version: 1.0.0
 paths:
-  /top-selling-albums:
+  /top_selling_albums:
     get:
       summary: Get top-selling albums
       description: Returns the top 10 selling albums within a specified datetime range.

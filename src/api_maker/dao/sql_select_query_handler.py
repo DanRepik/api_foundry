@@ -1,4 +1,4 @@
-from api_maker.dao.sql_generator import SQLGenerator
+from api_maker.dao.sql_query_handler import SQLSchemaQueryHandler
 from api_maker.operation import Operation
 from api_maker.utils.app_exception import ApplicationException
 from api_maker.utils.logger import logger
@@ -7,7 +7,7 @@ from api_maker.utils.model_factory import SchemaObject, SchemaObjectProperty
 log = logger(__name__)
 
 
-class SQLSelectGenerator(SQLGenerator):
+class SQLSelectSchemaQueryHandler(SQLSchemaQueryHandler):
     def __init__(
         self, operation: Operation, schema_object: SchemaObject, engine: str
     ) -> None:
@@ -80,7 +80,9 @@ class SQLSelectGenerator(SQLGenerator):
                     ),
                 )
 
+            log.info(f"prefix: {prefix}")
             assignment, holders = self.search_value_assignment(property, value, prefix)
+            self.active_prefixes.add(prefix)
             conditions.append(assignment)
             self.search_placeholders.update(holders)
 
@@ -135,6 +137,7 @@ class SQLSelectGenerator(SQLGenerator):
             log.info(f"xx relation: {relation}, reg_exs: {reg_exs}")
             # Extract the schema object for the current entity
             relation_property = self.schema_object.relations.get(relation)
+            log.debug(f"relation_property: {relation_property}")
 
             if relation_property:
                 if relation_property.type == "array":
@@ -154,7 +157,6 @@ class SQLSelectGenerator(SQLGenerator):
                     + relation
                     + " property",
                 )
-
             # Filter and prefix keys for the current entity
             # and regular expressions
             filtered_keys = self.filter_and_prefix_keys(
@@ -188,6 +190,8 @@ class SQLSelectGenerator(SQLGenerator):
     def marshal_record(self, record) -> dict:
         object_set = {}
         for name, value in record.items():
+            log.info(f"name: {name}, value: {value}")
+            #            log.info(f"selection_resuts: {self.selection_results}")
             property = self.selection_results[name]
             parts = name.split(".")
             component = parts[0] if len(parts) > 1 else self.prefix_map["$default$"]

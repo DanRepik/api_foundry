@@ -1,19 +1,10 @@
 import pytest
-import yaml
 
-from datetime import date, datetime, time, timezone
+from datetime import datetime
 
-from api_maker.dao.sql_delete_generator import SQLDeleteGenerator
-from api_maker.dao.sql_insert_generator import SQLInsertGenerator
-from api_maker.dao.sql_select_generator import SQLSelectGenerator
-from api_maker.dao.sql_subselect_generator import SQLSubselectGenerator
-from api_maker.dao.sql_update_generator import SQLUpdateGenerator
+from api_maker.dao.sql_insert_query_handler import SQLInsertSchemaQueryHandler
 from api_maker.utils.app_exception import ApplicationException
-from api_maker.utils.model_factory import (
-    ModelFactory,
-    SchemaObject,
-    SchemaObjectProperty,
-)
+from api_maker.utils.model_factory import SchemaObject
 from api_maker.operation import Operation
 from api_maker.utils.logger import logger
 from test_fixtures import load_model
@@ -21,9 +12,10 @@ from test_fixtures import load_model
 log = logger(__name__)
 
 
+@pytest.mark.unit
 class TestInsertSQLGenerator:
     def test_insert_uuid(self, load_model):
-        sql_generator = SQLInsertGenerator(
+        sql_generator = SQLInsertSchemaQueryHandler(
             Operation(
                 entity="invoice",
                 action="create",
@@ -84,7 +76,7 @@ class TestInsertSQLGenerator:
                     ],
                 },
             ),
-            "postgres"
+            "postgres",
         )
 
         log.info(
@@ -107,7 +99,7 @@ class TestInsertSQLGenerator:
         }
 
     def test_insert_no_cc(self, load_model):
-        sql_generator = SQLInsertGenerator(
+        sql_generator = SQLInsertSchemaQueryHandler(
             Operation(
                 entity="invoice",
                 action="create",
@@ -166,7 +158,7 @@ class TestInsertSQLGenerator:
                     ],
                 },
             ),
-            "postgres"
+            "postgres",
         )
 
         log.info(
@@ -189,7 +181,7 @@ class TestInsertSQLGenerator:
         }
 
     def test_insert_property_selection(self, load_model):
-        sql_generator = SQLInsertGenerator(
+        sql_generator = SQLInsertSchemaQueryHandler(
             Operation(
                 entity="invoice",
                 action="create",
@@ -251,7 +243,7 @@ class TestInsertSQLGenerator:
                     ],
                 },
             ),
-            "postgres"
+            "postgres",
         )
 
         log.info(
@@ -275,7 +267,7 @@ class TestInsertSQLGenerator:
 
     def test_insert_bad_key(self, load_model):
         try:
-            sql_generator = SQLInsertGenerator(
+            sql_generator = SQLInsertSchemaQueryHandler(
                 Operation(
                     entity="genre",
                     action="create",
@@ -296,11 +288,9 @@ class TestInsertSQLGenerator:
                         "required": ["genre_id"],
                     },
                 ),
-                "postgres"
+                "postgres",
             )
-            assert (
-                False
-            ), "Attempt to set primary key during insert did not fail"
+            assert False, "Attempt to set primary key during insert did not fail"
         except ApplicationException as e:
             assert (
                 e.message
@@ -309,7 +299,7 @@ class TestInsertSQLGenerator:
 
     def test_insert_missing_required_key(self, load_model):
         try:
-            SQLInsertGenerator(
+            SQLInsertSchemaQueryHandler(
                 Operation(
                     entity="genre",
                     action="create",
@@ -330,17 +320,15 @@ class TestInsertSQLGenerator:
                         "required": ["genre_id"],
                     },
                 ),
-                "postgres"
+                "postgres",
             )
-            assert (
-                False
-            ), "Attempt to insert without a required key did not fail"
+            assert False, "Attempt to insert without a required key did not fail"
         except ApplicationException as e:
             pass
 
     def test_insert_auto_key(self, load_model):
         try:
-            sql_generator = SQLInsertGenerator(
+            sql_generator = SQLInsertSchemaQueryHandler(
                 Operation(
                     entity="genre",
                     action="create",
@@ -361,16 +349,14 @@ class TestInsertSQLGenerator:
                         "required": ["genre_id"],
                     },
                 ),
-                "postgres"
+                "postgres",
             )
-            assert (
-                False
-            ), "Attempt to set primary key during insert did not fail"
+            assert False, "Attempt to set primary key during insert did not fail"
         except ApplicationException as e:
             pass
 
     def test_insert_sequence(self, load_model):
-        sql_generator = SQLInsertGenerator(
+        sql_generator = SQLInsertSchemaQueryHandler(
             Operation(
                 entity="genre",
                 action="create",
@@ -392,7 +378,7 @@ class TestInsertSQLGenerator:
                     "required": ["genre_id"],
                 },
             ),
-            "postgres"
+            "postgres",
         )
         log.info(
             f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
@@ -406,7 +392,7 @@ class TestInsertSQLGenerator:
 
     def test_insert_timestamp(self, load_model):
         try:
-            sql_generator = SQLInsertGenerator(
+            sql_generator = SQLInsertSchemaQueryHandler(
                 Operation(
                     entity="genre",
                     action="create",
@@ -432,7 +418,7 @@ class TestInsertSQLGenerator:
                         "required": ["genre_id"],
                     },
                 ),
-                "postgres"
+                "postgres",
             )
             log.info(
                 f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
@@ -447,7 +433,7 @@ class TestInsertSQLGenerator:
 
     def test_insert_cc_with_param(self, load_model):
         try:
-            SQLInsertGenerator(
+            SQLInsertSchemaQueryHandler(
                 Operation(
                     entity="genre",
                     action="create",
@@ -475,11 +461,9 @@ class TestInsertSQLGenerator:
                         "required": ["genre_id"],
                     },
                 ),
-                "postgres"
+                "postgres",
             )
-            assert (
-                False
-            ), "Attempt to set primary key during insert did not fail"
+            assert False, "Attempt to set primary key during insert did not fail"
         except ApplicationException as e:
             assert (
                 e.message
@@ -488,7 +472,7 @@ class TestInsertSQLGenerator:
 
     def test_insert_serial(self, load_model):
         try:
-            sql_generator = SQLInsertGenerator(
+            sql_generator = SQLInsertSchemaQueryHandler(
                 Operation(
                     entity="genre",
                     action="create",
@@ -513,7 +497,7 @@ class TestInsertSQLGenerator:
                         "required": ["genre_id"],
                     },
                 ),
-                "postgres"
+                "postgres",
             )
             log.info(
                 f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
@@ -528,7 +512,7 @@ class TestInsertSQLGenerator:
 
     def test_insert_sequence_missing_name(self, load_model):
         try:
-            sql_generator = SQLInsertGenerator(
+            sql_generator = SQLInsertSchemaQueryHandler(
                 Operation(
                     entity="genre",
                     action="create",
@@ -549,7 +533,7 @@ class TestInsertSQLGenerator:
                         "required": ["genre_id"],
                     },
                 ),
-                "postgres"
+                "postgres",
             )
             assert False, "Primary key of sequence without a name did not fail"
         except ApplicationException as e:

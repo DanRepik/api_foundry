@@ -1,3 +1,5 @@
+import pytest
+
 from api_maker.utils.app_exception import ApplicationException
 from api_maker.utils.logger import logger
 from api_maker.operation import Operation
@@ -8,6 +10,7 @@ from test_fixtures import load_model, db_secrets  # noqa F401
 log = logger(__name__)
 
 
+@pytest.mark.integration
 class TestMetadataOperations:
     def test_count(self, load_model, db_secrets):  # noqa F811
         result = TransactionalService().execute(

@@ -1,5 +1,7 @@
+import pytest
+
 from api_maker.operation import Operation
-from api_maker.dao.sql_custom import CustomSQLGenerator
+from api_maker.dao.sql_custom_query_handler import SQLCustomQueryHandler
 from api_maker.utils.model_factory import PathOperation
 from api_maker.utils.logger import logger
 from test_fixtures import load_model  # noqa F401
@@ -7,16 +9,20 @@ from test_fixtures import load_model  # noqa F401
 log = logger(__name__)
 
 
+@pytest.mark.unit
 class TestSQLGenerator:
     def test_custom_sql(self, load_model):  # noqa F811
-        sql_operation = CustomSQLGenerator(
+        sql_operation = SQLCustomQueryHandler(
             Operation(
-                entity="invoice",
+                entity="/top_selling_albums",
                 action="read",
-                query_params={"invoice_id": "24", "total": "gt::5"},
+                query_params={
+                    "start": "2022-01-01T00:00:00",
+                    "end": "2022-01-07T00:00:00",
+                },
             ),
             PathOperation(
-                path="/top-selling-albums",
+                path="/top_selling_albums",
                 method="get",
                 path_operation={
                     "summary": "Get top-selling albums",
@@ -40,7 +46,7 @@ class TestSQLGenerator:
                             a.title
                         ORDER BY
                             total_sold DESC
-                        LIMIT 10;
+                        LIMIT :limit
                       """,
                     "parameters": [
                         {
@@ -56,6 +62,13 @@ class TestSQLGenerator:
                             "schema": {"type": "string", "format": "date-time"},
                             "required": True,
                             "description": "End datetime for the sales period.",
+                        },
+                        {
+                            "in": "query",
+                            "name": "limit",
+                            "schema": {"type": "integer"},
+                            "default": 10,
+                            "description": "The number of albums to return.",
                         },
                     ],
                     "responses": {
@@ -95,5 +108,18 @@ class TestSQLGenerator:
         log.info(
             f"sql: {sql_operation.sql}, placeholders: {sql_operation.placeholders}"
         )
+        log.info(f"placeholders: {sql_operation.placeholders}")
+        log.info(f"start: {sql_operation.placeholders['start']}")
 
-        assert False
+        assert (
+            sql_operation.sql
+            == "SELECT a.album_id as album_id, a.title AS album_title, COUNT(il.invoice_line_id) AS total_sold FROM invoice_line il JOIN track t ON il.track_id = t.track_id JOIN album a ON t.album_id = a.album_id WHERE i.invoice_date >= %(start)s AND i.invoice_date <= %(end)s GROUP BY a.title ORDER BY total_sold DESC LIMIT %(limit)s"
+        )
+        assert sql_operation.placeholders == {
+            "start": "2022-01-01T00:00:00",
+            "end": "2022-01-07T00:00:00",
+            "limit": "10",
+        }
+
+
+#        assert False

@@ -1,4 +1,4 @@
-from copy import deepcopy
+import pytest
 
 from api_maker.services.service import Service
 from api_maker.adapters.gateway_adapter import GatewayAdapter
@@ -37,6 +37,7 @@ class MockService(Service):
         return [{"account_id": 123}]
 
 
+@pytest.mark.unit
 class TestGatewayAdapter:
     def test_gateway_adapter_path_params(self):
         mock_service = MockService()

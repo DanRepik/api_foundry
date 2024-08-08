@@ -9,7 +9,7 @@ class PostgresCursor(Cursor):
     def __init__(self, cursor):
         self.__cursor = cursor
 
-    def execute(self, sql: str, parameters: dict) -> list[dict]:
+    def execute(self, sql: str, parameters: dict, result_columns: list[str]) -> list:
         """
         Execute SQL statements on the PostgreSQL database.
 
@@ -32,13 +32,14 @@ class PostgresCursor(Cursor):
             # Execute the SQL statement with parameters
             log.info(f"sql: {self.__cursor.mogrify(sql, parameters)}")
             self.__cursor.execute(sql, parameters)
+            result = []
+            for record in self.__cursor:
+                # Convert record tuple to dictionary using result_columns
+                result.append(
+                    {col: value for col, value in zip(result_columns, record)}
+                )
 
-            # Get column names from the cursor description
-            colnames = [desc[0] for desc in self.__cursor.description]
-
-            # Convert tuples to dictionaries
-            return [dict(zip(colnames, row)) for row in self.__cursor.fetch_all()]
-
+            return result
         except IntegrityError as err:
             # Handle integrity constraint violation (e.g., duplicate key)
             raise Exception(409, err.pgerror)

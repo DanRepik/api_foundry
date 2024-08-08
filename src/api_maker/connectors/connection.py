@@ -13,7 +13,7 @@ db_config_map = dict()
 
 
 class Cursor:
-    def execute(self, sql: str, params: dict) -> list[dict]:
+    def execute(self, sql: str, params: dict, selection_results: dict) -> list[dict]:
         raise NotImplementedError
 
     def close(self):

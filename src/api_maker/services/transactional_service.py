@@ -14,8 +14,8 @@ log = logger(__name__)
 
 class TransactionalService(ServiceAdapter):
     def execute(self, operation: Operation):
-        schema_object = ModelFactory.get_schema_object(operation.entity)
-        connection = connection_factory.get_connection(schema_object.database)
+        api_object = ModelFactory.get_api_object(operation.entity, operation.action)
+        connection = connection_factory.get_connection(api_object.database)
 
         try:
             result = None
