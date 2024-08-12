@@ -31,7 +31,7 @@ class MutationPublisher(ServiceAdapter):
         if topic_arn is not None:
             log.debug("Sending message")
             message = {
-                "entity": operation.entity,
+                "entity": operation.operation_id,
                 "action": operation.action,
                 "store_params": operation.store_params,
                 "query_params": operation.query_params,
@@ -46,14 +46,12 @@ class MutationPublisher(ServiceAdapter):
                 TopicArn=topic_arn,
                 MessageStructure="json",
                 MessageDeduplicationId=hex_dig,
-                MessageGroupId=operation.entity,
+                MessageGroupId=operation.operation_id,
                 Message=message_str,
             )
             log.info(f"publish msg id {msg_id}")
 
-    def __client(
-        client_type, region: str = os.environ.get("AWS_REGION", "us-east-1")
-    ):
+    def __client(client_type, region: str = os.environ.get("AWS_REGION", "us-east-1")):
         import boto3
 
         session = boto3.session.Session()

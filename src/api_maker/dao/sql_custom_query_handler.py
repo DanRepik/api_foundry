@@ -2,11 +2,7 @@ from typing import List, Dict
 import re
 
 from api_maker.dao.sql_query_handler import SQLQueryHandler
-from api_maker.utils.model_factory import (
-    SchemaObject,
-    SchemaObjectProperty,
-    PathOperation,
-)
+from api_maker.utils.model_factory import SchemaObjectProperty, PathOperation
 from api_maker.operation import Operation
 from api_maker.utils.app_exception import ApplicationException
 from api_maker.utils.logger import logger
@@ -37,7 +33,9 @@ class SQLCustomQueryHandler(SQLQueryHandler):
     def select_list_columns(self) -> List[SchemaObjectProperty]:
         raise NotImplementedError()
 
-    #        return self.path_operation.outputs
+    def selection_result_map(self) -> Dict:
+        log.info(f"outputs: {self.path_operation.outputs}")
+        return self.path_operation.outputs
 
     def _compile(self):
         placeholder_pattern = re.compile(r":(\w+)")
@@ -61,9 +59,8 @@ class SQLCustomQueryHandler(SQLQueryHandler):
             if placeholder_name in self.operation.query_params
             else property.default
         )
-        log.info(
-            f"placeholder_name: {placeholder_name}, value: {value}, default: {property.default}"
-        )
+        log.info(f"placeholder_name: {placeholder_name}")
+        log.info(f"value: {value}, default: {property.default}")
         log.info(f"placeholders: {self.generate_placeholders(property, value)}")
         self._placeholders.update(self.generate_placeholders(property, value))
         return self.placeholder(property, placeholder_name)

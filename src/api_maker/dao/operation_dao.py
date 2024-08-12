@@ -5,14 +5,11 @@ from api_maker.dao.sql_select_query_handler import SQLSelectSchemaQueryHandler
 from api_maker.dao.sql_subselect_query_handler import SQLSubselectSchemaQueryHandler
 from api_maker.dao.sql_update_query_handler import SQLUpdateSchemaQueryHandler
 from api_maker.utils.app_exception import ApplicationException
-from api_maker.utils.logger import logger
 from api_maker.dao.dao import DAO
 from api_maker.connectors.connection import Cursor
 from api_maker.operation import Operation
 from api_maker.utils.model_factory import ModelFactory
 from api_maker.dao.sql_query_handler import SQLQueryHandler
-
-log = logger(__name__)
 
 
 class OperationDAO(DAO):
@@ -39,7 +36,7 @@ class OperationDAO(DAO):
     def query_handler(self) -> SQLQueryHandler:
         if not hasattr(self, "_query_handler"):
             path_operation = ModelFactory.get_path_operation(
-                self.operation.entity, self.operation.action
+                self.operation.operation_id, self.operation.action
             )
             if path_operation:
                 self._query_handler = SQLCustomQueryHandler(
@@ -47,7 +44,7 @@ class OperationDAO(DAO):
                 )
                 return self._query_handler
 
-            schema_object = ModelFactory.get_schema_object(self.operation.entity)
+            schema_object = ModelFactory.get_schema_object(self.operation.operation_id)
             if self.operation.action == "read":
                 self._query_handler = SQLSelectSchemaQueryHandler(
                     self.operation, schema_object, self.engine
@@ -82,7 +79,7 @@ class OperationDAO(DAO):
             of the operation.
         """
 
-        result = self.__fetch_record_set(cursor)
+        result = self.__fetch_record_set(self.query_handler, cursor)
 
         if self.operation.action == "read":
             if self.operation.metadata_params.get("count", False):
@@ -97,15 +94,17 @@ class OperationDAO(DAO):
         if "properties" not in self.operation.metadata_params:
             return
 
-        for name, relation in self.schema_object.relations.items():
+        schema_object = ModelFactory.get_schema_object(self.operation.operation_id)
+        for name, relation in schema_object.relations.items():
             if relation.type == "object":
                 continue
 
-            sql_generator = SQLSubselectSchemaQueryHandler(
-                self.operation, relation, self.query_handler  # type: ignore
+            child_set = self.__fetch_record_set(
+                SQLSubselectSchemaQueryHandler(
+                    self.operation, relation, self.query_handler  # type: ignore
+                ),
+                cursor,
             )
-
-            child_set = self.__fetch_record_set(cursor)
             if len(child_set) == 0:
                 continue
 
@@ -122,17 +121,19 @@ class OperationDAO(DAO):
                 if parent:
                     parent[name].append(child)
 
-    def __fetch_record_set(self, cursor: Cursor) -> list[dict]:
-        sql = self.query_handler.sql
+    def __fetch_record_set(
+        self, query_handler: SQLQueryHandler, cursor: Cursor
+    ) -> list[dict]:
+        sql = query_handler.sql
         if not sql:
             return []
 
         result = []
         record_set = cursor.execute(
-            sql, self.query_handler.placeholders, self.query_handler.selection_results
+            sql, query_handler.placeholders, query_handler.selection_results
         )
         for record in record_set:
-            object = self.query_handler.marshal_record(record)
+            object = query_handler.marshal_record(record)
             result.append(object)
 
         return result

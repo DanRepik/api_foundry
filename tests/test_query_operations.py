@@ -15,14 +15,16 @@ log = logger(__name__)
 class TestQueryOperations:
     def test_select_all(self, load_model, db_secrets):
         result = TransactionalService().execute(
-            Operation(entity="invoice", action="read")
+            Operation(operation_id="invoice", action="read")
         )
         log.debug(f"len: {len(result)}")
         assert len(result) == 412
 
     def test_select_one(self, load_model, db_secrets):
         result = TransactionalService().execute(
-            Operation(entity="invoice", action="read", query_params={"invoice_id": 2})
+            Operation(
+                operation_id="invoice", action="read", query_params={"invoice_id": 2}
+            )
         )
         log.info(f"result: {json.dumps(result, indent=4)}")
         assert len(result) == 1
@@ -31,7 +33,7 @@ class TestQueryOperations:
     def test_select_multiple(self, load_model, db_secrets):
         result = TransactionalService().execute(
             Operation(
-                entity="invoice",
+                operation_id="invoice",
                 action="read",
                 query_params={"total": "in::5.94,3.96", "billing_country": "USA"},
             )
@@ -43,7 +45,7 @@ class TestQueryOperations:
         try:
             result = TransactionalService().execute(
                 Operation(
-                    entity="invoice",
+                    operation_id="invoice",
                     action="read",
                     query_params={"otal": 5.94, "billing_country": "USA"},
                 )
@@ -59,7 +61,7 @@ class TestQueryOperations:
     def test_select_gt_le_int(self, load_model, db_secrets):
         result = TransactionalService().execute(
             Operation(
-                entity="invoice",
+                operation_id="invoice",
                 action="read",
                 query_params={"total": "gt::5"},
             )
@@ -69,7 +71,7 @@ class TestQueryOperations:
 
         result = TransactionalService().execute(
             Operation(
-                entity="invoice",
+                operation_id="invoice",
                 action="read",
                 query_params={"total": "le::5"},
             )
@@ -78,7 +80,7 @@ class TestQueryOperations:
         le_count = len(result)
 
         result = TransactionalService().execute(
-            Operation(entity="invoice", action="read")
+            Operation(operation_id="invoice", action="read")
         )
         total_count = len(result)
         log.info(f"total_count: {total_count}")
@@ -88,7 +90,7 @@ class TestQueryOperations:
     def test_select_ge_lt_int(self, load_model, db_secrets):
         result = TransactionalService().execute(
             Operation(
-                entity="invoice",
+                operation_id="invoice",
                 action="read",
                 query_params={"total": "ge::5"},
             )
@@ -97,7 +99,7 @@ class TestQueryOperations:
 
         result = TransactionalService().execute(
             Operation(
-                entity="invoice",
+                operation_id="invoice",
                 action="read",
                 query_params={"total": "lt::5"},
             )
@@ -106,7 +108,7 @@ class TestQueryOperations:
         log.info(f"lt_count: {lt_count}")
 
         result = TransactionalService().execute(
-            Operation(entity="invoice", action="read")
+            Operation(operation_id="invoice", action="read")
         )
         total_count = len(result)
         log.info(f"total_count: {total_count}")
@@ -116,7 +118,7 @@ class TestQueryOperations:
     def test_select_between_int(self, load_model, db_secrets):
         result = TransactionalService().execute(
             Operation(
-                entity="invoice",
+                operation_id="invoice",
                 action="read",
                 query_params={"total": "between::4,6"},
             )
@@ -126,7 +128,7 @@ class TestQueryOperations:
 
         result = TransactionalService().execute(
             Operation(
-                entity="invoice",
+                operation_id="invoice",
                 action="read",
                 query_params={"total": "not-between::4,6"},
             )
@@ -135,7 +137,7 @@ class TestQueryOperations:
         log.info(f"not_between_count: {not_between_count}")
 
         result = TransactionalService().execute(
-            Operation(entity="invoice", action="read")
+            Operation(operation_id="invoice", action="read")
         )
         total_count = len(result)
         log.info(f"total_count: {total_count}")
@@ -145,7 +147,7 @@ class TestQueryOperations:
     def test_select_in_int(self, load_model, db_secrets):
         result = TransactionalService().execute(
             Operation(
-                entity="invoice",
+                operation_id="invoice",
                 action="read",
                 query_params={"total": "in::5.94,3.96"},
             )
@@ -155,7 +157,7 @@ class TestQueryOperations:
 
         result = TransactionalService().execute(
             Operation(
-                entity="invoice",
+                operation_id="invoice",
                 action="read",
                 query_params={"total": "not-in::5.94,3.96"},
             )
@@ -164,7 +166,7 @@ class TestQueryOperations:
         log.info(f"not_in_count: {not_in_count}")
 
         result = TransactionalService().execute(
-            Operation(entity="invoice", action="read")
+            Operation(operation_id="invoice", action="read")
         )
         total_count = len(result)
         log.info(f"total_count: {total_count}")
@@ -174,7 +176,7 @@ class TestQueryOperations:
     def test_select_ge_lt_timestamp(self, load_model, db_secrets):
         result = TransactionalService().execute(
             Operation(
-                entity="invoice",
+                operation_id="invoice",
                 action="read",
                 query_params={"invoice_date": "ge::2025-01-02T00:00:00.000"},
             )
@@ -184,7 +186,7 @@ class TestQueryOperations:
 
         result = TransactionalService().execute(
             Operation(
-                entity="invoice",
+                operation_id="invoice",
                 action="read",
                 query_params={"invoice_date": "lt::2025-01-02T00:00:00.000"},
             )
@@ -193,7 +195,7 @@ class TestQueryOperations:
         log.info(f"lt_count: {lt_count}")
 
         result = TransactionalService().execute(
-            Operation(entity="invoice", action="read")
+            Operation(operation_id="invoice", action="read")
         )
         total_count = len(result)
         log.info(f"total_count: {total_count}")

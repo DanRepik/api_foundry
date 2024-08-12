@@ -15,15 +15,16 @@ class TestCustomOperations:
     def test_top_albums(self, load_model, db_secrets):  # noqa F811
         result = TransactionalService().execute(
             Operation(
-                entity="top_selling_albums",
+                operation_id="top_selling_albums",
                 action="read",
                 query_params={
-                    "start": "2022-01-01T00:00:00",
-                    "end": "2022-01-07T00:00:00",
+                    "start": "2021-03-01T00:00:00",
+                    "end": "2021-04-07T00:00:00",
                 },
             )
         )
 
+        log.debug(f"result: {result}")
         log.debug(f"len: {len(result)}")
         invoice = result[0]
         log.debug(f"invoice: {invoice}")

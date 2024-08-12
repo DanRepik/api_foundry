@@ -1,6 +1,6 @@
 import pytest
 
-from api_maker.utils.model_factory import SchemaObject
+from api_maker.utils.model_factory import SchemaObject, ModelFactory
 
 
 @pytest.fixture
@@ -51,6 +51,7 @@ def invoice_with_version_stamp(load_model):
                 "total",
             ],
         },
+        spec=ModelFactory.spec,
     )
 
 
@@ -101,4 +102,5 @@ def invoice_no_concurrency() -> SchemaObject:
                 "total",
             ],
         },
+        spec=ModelFactory.spec,
     )

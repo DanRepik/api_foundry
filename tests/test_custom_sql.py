@@ -2,7 +2,7 @@ import pytest
 
 from api_maker.operation import Operation
 from api_maker.dao.sql_custom_query_handler import SQLCustomQueryHandler
-from api_maker.utils.model_factory import PathOperation
+from api_maker.utils.model_factory import PathOperation, ModelFactory
 from api_maker.utils.logger import logger
 from test_fixtures import load_model  # noqa F401
 
@@ -14,7 +14,7 @@ class TestSQLGenerator:
     def test_custom_sql(self, load_model):  # noqa F811
         sql_operation = SQLCustomQueryHandler(
             Operation(
-                entity="/top_selling_albums",
+                operation_id="/top_selling_albums",
                 action="read",
                 query_params={
                     "start": "2022-01-01T00:00:00",
@@ -101,6 +101,7 @@ class TestSQLGenerator:
                         }
                     },
                 },
+                spec=ModelFactory.spec,
             ),
             "postgres",
         )
@@ -110,6 +111,7 @@ class TestSQLGenerator:
         )
         log.info(f"placeholders: {sql_operation.placeholders}")
         log.info(f"start: {sql_operation.placeholders['start']}")
+        log.info(f"outputs: {sql_operation.path_operation.outputs}")
 
         assert (
             sql_operation.sql
@@ -120,6 +122,3 @@ class TestSQLGenerator:
             "end": "2022-01-07T00:00:00",
             "limit": "10",
         }
-
-
-#        assert False

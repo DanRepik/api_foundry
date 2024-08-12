@@ -2,10 +2,7 @@ from typing import Optional
 from api_maker.dao.sql_query_handler import SQLSchemaQueryHandler
 from api_maker.operation import Operation
 from api_maker.utils.app_exception import ApplicationException
-from api_maker.utils.logger import logger
 from api_maker.utils.model_factory import SchemaObject, SchemaObjectKey
-
-log = logger(__name__)
 
 
 class SQLInsertSchemaQueryHandler(SQLSchemaQueryHandler):
@@ -22,14 +19,14 @@ class SQLInsertSchemaQueryHandler(SQLSchemaQueryHandler):
                     raise ApplicationException(
                         400,
                         "Primary key values cannot be inserted when key type"
-                        + f" is auto. schema_object: {schema_object.entity}",
+                        + f" is auto. schema_object: {schema_object.operation_id}",
                     )
             elif self.key_property.key_type == "required":
                 if not operation.store_params.get(self.key_property.column_name):
                     raise ApplicationException(
                         400,
                         "Primary key values must be provided when key type is"
-                        + f" required. schema_object: {schema_object.entity}",
+                        + f" required. schema_object: {schema_object.operation_id}",
                     )
         self.concurrency_property = schema_object.concurrency_property
         if self.concurrency_property and operation.store_params.get(
@@ -38,7 +35,7 @@ class SQLInsertSchemaQueryHandler(SQLSchemaQueryHandler):
             raise ApplicationException(
                 400,
                 "Versioned properties can not be supplied a store parameters. "
-                + f"schema_object: {schema_object.entity}, "
+                + f"schema_object: {schema_object.operation_id}, "
                 + f"property: {self.concurrency_property.name}",
             )
 
@@ -51,13 +48,12 @@ class SQLInsertSchemaQueryHandler(SQLSchemaQueryHandler):
                 + f"RETURNING {self.select_list}"
             )
 
-        log.info(f"version_property: {vars(self.concurrency_property)}")
         if self.operation.store_params.get(self.concurrency_property.name):
             raise ApplicationException(
                 400,
                 "When inserting schema objects with a version property "
                 + "the a version must not be supplied as a storage parameter."
-                + f"  schema_object: {self.schema_object.entity}, "
+                + f"  schema_object: {self.schema_object.operation_id}, "
                 + f"property: {self.concurrency_property.name}",
             )
         return (
@@ -67,15 +63,12 @@ class SQLInsertSchemaQueryHandler(SQLSchemaQueryHandler):
 
     @property
     def insert_values(self) -> str:
-        log.info(f"insert_values store_params: {self.operation.store_params}")
-
         self.store_placeholders = {}
         placeholders = []
         columns = []
 
         for name, value in self.operation.store_params.items():
             parts = name.split(".")
-            log.info(f"parts: {parts}")
 
             try:
                 if len(parts) > 1:
@@ -88,7 +81,6 @@ class SQLInsertSchemaQueryHandler(SQLSchemaQueryHandler):
             except KeyError:
                 raise ApplicationException(400, f"Invalid property: {name}")
 
-            log.info(f"name: {name}, value: {value}")
             columns.append(property.column_name)
             placeholders.append(self.placeholder(property, property.name))
             self.store_placeholders[property.name] = property.convert_to_db_value(value)

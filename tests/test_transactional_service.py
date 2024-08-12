@@ -19,7 +19,7 @@ class TestTransactionalService:
         # test insert/create
         result = TransactionalService().execute(
             Operation(
-                entity="media_type",
+                operation_id="media_type",
                 action="create",
                 store_params={"name": "X-Ray"},
             )
@@ -30,7 +30,7 @@ class TestTransactionalService:
 
         # test select/read
         operation = Operation(
-            entity="media_type",
+            operation_id="media_type",
             action="read",
             query_params={"media_type_id": media_type_id},
         )
@@ -43,7 +43,7 @@ class TestTransactionalService:
 
         # test update
         operation = Operation(
-            entity="media_type",
+            operation_id="media_type",
             action="update",
             query_params={"media_type_id": media_type_id},
             store_params={"name": "Ray gun"},
@@ -57,7 +57,7 @@ class TestTransactionalService:
 
         # test delete
         operation = Operation(
-            entity="media_type",
+            operation_id="media_type",
             action="delete",
             query_params={"media_type_id": media_type_id},
         )
@@ -71,7 +71,7 @@ class TestTransactionalService:
 
         # test select/read
         operation = Operation(
-            entity="media_type",
+            operation_id="media_type",
             action="read",
             query_params={"media_type_id": media_type_id},
         )
@@ -87,7 +87,7 @@ class TestTransactionalService:
         """
         # test insert/create
         operation = Operation(
-            entity="invoice",
+            operation_id="invoice",
             action="create",
             store_params={
                 "invoice_date": datetime.now().isoformat(),
@@ -109,7 +109,7 @@ class TestTransactionalService:
 
         # test select/read
         operation = Operation(
-            entity="invoice",
+            operation_id="invoice",
             action="read",
             query_params={"invoice_id": invoice_id},
             metadata_params={"_properties": ".* customer:.* line_items:.*"},
@@ -126,7 +126,7 @@ class TestTransactionalService:
         # try update without concurrency value. should fail
         try:
             operation = Operation(
-                entity="invoice",
+                operation_id="invoice",
                 action="update",
                 query_params={"invoice_id": invoice_id},
             )
@@ -141,7 +141,7 @@ class TestTransactionalService:
 
         # test update
         operation = Operation(
-            entity="invoice",
+            operation_id="invoice",
             action="update",
             query_params={
                 "invoice_id": invoice_id,
@@ -159,7 +159,7 @@ class TestTransactionalService:
         # delete without concurrency value. should fail
         try:
             operation = Operation(
-                entity="invoice",
+                operation_id="invoice",
                 action="delete",
                 query_params={"invoice_id": invoice_id},
             )
@@ -174,7 +174,7 @@ class TestTransactionalService:
 
         # test delete
         operation = Operation(
-            entity="invoice",
+            operation_id="invoice",
             action="delete",
             query_params={
                 "invoice_id": invoice_id,
@@ -191,7 +191,7 @@ class TestTransactionalService:
 
         # test select/read
         operation = Operation(
-            entity="invoice",
+            operation_id="invoice",
             action="read",
             query_params={"invoice_id": invoice_id},
         )
@@ -207,7 +207,7 @@ class TestTransactionalService:
         """
         # test insert/create
         operation = Operation(
-            entity="customer",
+            operation_id="customer",
             action="create",
             store_params={
                 "first_name": "John",
@@ -233,7 +233,9 @@ class TestTransactionalService:
 
         # test select/read
         operation = Operation(
-            entity="customer", action="read", query_params={"customer_id": customer_id}
+            operation_id="customer",
+            action="read",
+            query_params={"customer_id": customer_id},
         )
         result = TransactionalService().execute(operation)
 
@@ -245,7 +247,7 @@ class TestTransactionalService:
         # try update without concurrency value. should fail
         try:
             operation = Operation(
-                entity="customer",
+                operation_id="customer",
                 action="update",
                 query_params={"customer_id": customer_id},
                 store_params={"address": "321 Broad St"},
@@ -261,7 +263,7 @@ class TestTransactionalService:
 
         # test update
         operation = Operation(
-            entity="customer",
+            operation_id="customer",
             action="update",
             query_params={
                 "customer_id": customer_id,
@@ -279,7 +281,7 @@ class TestTransactionalService:
         try:
             # test delete without version stamp
             operation = Operation(
-                entity="customer",
+                operation_id="customer",
                 action="delete",
                 query_params={"customer_id": customer_id},
             )
@@ -288,12 +290,13 @@ class TestTransactionalService:
         except ApplicationException as e:
             assert (
                 e.message
-                == "Missing required concurrency management property.  schema_object: customer, property: version_stamp"
+                == "Missing required concurrency management property.  "
+                + "schema_object: customer, property: version_stamp"
             )
 
         # test delete
         operation = Operation(
-            entity="customer",
+            operation_id="customer",
             action="delete",
             query_params={
                 "customer_id": customer_id,
@@ -309,7 +312,9 @@ class TestTransactionalService:
 
         # test select/read
         operation = Operation(
-            entity="customer", action="read", query_params={"customer_id": customer_id}
+            operation_id="customer",
+            action="read",
+            query_params={"customer_id": customer_id},
         )
         result = TransactionalService().execute(operation)
 

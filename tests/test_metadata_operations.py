@@ -14,7 +14,9 @@ log = logger(__name__)
 class TestMetadataOperations:
     def test_count(self, load_model, db_secrets):  # noqa F811
         result = TransactionalService().execute(
-            Operation(entity="invoice", action="read", metadata_params={"count": True})
+            Operation(
+                operation_id="invoice", action="read", metadata_params={"count": True}
+            )
         )
         log.debug(f"result: {result}")
         assert isinstance(result, dict)
@@ -23,7 +25,9 @@ class TestMetadataOperations:
     def test_order(self, load_model, db_secrets):  # noqa F811
         result = TransactionalService().execute(
             Operation(
-                entity="customer", action="read", metadata_params={"sort": "phone"}
+                operation_id="customer",
+                action="read",
+                metadata_params={"sort": "phone"},
             )
         )
         log.debug(f"result: {result[0]}")
@@ -35,7 +39,7 @@ class TestMetadataOperations:
         try:
             TransactionalService().execute(
                 Operation(
-                    entity="customer",
+                    operation_id="customer",
                     action="read",
                     metadata_params={"sort": "x-phone"},
                 )
@@ -52,7 +56,7 @@ class TestMetadataOperations:
         try:
             TransactionalService().execute(
                 Operation(
-                    entity="invoice",
+                    operation_id="invoice",
                     action="read",
                     metadata_params={"sort": "customerx.phone"},
                 )
@@ -69,7 +73,7 @@ class TestMetadataOperations:
         try:
             TransactionalService().execute(
                 Operation(
-                    entity="invoice",
+                    operation_id="invoice",
                     action="read",
                     metadata_params={"sort": "customer.phonex"},
                 )
@@ -85,7 +89,9 @@ class TestMetadataOperations:
     def test_order_asc(self, load_model, db_secrets):  # noqa F811
         result = TransactionalService().execute(
             Operation(
-                entity="customer", action="read", metadata_params={"sort": "phone:asc"}
+                operation_id="customer",
+                action="read",
+                metadata_params={"sort": "phone:asc"},
             )
         )
         log.debug(f"result: {result[0]}")
@@ -96,7 +102,7 @@ class TestMetadataOperations:
     def test_order_desc(self, load_model, db_secrets):  # noqa F811
         result = TransactionalService().execute(
             Operation(
-                entity="customer",
+                operation_id="customer",
                 action="read",
                 metadata_params={"sort": "last_name:desc"},
             )
@@ -109,7 +115,7 @@ class TestMetadataOperations:
     def test_order_using_object(self, load_model, db_secrets):  # noqa F811
         result = TransactionalService().execute(
             Operation(
-                entity="invoice",
+                operation_id="invoice",
                 action="read",
                 metadata_params={"sort": "customer.phone,invoice_date"},
             )
@@ -121,7 +127,9 @@ class TestMetadataOperations:
 
     def test_limit(self, load_model, db_secrets):  # noqa F811
         result = TransactionalService().execute(
-            Operation(entity="invoice", action="read", metadata_params={"limit": 50})
+            Operation(
+                operation_id="invoice", action="read", metadata_params={"limit": 50}
+            )
         )
         log.debug(f"result: {len(result)}")
         assert len(result) == 50
@@ -130,7 +138,9 @@ class TestMetadataOperations:
         try:
             TransactionalService().execute(
                 Operation(
-                    entity="invoice", action="read", metadata_params={"limit": "50x"}
+                    operation_id="invoice",
+                    action="read",
+                    metadata_params={"limit": "50x"},
                 )
             )
             assert False, "Missing exception"
@@ -141,7 +151,7 @@ class TestMetadataOperations:
     def test_offset(self, load_model, db_secrets):  # noqa F811
         result = TransactionalService().execute(
             Operation(
-                entity="invoice",
+                operation_id="invoice",
                 action="read",
                 metadata_params={"sort": "invoice_id:asc", "limit": 1, "offset": 50},
             )
@@ -154,7 +164,9 @@ class TestMetadataOperations:
         try:
             TransactionalService().execute(
                 Operation(
-                    entity="invoice", action="read", metadata_params={"offset": "50x"}
+                    operation_id="invoice",
+                    action="read",
+                    metadata_params={"offset": "50x"},
                 )
             )
             assert False, "Missing exception"

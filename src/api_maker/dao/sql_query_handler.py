@@ -3,11 +3,8 @@ from typing import Optional, List, Dict
 from datetime import datetime, date
 
 from api_maker.utils.app_exception import ApplicationException
-from api_maker.utils.logger import logger
 from api_maker.operation import Operation
 from api_maker.utils.model_factory import SchemaObject, SchemaObjectProperty
-
-log = logger(__name__)
 
 SQL_RESERVED_WORDS = {
     "select",
@@ -167,14 +164,14 @@ class SQLQueryHandler:
 
         if operand in ["between", "not-between"]:
             value_set = value_str.split(",")
-            sql = f"{column} {'NOT ' if operand == 'not-between' else ''}BETWEEN {self.placeholder(property, f'{placeholder_name}_1')} AND {self.placeholder(property, f'{prefix}_{property.name}_2')}"
+            sql = f"{column} {'NOT ' if operand == 'not-between' else ''}BETWEEN {self.placeholder(property, f'{placeholder_name}_1')} AND {self.placeholder(property, f'{prefix}_{property.name}_2')}"  # noqa E501
         elif operand in ["in", "not-in"]:
             value_set = value_str.split(",")
             assignments = [
                 self.placeholder(property, f"{placeholder_name}_{index}")
                 for index, _ in enumerate(value_set)
             ]
-            sql = f"{column} {'NOT ' if operand == 'not-in' else ''}IN ({', '.join(assignments)})"
+            sql = f"{column} {'NOT ' if operand == 'not-in' else ''}IN ({', '.join(assignments)})"  # noqa E501
         else:
             sql = f"{column} {operand} {self.placeholder(property, placeholder_name)}"
         return sql
@@ -210,7 +207,6 @@ class SQLQueryHandler:
         else:
             placeholders = {placeholder_name: property.convert_to_db_value(value_str)}
 
-        log.info(f"placeholders: {placeholders}")
         return placeholders
 
     def search_value_assignment(
@@ -251,14 +247,14 @@ class SQLSchemaQueryHandler(SQLQueryHandler):
 
     @property
     def placeholders(self) -> dict:
-        log.debug(f"search placeholders: {self.search_placeholders}")
         return {**self.search_placeholders, **self.store_placeholders}
 
     @property
     def prefix_map(self) -> Dict[str, str]:
         if not hasattr(self, "_prefix_map"):
-            self._prefix_map = {"$default$": self.schema_object.entity[:1].lower()}
-            log.info(f"relations: {self.schema_object.relations}")
+            self._prefix_map = {
+                "$default$": self.schema_object.operation_id[:1].lower()
+            }
             for entity in self.schema_object.relations.keys():
                 entity_lower = entity.lower()
                 for i in range(1, len(entity_lower) + 1):
@@ -269,7 +265,6 @@ class SQLSchemaQueryHandler(SQLQueryHandler):
                     ):
                         self._prefix_map[entity] = substring
                         break
-            log.debug(f"prefix_map: {self._prefix_map}")
         return self._prefix_map
 
     def __single_table(self) -> bool:
@@ -294,7 +289,6 @@ class SQLSchemaQueryHandler(SQLQueryHandler):
 
     @property
     def search_condition(self) -> str:
-        log.debug(f"query_params: {self.operation.query_params}")
         self.search_placeholders = {}
         conditions = []
         for name, value in self.operation.query_params.items():
@@ -318,7 +312,7 @@ class SQLSchemaQueryHandler(SQLQueryHandler):
                 raise ApplicationException(
                     400,
                     "Concurrency settings prohibit multi-record updates "
-                    + self.schema_object.entity
+                    + self.schema_object.operation_id
                     + ", property: "
                     + property.name,
                 )
@@ -341,12 +335,14 @@ class SQLSchemaQueryHandler(SQLQueryHandler):
     ) -> dict:
         """
         Accepts a prefix string, list of regular expressions, and a dictionary.
-        Returns a new dictionary containing items whose keys match any of the regular expressions, with the prefix string
-        prepended to the key values of the dictionary.
+        Returns a new dictionary containing items whose keys match any of the
+        regular expressions, with the prefix string prepended to the key
+        values of the dictionary.
 
         Parameters:
         - prefix (str): The prefix string to prepend to the key values.
-        - regex_list (list of str): The list of regular expression patterns to match keys.
+        - regex_list (list of str): The list of regular expression patterns
+                to match keys.
         - properties (dict): The input properties.
 
         Returns:
@@ -363,7 +359,6 @@ class SQLSchemaQueryHandler(SQLQueryHandler):
         return filtered_dict
 
     def concurrency_generator(self, property: SchemaObjectProperty) -> str:
-        log.debug(f"api_type: {property.api_type}")
         if property.api_type == "date-time":
             return "CURRENT_TIMESTAMP"
         elif property.api_type == "integer":
