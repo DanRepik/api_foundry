@@ -2,9 +2,9 @@
 
 Welcome to API-Maker, an open-source tool designed for rapidly building and exposing relational database resource as RESTful services.  The project's primary objective is to offer a solution that requires minimal coding effort to query and manipulate data stored in relational databases.
 
-Database resources that API-MAKER can expose as services can be tables or custom SQL.
+Database resources that API-MAKER can expose as services can be either tables or custom SQL.
 
-With database table resources API-MAKER provides services to support the normal CRUD operations.  Additionally with table resourses API-MAKER provides a rich record selection API that reduces the need to build custom functions.
+With tables API-MAKER provides services to support record management or CRUD operations.  Additionally with table resourses API-MAKER provides a rich record selection API that reduces the need to build custom functions.
 
 Custom SQL operations can also be exposed.
 
@@ -354,15 +354,16 @@ As illustrated in the example there are three main components to implementing an
 
 With API-Maker, development is focused on creating an application API specification using the OpenAPI Specification. API-Maker uses this specification to configure the REST API gateway and in the Lambda function that's provides the implementation of the services.
 
-The API implementation with API-Maker API's is data source driven.  The database resources the application exposes drives the API design.  Database resources can be exposed in an API two ways;
+The API implementation with API-Maker is driven by data sources, with the database resources of the application guiding the API design. Database resources can be exposed in an API in two primary ways:
 
 1. **Table Integration**:
-   When integrating with a table resource, API-Maker will generate services to support CRUD (Create, Read, Update, Delete) record management functions along with extended querying capabilities. Integration with tables is done by creating objects in the component schema section of the API specification.
+   When integrating with a table resource, API-Maker generates services to support CRUD (Create, Read, Update, Delete) operations, along with advanced querying capabilities. This integration is accomplished by defining objects in the component schema section of the API specification.
 
 2. **Custom SQL Integration**:
-   While table integration can provide a majority of the basic functionality, there are times when building individual services cannot be avoided. To accommodate this, API-Maker also allows specifying individual services and associating custom SQL with those services. Integration with custom SQL is done by specifying path operations in the API specification.
+   While table integration covers most record management needs, relational databases (RDBMs) offer additional functionality that may require custom SQL. API-Maker enables the specification of custom SQL for individual services by defining path operations in the application's OpenAPI specification.
 
-By focusing on the OpenAPI Specification and leveraging API-Maker's capabilities, developers can efficiently build robust APIs that interact with relational databases, minimizing the need for custom service development.
+By focusing on the OpenAPI Specification and leveraging API-Maker's features, developers can efficiently build robust APIs that interact with relational databases, reducing the need for extensive custom service development.
+
 
 ```plantuml
 @startuml
@@ -631,6 +632,162 @@ Here is an example of using a timestamp as a control object;
 ```
 
 ### Custom SQL Integration
+Integrating custom SQL into your application is accomplished by defining path operations in the application's OpenAPI specification. When setting up a path operation to invoke custom SQL, you need to define the following:
+
+* **Inputs**: Using request parameters
+* **SQL to execute**: The actual SQL query
+* **Output response structure**: How the results are returned
+
+#### Request Inputs
+
+Request inputs can be declared either in the path operation's parameters or in the request body sections of the definition. These inputs are used to parameterize the custom SQL.
+
+#### SQL to Execute
+
+In your path operation, you must define the following attributes:
+
+* **x-am-database**: Identifies the database on which the custom SQL will be executed, functioning similarly to its use in component schema objects.
+* **x-am-sql**: Contains the SQL query to be executed for the request.
+
+For the integration to function correctly, the definition must map input parameters to the custom SQL's placeholders and ensure the SQL response aligns with the defined response structure.
+
+Placeholders can be included in the custom SQL query. These placeholders begin with a colon (:) followed by the name of the input parameter. This input parameter must be defined either in the path operation's parameters or in the request body, depending on the request method.
+
+#### Response Outputs
+
+Upon successful execution of the custom SQL, API-Maker expects a cursor containing the SQL results. It will then attempt to map the cursor's contents into an array of objects to be returned as the path operation result. This mapping must be defined in the responses section of the path operation.
+
+The path operation must specify a response with a status code in the 200's, using application/json content type, and a schema that defines an array of objects. The properties defined in the array are used by API-Maker to convert the custom SQL cursor into the API response.
+
+When mapping from the SQL result to the API response, there are two strategies to handle mismatches between property names:
+
+1. **Preferred Strategy**: Rename the columns returned in the SQL using the AS keyword. For example:
+```sql
+SELECT
+    a.album_id as album_id,
+    a.title AS album_title,
+    COUNT(il.invoice_line_id) AS total_sold
+FROM
+    ...
+```
+
+2. **Alternative Strategy**: If the custom SQL doesn't allow for column renaming, use the x-am-column-name attribute in the response properties. For example:
+```sql
+SELECT
+    a.album_id,
+    a.title,
+    COUNT(il.invoice_line_id)
+FROM
+    ...
+```
+
+Then, in the property definitions for the response contain 'x-am-column-name' attributes to access the SQL columns:
+
+```yaml
+responses:
+  '200':
+    description: A list of top-selling albums
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              album_id:
+                type: integer
+                description: The ID of the album
+                x-am-column-name: a.album_id
+              album_title:
+                type: string
+                description: The title of the album
+                x-am-column-name: a.title
+              total_sold:
+                type: integer
+                description: The number of albums sold
+                x-am-column-name: COUNT(il.invoice_line_id)
+```
+
+#### Example Path Operation
+
+Here's a complete example of a path operation that invokes custom SQL;
+
+```yaml
+paths:
+  /top_selling_albums:
+    get:
+      summary: Get top-selling albums
+      description: Returns the top selling albums within a specified datetime range.
+      # define the inputs
+      parameters:
+        - in: query
+          name: start
+          schema:
+            type: string
+            format: date-time
+          required: true
+          description: Start datetime for the sales period.
+        - in: query
+          name: end
+          schema:
+            type: string
+            format: date-time
+          required: true
+          description: End datetime for the sales period.
+        - in: query
+          name: limit
+          schema:
+            type: integer
+          default: 10
+          description: The number of albums to return.
+      # define the SQL to be processed
+      x-am-database: chinook
+      x-am-sql: >
+        SELECT
+            a.album_id AS album_id,
+            a.title AS album_title,
+            COUNT(il.invoice_line_id) AS total_sold
+        FROM
+            invoice_line il
+        JOIN invoice i ON
+            il.invoice_id = i.invoice_id
+        JOIN
+            track t ON il.track_id = t.track_id
+        JOIN
+            album a ON t.album_id = a.album_id
+        WHERE
+            i.invoice_date >= :start
+            AND i.invoice_date <= :end
+        GROUP BY
+            a.album_id
+        ORDER BY
+            total_sold DESC
+        LIMIT :limit
+      # define the outputs
+      responses:
+        # a response with the status in 200-299 must be defined
+        '200':
+          description: A list of top-selling albums
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    album_id:
+                      type: integer
+                      description: The id of the album
+                    album_title:
+                      type: string
+                      description: The title of the album
+                    total_sold:
+                      type: integer
+                      description: The number of albums sold
+```
+
+
+Like any OpenAPI path operation the request parameters and response structure will need definition.  Additionally further
 
 # Configuration
 

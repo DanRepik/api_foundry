@@ -119,7 +119,7 @@ class SQLSelectSchemaQueryHandler(SQLSchemaQueryHandler):
 
     def selection_result_map(self) -> dict:
         if "count" in self.operation.metadata_params:
-            self.__selection_result_map = {
+            self._selection_results = {
                 "count": SchemaObjectProperty(
                     self.operation.operation_id,
                     "count",
@@ -127,10 +127,10 @@ class SQLSelectSchemaQueryHandler(SQLSchemaQueryHandler):
                     spec=ModelFactory.spec,
                 )
             }
-            return self.__selection_result_map
+            return self._selection_results
 
         filter_str = self.operation.metadata_params.get("properties", ".*")
-        self.__selection_result_map = {}
+        self._selection_results = {}
 
         for relation, reg_exs in self.get_regex_map(filter_str).items():
             # Extract the schema object for the current entity
@@ -161,9 +161,9 @@ class SQLSelectSchemaQueryHandler(SQLSchemaQueryHandler):
             )
 
             # Extend the result map with the filtered keys
-            self.__selection_result_map.update(filtered_keys)
+            self._selection_results.update(filtered_keys)
 
-        return self.__selection_result_map
+        return self._selection_results
 
     def get_regex_map(self, filter_str: str) -> dict[str, list]:
         result = {}

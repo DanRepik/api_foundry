@@ -128,10 +128,10 @@ class OperationDAO(DAO):
         if not sql:
             return []
 
-        result = []
         record_set = cursor.execute(
             sql, query_handler.placeholders, query_handler.selection_results
         )
+        result = []
         for record in record_set:
             object = query_handler.marshal_record(record)
             result.append(object)

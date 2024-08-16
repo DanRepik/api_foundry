@@ -111,6 +111,7 @@ class TestSQLGenerator:
         )
         log.info(f"placeholders: {sql_operation.placeholders}")
         log.info(f"start: {sql_operation.placeholders['start']}")
+        log.info(f"selection_results: {sql_operation.selection_results}")
         log.info(f"outputs: {sql_operation.path_operation.outputs}")
 
         assert (

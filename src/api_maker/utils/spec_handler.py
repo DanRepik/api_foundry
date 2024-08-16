@@ -1,4 +1,4 @@
-from typing import Any, List, Dict, Optional
+from typing import Any, List, Dict, Optional, Union
 
 
 class SpecificationHandler:
@@ -39,8 +39,9 @@ class SpecificationHandler:
         for key in keys:
             while isinstance(current_element, dict) and "$ref" in current_element:
                 resolved_reference = self.resolve_reference(current_element["$ref"])
-                current_element = {**current_element, **resolved_reference}
-                current_element.pop("$ref")
+                if resolved_reference:
+                    current_element = {**current_element, **resolved_reference}
+                    current_element.pop("$ref")
                 if current_element is None:
                     return None
 
@@ -51,9 +52,15 @@ class SpecificationHandler:
         return current_element
 
     def get(
-        self, spec: Dict[str, Any], key: str, default: Optional[Any] = None
+        self,
+        spec: Dict[str, Any],
+        key: Union[List[str], str],
+        default: Optional[Any] = None,
     ) -> Optional[Any]:
         current_element = spec
+
+        if isinstance(key, list):
+            return self.traverse_spec(spec, key) or default
 
         if isinstance(current_element, dict):
             if key in current_element:
@@ -61,6 +68,7 @@ class SpecificationHandler:
 
             if "$ref" in current_element:
                 resolved_reference = self.resolve_reference(current_element["$ref"])
-                return self.get(resolved_reference, key, default)
+                if resolved_reference:
+                    return self.get(resolved_reference, key, default)
 
         return default

@@ -112,7 +112,7 @@ class TestTransactionalService:
             operation_id="invoice",
             action="read",
             query_params={"invoice_id": invoice_id},
-            metadata_params={"_properties": ".* customer:.* line_items:.*"},
+            metadata_params={"properties": ".* customer:.* invoice_line_items:.*"},
         )
         result = TransactionalService().execute(operation)
 
@@ -254,7 +254,7 @@ class TestTransactionalService:
             )
 
             result = TransactionalService().execute(operation)
-            assert len(result) == 1
+            assert False, "Expecting exception"
         except ApplicationException as e:
             assert (
                 e.message
@@ -287,6 +287,7 @@ class TestTransactionalService:
             )
 
             result = TransactionalService().execute(operation)
+            assert False, "Expecting exception"
         except ApplicationException as e:
             assert (
                 e.message

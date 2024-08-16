@@ -14,8 +14,10 @@ class SQLUpdateSchemaQueryHandler(SQLSchemaQueryHandler):
     def sql(self) -> str:
         concurrency_property = self.schema_object.concurrency_property
         if not concurrency_property:
-            return f"UPDATE {self.table_expression}{self.update_values}"
+            return (
+                f"UPDATE {self.table_expression}{self.update_values}"
                 + f"{self.search_condition} RETURNING {self.select_list}"
+            )
 
         if not self.operation.query_params.get(concurrency_property.name):
             raise ApplicationException(

@@ -1,8 +1,12 @@
+import re
 import yaml
 from typing import Any, Dict, Optional, List, Union
 from datetime import datetime
 from api_maker.utils.app_exception import ApplicationException
 from api_maker.utils.spec_handler import SpecificationHandler
+from api_maker.utils.logger import logger
+
+log = logger(__name__)
 
 methods_to_actions = {
     "get": "read",
@@ -22,7 +26,9 @@ class OpenAPIElement:
         self.required = self.element.get("required", None)
         self.type = self.element.get("type", None)
 
-    def get(self, key: str, element=None, default: str = None):
+    def get(
+        self, key: Union[List[str], str], element=None, default: Optional[str] = None
+    ) -> Optional[Any]:
         result = self.spec_handler.get(element if element else self.element, key)
         return result if result else default
 
@@ -146,8 +152,17 @@ class SchemaObjectAssociation(OpenAPIElement):
 
     @property
     def parent_property(self) -> "SchemaObjectProperty":
-        parent = self.get("x-am-parent-property", None)
         parent_schema_object = ModelFactory.get_schema_object(self.operation_id)
+        if not parent_schema_object:
+            raise ApplicationException(
+                500,
+                (
+                    "Parent schema object not found for relation"
+                    + f"operation_id: {self.operation_id}, "
+                    f"attribute: {self.name}"
+                ),
+            )
+        parent = self.get("x-am-parent-property")
         if parent:
             return parent_schema_object.get_property(parent)
         return parent_schema_object.primary_key
@@ -158,7 +173,8 @@ class SchemaObjectAssociation(OpenAPIElement):
             if "$ref" not in self.element:
                 raise ApplicationException(
                     500,
-                    f"Missing $ref, entity: {self.operation_id}, attrbute: {self.name}",
+                    f"Missing $ref, operation_id: {self.operation_id}, "
+                    + f"attrbute: {self.name}",
                 )
             schema_name = self.element["$ref"].split("/")[-1]
             self._child_schema_object = ModelFactory.get_schema_object(schema_name)
@@ -197,9 +213,10 @@ class SchemaObject(OpenAPIElement):
         self._properties = dict()
         self._relations = dict()
         for property_name, prop in self.get("properties").items():
-            assert (
-                prop is not None
-            ), f"Property is none operation_id: {self.operation_id}, property: {property_name}"  # noqa E501
+            assert prop is not None, (
+                f"Property is none operation_id: {self.operation_id}, "
+                + f"property: {property_name}"
+            )  # noqa E501
             object_property = self._resolve_property(property_name, prop)
             if object_property:
                 self._properties[property_name] = object_property
@@ -247,7 +264,9 @@ class SchemaObject(OpenAPIElement):
                 except KeyError:
                     raise ApplicationException(
                         500,
-                        f"Concurrency control property does not exist. schema_object: {self.operation_id}, property: {concurrency_prop_name}",  # noqa E501
+                        "Concurrency control property does not exist. "
+                        + f"operation_id: {self.operation_id}, "
+                        + f"property: {concurrency_prop_name}",
                     )
             else:
                 self._concurrency_property = None
@@ -316,25 +335,41 @@ class PathOperation(OpenAPIElement):
         self, operation: Dict[str, Any], section: str
     ) -> Dict[str, SchemaObjectProperty]:
         properties = {}
-        if section == "requestBody" and "requestBody" in operation:
-            content = operation["requestBody"].get("content", {})
-            for name, property in content.items():
+        if section == "requestBody":
+            for name, property in (self.get(["requestBody", "content"]) or {}).items():
                 properties[name] = SchemaObjectProperty(
                     self.path, name, property, self.spec
                 )
-        elif section == "parameters" and "parameters" in operation:
-            content = operation["parameters"]
-            for property in content:
+        elif section == "parameters":
+            for property in self.get("parameters") or {}:
                 properties[property["name"]] = SchemaObjectProperty(
                     self.path, property["name"], property, self.spec
                 )
-        elif section == "responses" and "responses" in operation:
-            for status_code, response in operation["responses"].items():
-                content = response.get("content", {})
-                for name, property in content.items():
-                    properties[name] = SchemaObjectProperty(
-                        self.path, name, property, self.spec
-                    )
+        elif section == "responses":
+            responses = self.get("responses")
+            if responses:
+                pattern = re.compile(r"2\d{2}|2xx")
+                for status_code, response in responses.items():
+                    if pattern.fullmatch(status_code):
+                        log.info(f"response: {response}")
+                        content = (
+                            self.get(
+                                [
+                                    "content",
+                                    "application/json",
+                                    "schema",
+                                    "items",
+                                    "properties",
+                                ],
+                                response,
+                            )
+                            or {}
+                        )
+                        log.info(f"content: {content}")
+                        for name, property in content.items():
+                            properties[name] = SchemaObjectProperty(
+                                self.path, name, property, self.spec
+                            )
         return properties
 
     def _get_schema_properties(
@@ -413,7 +448,7 @@ class ModelFactory:
         return cls.path_operations
 
     @classmethod
-    def get_path_operation(cls, name: str, action: str) -> PathOperation:
+    def get_path_operation(cls, name: str, action: str) -> Optional[PathOperation]:
         return cls.path_operations.get(f"{name}:{action}")
 
     @classmethod

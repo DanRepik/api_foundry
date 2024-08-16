@@ -35,6 +35,7 @@ spec = {
 }
 
 
+@pytest.mark.unit
 class TestSpecHandler:
     def test_traverse_spec_simple(self):
         spec_handler = SpecificationHandler(spec)

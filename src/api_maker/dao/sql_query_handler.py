@@ -363,7 +363,7 @@ class SQLSchemaQueryHandler(SQLQueryHandler):
             return "CURRENT_TIMESTAMP"
         elif property.api_type == "integer":
             return f"{property.column_name} + 1"
-        elif property.api_type == "string":
+        elif property.api_type == "uuid":
             if self.engine == "oracle":
                 return "SYS_GUID()"
             if self.engine == "mysql":
