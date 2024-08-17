@@ -632,15 +632,42 @@ Here is an example of using a timestamp as a control object;
 ```
 
 ### Custom SQL Integration
-Integrating custom SQL into your application is accomplished by defining path operations in the application's OpenAPI specification. When setting up a path operation to invoke custom SQL, you need to define the following:
 
-* **Inputs**: Using request parameters
-* **SQL to execute**: The actual SQL query
-* **Output response structure**: How the results are returned
+Integrating custom SQL into your application is achieved by defining path operations within the application's OpenAPI specification. When setting up a path operation to invoke custom SQL, you need to define the following:
+
+- **Inputs**: Request parameters that are used to parameterize the custom SQL.
+- **SQL to Execute**: The actual SQL query to be executed.
+- **Output Response Structure**: The structure of the returned results.
+
+#### Defining Path Operations in the OpenAPI Specification
+
+In the OpenAPI specification, path operations correspond to specific HTTP methods (e.g., `GET`, `POST`, `PUT`, `DELETE`) that define how your API interacts with resources. Each path operation is associated with a specific path (URL) and method, and it specifies the behavior of the API when that path and method are invoked.
+
+For example:
+- **GET** operations typically retrieve data.
+- **POST** operations create new resources.
+- **PUT** operations update existing resources.
+- **DELETE** operations remove resources.
+
+In the context of custom SQL integration, you define the path operation with a method (e.g., `GET`, `POST`) in the OpenAPI specification, along with the necessary input parameters, the SQL query to execute, and the expected response format.
+
+#### Deployment and Path Operation Precedence
+
+During deployment, API-Maker builds an OpenAPI specification document that configures the AWS API Gateway. This document combines path operations explicitly defined in the API specification with those needed to support the record management functions associated with any component schema objects.
+
+When combining these two sets of path operations, API-Maker gives precedence to path operations with custom SQL over the default component schema record management functions. This feature allows you to explicitly override API-Maker's default behavior. However, it can also become a potential 'gotcha' if not managed carefully, as custom path operations may inadvertently override essential default operations.
 
 #### Request Inputs
 
-Request inputs can be declared either in the path operation's parameters or in the request body sections of the definition. These inputs are used to parameterize the custom SQL.
+Request inputs can be declared either in the path operation's parameters or in the request body sections of the OpenAPI definition. These inputs are used to parameterize the custom SQL.
+
+- **Path Operation Parameters**: Parameters are generally used for record selection. API-Maker often uses these parameters to filter or identify specific records within the database that match the criteria specified in the custom SQL.
+
+- **Request Body**: The request body is typically used to provide data for storage or updates, and it only applies to `PUT` and `POST` operations. These operations involve creating new records or updating existing ones, and the data to be stored or updated is passed through the request body.
+
+In API-Maker, the names of the inputs defined in the path operation's parameters or request body are used to match placeholders in the custom SQL query. Placeholders in the SQL query are denoted by a colon (`:`) followed by the input name. For example, if you define an input named `user_id`, you would reference this in your custom SQL as `:user_id`. This ensures that the appropriate values are substituted into the SQL query when the API is called.
+
+While API-Maker is designed to obtain parameters from either the path operation parameters or the request body, the convention is to use path operation parameters for selecting records and the request body for storing or updating data. This separation ensures that the custom SQL receives the appropriate inputs depending on the type of operation being performed.
 
 #### SQL to Execute
 
