@@ -1,19 +1,10 @@
 import pytest
-import yaml
 
-from datetime import date, datetime, time, timezone
+from datetime import datetime
 
-from api_maker.dao.sql_delete_generator import SQLDeleteGenerator
-from api_maker.dao.sql_insert_generator import SQLInsertGenerator
-from api_maker.dao.sql_select_generator import SQLSelectGenerator
-from api_maker.dao.sql_subselect_generator import SQLSubselectGenerator
-from api_maker.dao.sql_update_generator import SQLUpdateGenerator
+from api_maker.dao.sql_insert_query_handler import SQLInsertSchemaQueryHandler
 from api_maker.utils.app_exception import ApplicationException
-from api_maker.utils.model_factory import (
-    ModelFactory,
-    SchemaObject,
-    SchemaObjectProperty,
-)
+from api_maker.utils.model_factory import ModelFactory, SchemaObject
 from api_maker.operation import Operation
 from api_maker.utils.logger import logger
 from test_fixtures import load_model
@@ -21,11 +12,12 @@ from test_fixtures import load_model
 log = logger(__name__)
 
 
-class TestInsertSQLGenerator:
+@pytest.mark.unit
+class TestInsertSQLHandler:
     def test_insert_uuid(self, load_model):
-        sql_generator = SQLInsertGenerator(
+        sql_handler = SQLInsertSchemaQueryHandler(
             Operation(
-                entity="invoice",
+                operation_id="invoice",
                 action="create",
                 store_params={
                     "customer_id": "2",
@@ -83,20 +75,19 @@ class TestInsertSQLGenerator:
                         "total",
                     ],
                 },
+                spec=ModelFactory.spec,
             ),
-            "postgres"
+            "postgres",
         )
 
-        log.info(
-            f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
-        )
+        log.info(f"sql: {sql_handler.sql}, placeholders: {sql_handler.placeholders}")
 
         assert (
-            sql_generator.sql
+            sql_handler.sql
             == "INSERT INTO invoice ( customer_id, invoice_date, billing_address, billing_city, billing_country, billing_postal_code, total, version_stamp ) VALUES ( %(customer_id)s, %(invoice_date)s, %(billing_address)s, %(billing_city)s, %(billing_country)s, %(billing_postal_code)s, %(total)s, gen_random_uuid()) RETURNING invoice_id, customer_id, invoice_date, billing_address, billing_city, billing_state, billing_country, billing_postal_code, total, version_stamp"
         )
 
-        assert sql_generator.placeholders == {
+        assert sql_handler.placeholders == {
             "customer_id": 2,
             "invoice_date": datetime(2024, 3, 17, 0, 0),
             "billing_address": "Theodor-Heuss-Straße 34",
@@ -107,9 +98,9 @@ class TestInsertSQLGenerator:
         }
 
     def test_insert_no_cc(self, load_model):
-        sql_generator = SQLInsertGenerator(
+        sql_handler = SQLInsertSchemaQueryHandler(
             Operation(
-                entity="invoice",
+                operation_id="invoice",
                 action="create",
                 store_params={
                     "customer_id": "2",
@@ -165,20 +156,19 @@ class TestInsertSQLGenerator:
                         "total",
                     ],
                 },
+                spec=ModelFactory.spec,
             ),
-            "postgres"
+            "postgres",
         )
 
-        log.info(
-            f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
-        )
+        log.info(f"sql: {sql_handler.sql}, placeholders: {sql_handler.placeholders}")
 
         assert (
-            sql_generator.sql
+            sql_handler.sql
             == "INSERT INTO invoice ( customer_id, invoice_date, billing_address, billing_city, billing_country, billing_postal_code, total ) VALUES ( %(customer_id)s, %(invoice_date)s, %(billing_address)s, %(billing_city)s, %(billing_country)s, %(billing_postal_code)s, %(total)s) RETURNING invoice_id, customer_id, invoice_date, billing_address, billing_city, billing_state, billing_country, billing_postal_code, total"
         )
 
-        assert sql_generator.placeholders == {
+        assert sql_handler.placeholders == {
             "customer_id": 2,
             "invoice_date": datetime(2024, 3, 17, 0, 0),
             "billing_address": "Theodor-Heuss-Straße 34",
@@ -189,9 +179,9 @@ class TestInsertSQLGenerator:
         }
 
     def test_insert_property_selection(self, load_model):
-        sql_generator = SQLInsertGenerator(
+        sql_handler = SQLInsertSchemaQueryHandler(
             Operation(
-                entity="invoice",
+                operation_id="invoice",
                 action="create",
                 store_params={
                     "customer_id": "2",
@@ -250,20 +240,19 @@ class TestInsertSQLGenerator:
                         "total",
                     ],
                 },
+                spec=ModelFactory.spec,
             ),
-            "postgres"
+            "postgres",
         )
 
-        log.info(
-            f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
-        )
+        log.info(f"sql: {sql_handler.sql}, placeholders: {sql_handler.placeholders}")
 
         assert (
-            sql_generator.sql
+            sql_handler.sql
             == "INSERT INTO invoice ( customer_id, invoice_date, billing_address, billing_city, billing_country, billing_postal_code, total, last_updated ) VALUES ( %(customer_id)s, %(invoice_date)s, %(billing_address)s, %(billing_city)s, %(billing_country)s, %(billing_postal_code)s, %(total)s, gen_random_uuid()) RETURNING customer_id, invoice_date"
         )
 
-        assert sql_generator.placeholders == {
+        assert sql_handler.placeholders == {
             "customer_id": 2,
             "invoice_date": datetime(2024, 3, 17, 0, 0),
             "billing_address": "Theodor-Heuss-Straße 34",
@@ -275,9 +264,9 @@ class TestInsertSQLGenerator:
 
     def test_insert_bad_key(self, load_model):
         try:
-            sql_generator = SQLInsertGenerator(
+            sql_handler = SQLInsertSchemaQueryHandler(
                 Operation(
-                    entity="genre",
+                    operation_id="genre",
                     action="create",
                     store_params={"genre_id": 34, "description": "Bad genre"},
                 ),
@@ -295,12 +284,11 @@ class TestInsertSQLGenerator:
                         },
                         "required": ["genre_id"],
                     },
+                    spec=ModelFactory.spec,
                 ),
-                "postgres"
+                "postgres",
             )
-            assert (
-                False
-            ), "Attempt to set primary key during insert did not fail"
+            assert False, "Attempt to set primary key during insert did not fail"
         except ApplicationException as e:
             assert (
                 e.message
@@ -309,9 +297,9 @@ class TestInsertSQLGenerator:
 
     def test_insert_missing_required_key(self, load_model):
         try:
-            SQLInsertGenerator(
+            SQLInsertSchemaQueryHandler(
                 Operation(
-                    entity="genre",
+                    operation_id="genre",
                     action="create",
                     store_params={"description": "Bad genre"},
                 ),
@@ -329,20 +317,19 @@ class TestInsertSQLGenerator:
                         },
                         "required": ["genre_id"],
                     },
+                    spec=ModelFactory.spec,
                 ),
-                "postgres"
+                "postgres",
             )
-            assert (
-                False
-            ), "Attempt to insert without a required key did not fail"
+            assert False, "Attempt to insert without a required key did not fail"
         except ApplicationException as e:
             pass
 
     def test_insert_auto_key(self, load_model):
         try:
-            sql_generator = SQLInsertGenerator(
+            sql_handler = SQLInsertSchemaQueryHandler(
                 Operation(
-                    entity="genre",
+                    operation_id="genre",
                     action="create",
                     store_params={"genre_id": 34, "name": "Good genre"},
                 ),
@@ -360,19 +347,18 @@ class TestInsertSQLGenerator:
                         },
                         "required": ["genre_id"],
                     },
+                    spec=ModelFactory.spec,
                 ),
-                "postgres"
+                "postgres",
             )
-            assert (
-                False
-            ), "Attempt to set primary key during insert did not fail"
+            assert False, "Attempt to set primary key during insert did not fail"
         except ApplicationException as e:
             pass
 
     def test_insert_sequence(self, load_model):
-        sql_generator = SQLInsertGenerator(
+        sql_handler = SQLInsertSchemaQueryHandler(
             Operation(
-                entity="genre",
+                operation_id="genre",
                 action="create",
                 store_params={"name": "Good genre"},
             ),
@@ -391,24 +377,23 @@ class TestInsertSQLGenerator:
                     },
                     "required": ["genre_id"],
                 },
+                spec=ModelFactory.spec,
             ),
-            "postgres"
+            "postgres",
         )
-        log.info(
-            f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
-        )
+        log.info(f"sql: {sql_handler.sql}, placeholders: {sql_handler.placeholders}")
 
         assert (
-            sql_generator.sql
+            sql_handler.sql
             == "INSERT INTO genre ( name, genre_id ) VALUES ( %(name)s, nextval('test-sequence')) RETURNING genre_id, name"
         )
-        assert sql_generator.placeholders == {"name": "Good genre"}
+        assert sql_handler.placeholders == {"name": "Good genre"}
 
     def test_insert_timestamp(self, load_model):
         try:
-            sql_generator = SQLInsertGenerator(
+            sql_handler = SQLInsertSchemaQueryHandler(
                 Operation(
-                    entity="genre",
+                    operation_id="genre",
                     action="create",
                     store_params={"name": "New genre"},
                 ),
@@ -431,25 +416,26 @@ class TestInsertSQLGenerator:
                         },
                         "required": ["genre_id"],
                     },
+                    spec=ModelFactory.spec,
                 ),
-                "postgres"
+                "postgres",
             )
             log.info(
-                f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
+                f"sql: {sql_handler.sql}, placeholders: {sql_handler.placeholders}"
             )
             assert (
-                sql_generator.sql
+                sql_handler.sql
                 == "INSERT INTO genre ( name, last_updated ) VALUES ( %(name)s, CURRENT_TIMESTAMP) RETURNING genre_id, name, last_updated"
             )
-            assert sql_generator.placeholders == {"name": "New genre"}
+            assert sql_handler.placeholders == {"name": "New genre"}
         except ApplicationException as e:
             assert False
 
     def test_insert_cc_with_param(self, load_model):
         try:
-            SQLInsertGenerator(
+            SQLInsertSchemaQueryHandler(
                 Operation(
-                    entity="genre",
+                    operation_id="genre",
                     action="create",
                     store_params={
                         "name": "New genre",
@@ -474,12 +460,11 @@ class TestInsertSQLGenerator:
                         },
                         "required": ["genre_id"],
                     },
+                    spec=ModelFactory.spec,
                 ),
-                "postgres"
+                "postgres",
             )
-            assert (
-                False
-            ), "Attempt to set primary key during insert did not fail"
+            assert False, "Attempt to set primary key during insert did not fail"
         except ApplicationException as e:
             assert (
                 e.message
@@ -488,9 +473,9 @@ class TestInsertSQLGenerator:
 
     def test_insert_serial(self, load_model):
         try:
-            sql_generator = SQLInsertGenerator(
+            sql_handler = SQLInsertSchemaQueryHandler(
                 Operation(
-                    entity="genre",
+                    operation_id="genre",
                     action="create",
                     store_params={"name": "New genre"},
                 ),
@@ -512,25 +497,26 @@ class TestInsertSQLGenerator:
                         },
                         "required": ["genre_id"],
                     },
+                    spec=ModelFactory.spec,
                 ),
-                "postgres"
+                "postgres",
             )
             log.info(
-                f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
+                f"sql: {sql_handler.sql}, placeholders: {sql_handler.placeholders}"
             )
             assert (
-                sql_generator.sql
+                sql_handler.sql
                 == "INSERT INTO genre ( name, last_updated ) VALUES ( %(name)s, 1) RETURNING genre_id, name, last_updated"
             )
-            assert sql_generator.placeholders == {"name": "New genre"}
+            assert sql_handler.placeholders == {"name": "New genre"}
         except ApplicationException as e:
             assert False
 
     def test_insert_sequence_missing_name(self, load_model):
         try:
-            sql_generator = SQLInsertGenerator(
+            sql_handler = SQLInsertSchemaQueryHandler(
                 Operation(
-                    entity="genre",
+                    operation_id="genre",
                     action="create",
                     store_params={"name": "Good genre"},
                 ),
@@ -548,8 +534,9 @@ class TestInsertSQLGenerator:
                         },
                         "required": ["genre_id"],
                     },
+                    spec=ModelFactory.spec,
                 ),
-                "postgres"
+                "postgres",
             )
             assert False, "Primary key of sequence without a name did not fail"
         except ApplicationException as e:

@@ -3,9 +3,9 @@ import pytest
 from datetime import date, datetime, timezone
 
 from api_maker.dao.operation_dao import OperationDAO
-from api_maker.dao.sql_delete_generator import SQLDeleteGenerator
-from api_maker.dao.sql_select_generator import SQLSelectGenerator
-from api_maker.dao.sql_subselect_generator import SQLSubselectGenerator
+from api_maker.dao.sql_delete_query_handler import SQLDeleteSchemaQueryHandler
+from api_maker.dao.sql_select_query_handler import SQLSelectSchemaQueryHandler
+from api_maker.dao.sql_subselect_query_handler import SQLSubselectSchemaQueryHandler
 from api_maker.utils.app_exception import ApplicationException
 from api_maker.utils.model_factory import (
     ModelFactory,
@@ -19,24 +19,24 @@ from test_fixtures import load_model  # noqa F401
 log = logger(__name__)
 
 
-class TestSQLGenerator:
+class TestSQLHandler:
     def test_field_selection(self, load_model):  # noqa F811
-        sql_generator = SQLSelectGenerator(
-            Operation(entity="invoice", action="read"),
+        sql_handler = SQLSelectSchemaQueryHandler(
+            Operation(operation_id="invoice", action="read"),
             ModelFactory.get_schema_object("invoice"),
             "postgres",
         )
 
-        log.info(f"prefix_map: {sql_generator.prefix_map}")
-        result_map = sql_generator.selection_result_map()
+        log.info(f"prefix_map: {sql_handler.prefix_map}")
+        result_map = sql_handler.selection_result_map()
         log.info(f"result_map: {len(result_map)}")
         assert len(result_map) == 10
         assert result_map.get("i.invoice_id") is not None
 
     def test_field_selection_with_association(self, load_model):  # noqa F811
-        sql_generator = SQLSelectGenerator(
+        sql_handler = SQLSelectSchemaQueryHandler(
             Operation(
-                entity="invoice",
+                operation_id="invoice",
                 action="read",
                 metadata_params={"properties": ".* customer:.*"},
             ),
@@ -44,61 +44,40 @@ class TestSQLGenerator:
             "postgres",
         )
 
-        result_map = sql_generator.selection_result_map()
+        result_map = sql_handler.selection_result_map()
         log.info(f"result_map: {result_map}")
         assert len(result_map) == 24
         assert result_map.get("i.invoice_id") is not None
         assert result_map.get("c.customer_id") is not None
-        log.info(f"select_list: {sql_generator.select_list}")
-        assert "i.invoice_id" in sql_generator.select_list
-        assert "c.customer_id" in sql_generator.select_list
+        log.info(f"select_list: {sql_handler.select_list}")
+        assert "i.invoice_id" in sql_handler.select_list
+        assert "c.customer_id" in sql_handler.select_list
 
-    def test_search_condition(self):
-        sql_generator = SQLSelectGenerator(
+    def test_search_condition(self, load_model):
+        sql_handler = SQLSelectSchemaQueryHandler(
             Operation(
-                entity="invoice",
+                operation_id="invoice",
                 action="read",
                 query_params={"invoice_id": "24", "total": "gt::5"},
             ),
-            SchemaObject(
-                "invoice",
-                {
-                    "type": "object",
-                    "x-am-engine": "postgres",
-                    "x-am-database": "chinook",
-                    "properties": {
-                        "invoice_id": {"type": "integer", "x-am-primary-key": "auto"},
-                        "customer_id": {"type": "integer"},
-                        "invoice_date": {"type": "string", "format": "date-time"},
-                        "billing_address": {"type": "string", "maxLength": 70},
-                        "billing_city": {"type": "string", "maxLength": 40},
-                        "billing_state": {"type": "string", "maxLength": 40},
-                        "billing_country": {"type": "string", "maxLength": 40},
-                        "billing_postal_code": {"type": "string", "maxLength": 10},
-                        "total": {"type": "number", "format": "float"},
-                    },
-                    "required": ["invoice_id", "customer_id", "invoice_date", "total"],
-                },
-            ),
+            ModelFactory.get_schema_object("invoice"),
             "postgres",
         )
 
-        log.info(
-            f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
-        )
+        log.info(f"sql: {sql_handler.sql}, placeholders: {sql_handler.placeholders}")
 
         assert (
-            sql_generator.sql
-            == "SELECT i.invoice_id, i.customer_id, i.invoice_date, i.billing_address, i.billing_city, i.billing_state, i.billing_country, i.billing_postal_code, i.total FROM invoice AS i WHERE i.invoice_id = %(i_invoice_id)s AND i.total > %(i_total)s"  # noqa E501
+            sql_handler.sql
+            == "SELECT i.invoice_id, i.customer_id, i.invoice_date, i.billing_address, i.billing_city, i.billing_state, i.billing_country, i.billing_postal_code, i.total, i.last_updated FROM invoice AS i WHERE i.invoice_id = %(i_invoice_id)s AND i.total > %(i_total)s"  # noqa E501
         )
-        assert sql_generator.placeholders == {"i_invoice_id": 24, "i_total": 5.0}
+        assert sql_handler.placeholders == {"i_invoice_id": 24, "i_total": 5.0}
 
     @pytest.mark.skip
     def test_search_on_m_property(self, load_model):  # noqa F811
         try:
             operation_dao = OperationDAO(
                 Operation(
-                    entity="invoice",
+                    operation_id="invoice",
                     action="read",
                     query_params={"invoice_id": "24", "line_items.track_id": "gt::5"},
                     metadata_params={"_properties": ".* customer:.*"},
@@ -106,10 +85,10 @@ class TestSQLGenerator:
                 "postgres",
             )
 
-            sql_generator = operation_dao.sql_generator
-            log.info(f"sql_generator: {sql_generator}")
+            sql_handler = operation_dao.query_handler
+            log.info(f"sql_handler: {sql_handler}")
 
-            log.info(f"sql: {sql_generator.sql}")
+            log.info(f"sql: {sql_handler.sql}")
             assert False
 
         except ApplicationException as e:
@@ -122,17 +101,17 @@ class TestSQLGenerator:
         try:
             operation_dao = OperationDAO(
                 Operation(
-                    entity="invoice",
+                    operation_id="invoice",
                     action="read",
                     query_params={"invoice_id": "24", "track_id": "gt::5"},
                 ),
                 "postgres",
             )
 
-            sql_generator = operation_dao.sql_generator
-            log.info(f"sql_generator: {sql_generator}")
+            sql_operation = operation_dao.query_handler
+            log.info(f"sql_operation: {sql_operation}")
 
-            log.info(f"sql: {sql_generator.sql}")
+            log.info(f"sql: {sql_operation.sql}")
             assert False
         except ApplicationException as e:
             assert (
@@ -144,7 +123,7 @@ class TestSQLGenerator:
         try:
             operation_dao = OperationDAO(
                 Operation(
-                    entity="invoice",
+                    operation_id="invoice",
                     action="read",
                     query_params={
                         "invoice_id": "gt::24",
@@ -154,17 +133,17 @@ class TestSQLGenerator:
                 "postgres",
             )
 
-            sql_generator = operation_dao.sql_generator
-            log.info(f"sql_generator: {sql_generator}")
+            sql_operation = operation_dao.query_handler
+            log.info(f"sql_handler: {sql_operation}")
 
             log.info(
-                f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
+                f"sql: {sql_operation.sql}, placeholders: {sql_operation.placeholders}"
             )
             assert (
-                sql_generator.sql
+                sql_operation.sql
                 == "SELECT i.invoice_id, i.customer_id, i.invoice_date, i.billing_address, i.billing_city, i.billing_state, i.billing_country, i.billing_postal_code, i.total, i.last_updated FROM invoice AS i INNER JOIN customer AS c ON i.customer_id = c.customer_id WHERE i.invoice_id > %(i_invoice_id)s AND c.customer_id > %(c_customer_id)s"  # noqa E501
             )
-            assert sql_generator.placeholders == {
+            assert sql_operation.placeholders == {
                 "i_invoice_id": 24,
                 "c_customer_id": 5,
             }
@@ -177,28 +156,27 @@ class TestSQLGenerator:
     def test_search_value_assignment_type_relations(self, load_model):  # noqa F811
         schema_object = ModelFactory.get_schema_object("invoice")
         operation = Operation(
-            entity="invoice",
+            operation_id="invoice",
             action="read",
             query_params={"invoice_id": 24, "line_items.price": "gt::5"},
         )
 
-        sql_generator = SQLSelectGenerator(operation, schema_object, "postgres")
+        sql_handler = SQLSelectSchemaQueryHandler(operation, schema_object, "postgres")
 
         property = SchemaObjectProperty(
-            entity="invoice",
+            operation_id="invoice",
             name="invoice_id",
             properties={"type": "number", "format": "float"},
+            spec=ModelFactory.spec,
         )
 
-        (sql, placeholders) = sql_generator.search_value_assignment(
-            property, "1234", "i"
-        )
+        (sql, placeholders) = sql_handler.search_value_assignment(property, "1234", "i")
         print(f"sql: {sql}, properties: {placeholders}")
         assert sql == "i.invoice_id = %(i_invoice_id)s"
         assert isinstance(placeholders["i_invoice_id"], float)
 
         # test greater than
-        (sql, placeholders) = sql_generator.search_value_assignment(
+        (sql, placeholders) = sql_handler.search_value_assignment(
             property, "gt::1234", "i"
         )
         print(f"sql: {sql}, properties: {placeholders}")
@@ -206,7 +184,7 @@ class TestSQLGenerator:
         assert isinstance(placeholders["i_invoice_id"], float)
 
         # test between
-        (sql, placeholders) = sql_generator.search_value_assignment(
+        (sql, placeholders) = sql_handler.search_value_assignment(
             property, "between::1200,1300", "i"
         )
         print(f"sql: {sql}, properties: {placeholders}")
@@ -217,7 +195,7 @@ class TestSQLGenerator:
         assert placeholders["i_invoice_id_2"] == 1300.0
 
         # test in
-        (sql, placeholders) = sql_generator.search_value_assignment(
+        (sql, placeholders) = sql_handler.search_value_assignment(
             property, "in::1200,1250,1300", "i"
         )
         print(f"sql: {sql}, properties: {placeholders}")
@@ -231,27 +209,28 @@ class TestSQLGenerator:
         assert placeholders["i_invoice_id_1"] == 1250.0
         assert placeholders["i_invoice_id_2"] == 1300.0
 
-    def test_search_value_assignment_column_rename(self):
+    def test_search_value_assignment_column_rename(self, load_model):
         schema_object = ModelFactory.get_schema_object("invoice")
         operation = Operation(
-            entity="invoice",
+            operation_id="invoice",
             action="read",
             query_params={"invoice_id": 24, "line_items.price": "gt::5"},
         )
 
-        sql_generator = SQLSelectGenerator(operation, schema_object, "postgres")
+        sql_handler = SQLSelectSchemaQueryHandler(operation, schema_object, "postgres")
 
         property = SchemaObjectProperty(
-            entity="invoice",
+            operation_id="invoice",
             name="invoice_id",
             properties={
                 "x-am-column-name": "x_invoice_id",
                 "type": "string",
                 "format": "date",
             },
+            spec=ModelFactory.spec,
         )
 
-        (sql, placeholders) = sql_generator.search_value_assignment(
+        (sql, placeholders) = sql_handler.search_value_assignment(
             property, "gt::2000-12-12", "i"
         )
         log.info(f"sql: {sql}, properties: {placeholders}")
@@ -259,7 +238,7 @@ class TestSQLGenerator:
         assert isinstance(placeholders["i_invoice_id"], date)
         assert placeholders["i_invoice_id"] == date(2000, 12, 12)
 
-    def test_search_value_assignment_datetime(self):
+    def test_search_value_assignment_datetime(self, load_model):
         schema_object = SchemaObject(
             "invoice",
             {
@@ -271,17 +250,20 @@ class TestSQLGenerator:
                 },
                 "required": ["invoice_id", "customer_id", "invoice_date", "total"],
             },
+            spec=ModelFactory.spec,
         )
 
-        sql_generator = SQLSelectGenerator(
+        sql_handler = SQLSelectSchemaQueryHandler(
             Operation(
-                entity="invoice", action="read", query_params={"last-updated": date}
+                operation_id="invoice",
+                action="read",
+                query_params={"last-updated": date},
             ),
             schema_object,
             "postgres",
         )
 
-        (sql, placeholders) = sql_generator.search_value_assignment(
+        (sql, placeholders) = sql_handler.search_value_assignment(
             schema_object.get_property("last_updated"), "gt::2000-12-12T12:34:56Z", "i"  # type: ignore # noqa E501
         )
         log.info(f"sql: {sql}, properties: {placeholders}")
@@ -291,7 +273,7 @@ class TestSQLGenerator:
             2000, 12, 12, 12, 34, 56, tzinfo=timezone.utc
         )
 
-    def test_search_value_assignment_date(self):
+    def test_search_value_assignment_date(self, load_model):
         schema_object = SchemaObject(
             "invoice",
             {
@@ -301,17 +283,20 @@ class TestSQLGenerator:
                 "properties": {"last_updated": {"type": "string", "format": "date"}},
                 "required": ["invoice_id", "customer_id", "invoice_date", "total"],
             },
+            spec=ModelFactory.spec,
         )
 
-        sql_generator = SQLSelectGenerator(
+        sql_handler = SQLSelectSchemaQueryHandler(
             Operation(
-                entity="invoice", action="read", query_params={"last-updated": date}
+                operation_id="invoice",
+                action="read",
+                query_params={"last-updated": date},
             ),
             schema_object,
             "postgres",
         )
 
-        (sql, placeholders) = sql_generator.search_value_assignment(
+        (sql, placeholders) = sql_handler.search_value_assignment(
             schema_object.get_property("last_updated"), "gt::2000-12-12", "i"  # type: ignore # noqa E501
         )
         log.info(f"sql: {sql}, properties: {placeholders}")
@@ -320,22 +305,21 @@ class TestSQLGenerator:
         assert placeholders["i_last_updated"] == date(2000, 12, 12)
 
     @pytest.mark.skip
-    def test_search_value_assignment_bool_to_int(self):
+    def test_search_value_assignment_bool_to_int(self, load_model):
         schema_object = ModelFactory.get_schema_object("invoice")
         operation = Operation(
-            entity="invoice", action="read", query_params={"is_active": "true"}
+            operation_id="invoice", action="read", query_params={"is_active": "true"}
         )
-        sql_generator = SQLSelectGenerator(operation, schema_object, "postgres")
+        sql_handler = SQLSelectSchemaQueryHandler(operation, schema_object, "postgres")
 
         property = SchemaObjectProperty(
-            entity="invoice",
+            operation_id="invoice",
             name="is_active",
             properties={"type": "boolean", "x-am-column-type": "integer"},
+            spec=ModelFactory.spec,
         )
 
-        (sql, placeholders) = sql_generator.search_value_assignment(
-            property, "true", "i"
-        )
+        (sql, placeholders) = sql_handler.search_value_assignment(property, "true", "i")
         log.info(f"sql: {sql}, properties: {placeholders}")
         assert sql == "i.is_active = %(i_is_active)s"
         assert isinstance(placeholders["i_last_updated"], date)
@@ -344,12 +328,14 @@ class TestSQLGenerator:
     def test_select_invalid_column(self):
         schema_object = ModelFactory.get_schema_object("invoice")
         operation = Operation(
-            entity="invoice", action="read", query_params={"not_a_property": "FL"}
+            operation_id="invoice", action="read", query_params={"not_a_property": "FL"}
         )
 
         try:
-            sql_generator = SQLSelectGenerator(operation, schema_object, "postgres")
-            log.info(f"sql: {sql_generator.sql}")
+            sql_handler = SQLSelectSchemaQueryHandler(
+                operation, schema_object, "postgres"
+            )
+            log.info(f"sql: {sql_handler.sql}")
             assert False
         except ApplicationException as e:
             assert e.status_code == 500
@@ -357,47 +343,45 @@ class TestSQLGenerator:
     def test_select_single_joined_table(self, load_model):  # noqa F811
         schema_object = ModelFactory.get_schema_object("invoice")
         operation = Operation(
-            entity="invoice",
+            operation_id="invoice",
             action="read",
             query_params={"billing_state": "FL"},
             metadata_params={"properties": ".* customer:.* invoice_line_items:.*"},
         )
-        sql_generator = SQLSelectGenerator(operation, schema_object, "postgres")
+        sql_handler = SQLSelectSchemaQueryHandler(operation, schema_object, "postgres")
 
-        log.info(
-            f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
-        )
+        log.info(f"sql: {sql_handler.sql}, placeholders: {sql_handler.placeholders}")
 
         assert (
-            sql_generator.sql
+            sql_handler.sql
             == "SELECT i.invoice_id, i.customer_id, i.invoice_date, i.billing_address, i.billing_city, i.billing_state, i.billing_country, i.billing_postal_code, i.total, i.last_updated, c.customer_id, c.first_name, c.last_name, c.company, c.address, c.city, c.state, c.country, c.postal_code, c.phone, c.fax, c.email, c.support_rep_id, c.version_stamp FROM invoice AS i INNER JOIN customer AS c ON i.customer_id = c.customer_id WHERE i.billing_state = %(i_billing_state)s"  # noqa E501
         )
-        assert sql_generator.placeholders == {"i_billing_state": "FL"}
+        assert sql_handler.placeholders == {"i_billing_state": "FL"}
 
     def test_select_schema_handling_table(self, load_model):  # noqa F811
         schema_object = ModelFactory.get_schema_object("invoice")
         operation = Operation(
-            entity="invoice",
+            operation_id="invoice",
             action="read",
             query_params={"billing_state": "FL"},
             metadata_params={"properties": ".* customer:.* invoice_line_items:.*"},
         )
-        sql_generator = SQLSelectGenerator(operation, schema_object, "postgres")
+        sql_handler = SQLSelectSchemaQueryHandler(operation, schema_object, "postgres")
 
-        log.info(
-            f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
-        )
+        log.info(f"sql: {sql_handler.sql}, placeholders: {sql_handler.placeholders}")
 
         assert (
-            sql_generator.sql
+            sql_handler.sql
             == "SELECT i.invoice_id, i.customer_id, i.invoice_date, i.billing_address, i.billing_city, i.billing_state, i.billing_country, i.billing_postal_code, i.total, i.last_updated, c.customer_id, c.first_name, c.last_name, c.company, c.address, c.city, c.state, c.country, c.postal_code, c.phone, c.fax, c.email, c.support_rep_id, c.version_stamp FROM invoice AS i INNER JOIN customer AS c ON i.customer_id = c.customer_id WHERE i.billing_state = %(i_billing_state)s"  # noqa E501
         )
-        assert sql_generator.placeholders == {"i_billing_state": "FL"}
+        assert sql_handler.placeholders == {"i_billing_state": "FL"}
 
-    def test_select_simple_table(self):
+    def test_select_simple_table(self, load_model):
         try:
-            sql_generator = SQLSelectGenerator(
-                Operation(entity="genre", action="read", query_params={"name": "Bill"}),
+            sql_handler = SQLSelectSchemaQueryHandler(
+                Operation(
+                    operation_id="genre", action="read", query_params={"name": "Bill"}
+                ),
                 SchemaObject(
                     "genre",
                     {
@@ -409,26 +393,27 @@ class TestSQLGenerator:
                         },
                         "required": ["genre_id"],
                     },
+                    spec=ModelFactory.spec,
                 ),
                 "postgres",
             )
             log.info(
-                f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
+                f"sql: {sql_handler.sql}, placeholders: {sql_handler.placeholders}"
             )
 
             assert (
-                sql_generator.sql
+                sql_handler.sql
                 == "SELECT g.genre_id, g.name FROM genre AS g WHERE g.name = %(g_name)s"
             )
-            assert sql_generator.placeholders == {"g_name": "Bill"}
+            assert sql_handler.placeholders == {"g_name": "Bill"}
         except ApplicationException as e:
             assert False, e.message
 
-    def test_select_condition_with_count(self):
+    def test_select_condition_with_count(self, load_model):
         try:
-            sql_generator = SQLSelectGenerator(
+            sql_handler = SQLSelectSchemaQueryHandler(
                 Operation(
-                    entity="genre",
+                    operation_id="genre",
                     action="read",
                     query_params={"genre_id": "gt::10"},
                     metadata_params={"count": True},
@@ -444,25 +429,26 @@ class TestSQLGenerator:
                         },
                         "required": ["genre_id"],
                     },
+                    spec=ModelFactory.spec,
                 ),
                 "postgres",
             )
             log.info(
-                f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
+                f"sql: {sql_handler.sql}, placeholders: {sql_handler.placeholders}"
             )
 
             assert (
-                sql_generator.sql
+                sql_handler.sql
                 == "SELECT count(*) FROM genre AS g WHERE g.genre_id > %(g_genre_id)s"
             )
-            assert sql_generator.placeholders == {"g_genre_id": 10}
+            assert sql_handler.placeholders == {"g_genre_id": 10}
         except ApplicationException as e:
             assert False, e.message
 
-    def test_select_single_table_no_conditions(self):
+    def test_select_single_table_no_conditions(self, load_model):
         try:
-            sql_generator = SQLSelectGenerator(
-                Operation(entity="genre", action="read"),
+            sql_handler = SQLSelectSchemaQueryHandler(
+                Operation(operation_id="genre", action="read"),
                 SchemaObject(
                     "genre",
                     {
@@ -474,15 +460,16 @@ class TestSQLGenerator:
                         },
                         "required": ["genre_id"],
                     },
+                    ModelFactory.spec,
                 ),
                 "postgres",
             )
             log.info(
-                f"sql-x: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"  # noqa E501
+                f"sql-x: {sql_handler.sql}, placeholders: {sql_handler.placeholders}"  # noqa E501
             )
 
-            assert sql_generator.sql == "SELECT g.genre_id, g.name FROM genre AS g"
-            assert sql_generator.placeholders == {}
+            assert sql_handler.sql == "SELECT g.genre_id, g.name FROM genre AS g"
+            assert sql_handler.placeholders == {}
 
         except ApplicationException as e:
             assert False, e.message
@@ -490,45 +477,43 @@ class TestSQLGenerator:
     def test_delete(self, load_model):  # noqa F811
         schema_object = ModelFactory.get_schema_object("playlist_track")
         operation = Operation(
-            entity="playlist_track",
+            operation_id="playlist_track",
             action="delete",
             query_params={
                 "playlist_id": "2",
             },
             metadata_params={"_properties": "track_id"},
         )
-        sql_generator = SQLDeleteGenerator(operation, schema_object, "postgres")
+        sql_handler = SQLDeleteSchemaQueryHandler(operation, schema_object, "postgres")
 
-        log.info(
-            f"sql: {sql_generator.sql}, placeholders: {sql_generator.placeholders}"
-        )
+        log.info(f"sql: {sql_handler.sql}, placeholders: {sql_handler.placeholders}")
 
         assert (
-            sql_generator.sql
+            sql_handler.sql
             == "DELETE FROM playlist_track WHERE playlist_id = %(playlist_id)s RETURNING track_id"  # noqa E501
         )
-        assert sql_generator.placeholders == {"playlist_id": 2}
+        assert sql_handler.placeholders == {"playlist_id": 2}
 
     def test_relation_search_condition(self, load_model):  # noqa F811
         operation = Operation(
-            entity="invoice",
+            operation_id="invoice",
             action="read",
             query_params={"billing_state": "FL"},
             metadata_params={"properties": ".* customer:.* invoice_line_items:.*"},
         )
         schema_object = ModelFactory.get_schema_object("invoice")
-        sql_generator = SQLSelectGenerator(operation, schema_object, "postgres")
+        sql_handler = SQLSelectSchemaQueryHandler(operation, schema_object, "postgres")
 
-        log.info(f"sql_generator: {sql_generator.sql}")
+        log.info(f"sql_handler: {sql_handler.sql}")
         assert (
-            sql_generator.sql
+            sql_handler.sql
             == "SELECT i.invoice_id, i.customer_id, i.invoice_date, i.billing_address, i.billing_city, i.billing_state, i.billing_country, i.billing_postal_code, i.total, i.last_updated, c.customer_id, c.first_name, c.last_name, c.company, c.address, c.city, c.state, c.country, c.postal_code, c.phone, c.fax, c.email, c.support_rep_id, c.version_stamp FROM invoice AS i INNER JOIN customer AS c ON i.customer_id = c.customer_id WHERE i.billing_state = %(i_billing_state)s"  # noqa E501
         )
 
-        subselect_sql_generator = SQLSubselectGenerator(
+        subselect_sql_generator = SQLSubselectSchemaQueryHandler(
             operation,
             schema_object.get_relation("invoice_line_items"),
-            SQLSelectGenerator(operation, schema_object, "postgres"),
+            SQLSelectSchemaQueryHandler(operation, schema_object, "postgres"),
         )
 
         log.info(f"subselect_sql_generator: {subselect_sql_generator.sql}")

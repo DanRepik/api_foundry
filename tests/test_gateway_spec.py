@@ -34,6 +34,7 @@ def setup_model_factory():
     ModelFactory.set_spec(api_spec)
 
 
+@pytest.mark.unit
 def test_gateway_spec_initialization(setup_model_factory):
     function_name = "test_function"
     function_invoke_arn = "arn:aws:lambda:us-east-1:000000000000:function:test_function"
@@ -51,6 +52,7 @@ def test_gateway_spec_initialization(setup_model_factory):
     assert "testschema" in gateway_spec.api_spec["components"]["schemas"]
 
 
+@pytest.mark.unit
 def test_gateway_spec_as_json(setup_model_factory):
     function_name = "test_function"
     function_invoke_arn = "arn:aws:lambda:us-east-1:000000000000:function:test_function"
@@ -65,6 +67,7 @@ def test_gateway_spec_as_json(setup_model_factory):
     assert "testschema" in api_spec_json
 
 
+@pytest.mark.unit
 def test_gateway_spec_as_yaml(setup_model_factory):
     function_name = "test_function"
     function_invoke_arn = "arn:aws:lambda:us-east-1:000000000000:function:test_function"
@@ -79,6 +82,7 @@ def test_gateway_spec_as_yaml(setup_model_factory):
     assert "testschema" in api_spec_yaml
 
 
+@pytest.mark.unit
 def test_gateway_spec_operations(setup_model_factory):
     function_name = "test_function"
     function_invoke_arn = "arn:aws:lambda:us-east-1:000000000000:function:test_function"
@@ -95,7 +99,3 @@ def test_gateway_spec_operations(setup_model_factory):
     assert f"/{schema_name.lower()}" in gateway_spec.api_spec["paths"]
     assert "get" in gateway_spec.api_spec["paths"][f"/{schema_name.lower()}"]
     assert "post" in gateway_spec.api_spec["paths"][f"/{schema_name.lower()}"]
-
-
-if __name__ == "__main__":
-    pytest.main()

@@ -2,6 +2,151 @@ openapi: 3.1.0
 info:
   title: Chinook RestAPI
   version: 1.0.0
+
+paths:
+  /top_selling_albums:
+    get:
+      summary: Get top-selling albums
+      description: Returns the top 10 selling albums within a specified datetime range.
+      x-am-database: chinook
+      x-am-sql: >
+        SELECT
+            a.album_id as album_id,
+            a.title AS album_title,
+            COUNT(il.invoice_line_id) AS total_sold
+        FROM
+            invoice_line il
+        JOIN
+            track t ON il.track_id = t.track_id
+        JOIN
+            album a ON t.album_id = a.album_id
+        WHERE
+            i.invoice_date >= :start
+            AND i.invoice_date <= :end
+        GROUP BY
+            a.title
+        ORDER BY
+            total_sold DESC
+        LIMIT :limit;
+      parameters:
+        - in: query
+          name: start
+          schema:
+            type: string
+            format: date-time
+          required: true
+          description: Start datetime for the sales period.
+        - in: query
+          name: end
+          schema:
+            type: string
+            format: date-time
+          required: true
+          description: End datetime for the sales period.
+        - in: query
+          name: limit
+          schema:
+            type: integer
+          default: 10
+          description: The number of albums to return.
+      responses:
+        '200':
+          description: A list of top-selling albums
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    album_id:
+                      type: integer
+                      description: The id of the album
+                    album_title:
+                      type: string
+                      description: The title of the album
+                    total_sold:
+                      type: integer
+                      description: The number of albums sold
+        '400':
+          description: Invalid input
+        '500':
+          description: Internal server error
+
+  /top_selling_albums_rename:
+    get:
+      summary: Get top-selling albums
+      description: Returns the top 10 selling albums within a specified datetime range.
+      x-am-database: chinook
+      x-am-sql: >
+        SELECT
+            a.album_id,
+            a.title,
+            COUNT(il.invoice_line_id) AS total_sold
+        FROM
+            invoice_line il
+        JOIN invoice i ON
+            il.invoice_id = i.invoice_id
+        JOIN
+            track t ON il.track_id = t.track_id
+        JOIN
+            album a ON t.album_id = a.album_id
+        WHERE
+            i.invoice_date >= :start
+            AND i.invoice_date <= :end
+        GROUP BY
+            a.album_id
+        ORDER BY
+            total_sold DESC
+        LIMIT :limit
+      parameters:
+        - in: query
+          name: start
+          schema:
+            type: string
+            format: date-time
+          required: true
+          description: Start datetime for the sales period.
+        - in: query
+          name: end
+          schema:
+            type: string
+            format: date-time
+          required: true
+          description: End datetime for the sales period.
+        - in: query
+          name: limit
+          schema:
+            type: integer
+          default: 10
+          description: The number of albums to return.
+      responses:
+        '200':
+          description: A list of top-selling albums
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    album_id:
+                      type: integer
+                      description: The id of the album
+                      x-am-column-name: a.album_id
+                    album_title:
+                      type: string
+                      description: The title of the album
+                      x-am-column-name: a.title
+                    total_sold:
+                      type: integer
+                      description: The number of albums sold
+        '400':
+          description: Invalid input
+        '500':
+          description: Internal server error
+
+
 components:
   schemas:
     album:

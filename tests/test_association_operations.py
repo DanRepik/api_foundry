@@ -1,3 +1,5 @@
+import pytest
+
 from api_maker.utils.app_exception import ApplicationException
 from api_maker.utils.logger import logger
 from api_maker.operation import Operation
@@ -8,11 +10,12 @@ from test_fixtures import load_model, db_secrets  # noqa F401
 log = logger(__name__)
 
 
+@pytest.mark.integration
 class TestAssociationOperations:
     def test_object_property(self, load_model, db_secrets):  # noqa F811
         result = TransactionalService().execute(
             Operation(
-                entity="invoice",
+                operation_id="invoice",
                 action="read",
                 query_params={"invoice_id": 5},
                 metadata_params={"properties": ".* customer:.*"},
@@ -31,7 +34,7 @@ class TestAssociationOperations:
         try:
             TransactionalService().execute(
                 Operation(
-                    entity="invoice",
+                    operation_id="invoice",
                     action="read",
                     query_params={"invoice_id": 5},
                     metadata_params={"properties": ".* custom:.*"},
@@ -48,7 +51,7 @@ class TestAssociationOperations:
     def test_object_property_criteria(self, load_model, db_secrets):  # noqa F811
         result = TransactionalService().execute(
             Operation(
-                entity="invoice",
+                operation_id="invoice",
                 action="read",
                 query_params={"customer.phone": "+420 2 4172 5555"},
             )
@@ -69,7 +72,7 @@ class TestAssociationOperations:
         try:
             TransactionalService().execute(
                 Operation(
-                    entity="invoice",
+                    operation_id="invoice",
                     action="read",
                     query_params={"custom.customer_id": 5},
                 )
@@ -88,7 +91,7 @@ class TestAssociationOperations:
         try:
             TransactionalService().execute(
                 Operation(
-                    entity="invoice",
+                    operation_id="invoice",
                     action="read",
                     query_params={"custom.custom_id": 5},
                 )
@@ -104,7 +107,7 @@ class TestAssociationOperations:
     def test_array_property(self, load_model, db_secrets):  # noqa F811
         result = TransactionalService().execute(
             Operation(
-                entity="invoice",
+                operation_id="invoice",
                 action="read",
                 query_params={"invoice_id": 5},
                 metadata_params={"properties": ".* invoice_line_items:.*"},
@@ -124,7 +127,7 @@ class TestAssociationOperations:
     def test_array_property_criteria(self, load_model, db_secrets):  # noqa F811
         result = TransactionalService().execute(
             Operation(
-                entity="invoice",
+                operation_id="invoice",
                 action="read",
                 query_params={"invoice_line_items.track_id": 298},
             )
@@ -143,7 +146,7 @@ class TestAssociationOperations:
         try:
             TransactionalService().execute(
                 Operation(
-                    entity="invoice",
+                    operation_id="invoice",
                     action="read",
                     query_params={"invoice_id": 5},
                     metadata_params={"properties": ".* lint_items:.*"},
@@ -163,7 +166,7 @@ class TestAssociationOperations:
         try:
             TransactionalService().execute(
                 Operation(
-                    entity="invoice",
+                    operation_id="invoice",
                     action="read",
                     query_params={"line_itms.line_item_id": 5},
                 )
@@ -182,7 +185,7 @@ class TestAssociationOperations:
         try:
             TransactionalService().execute(
                 Operation(
-                    entity="invoice",
+                    operation_id="invoice",
                     action="read",
                     query_params={"line_items.lint_item_id": 5},
                 )

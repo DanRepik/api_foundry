@@ -1,13 +1,14 @@
-from api_maker.dao.sql_generator import SQLGenerator
+from api_maker.dao.sql_query_handler import SQLSchemaQueryHandler
 from api_maker.operation import Operation
 from api_maker.utils.app_exception import ApplicationException
-from api_maker.utils.logger import logger
-from api_maker.utils.model_factory import SchemaObject, SchemaObjectProperty
+from api_maker.utils.model_factory import (
+    SchemaObject,
+    SchemaObjectProperty,
+    ModelFactory,
+)
 
-log = logger(__name__)
 
-
-class SQLSelectGenerator(SQLGenerator):
+class SQLSelectSchemaQueryHandler(SQLSchemaQueryHandler):
     def __init__(
         self, operation: Operation, schema_object: SchemaObject, engine: str
     ) -> None:
@@ -50,7 +51,7 @@ class SQLSelectGenerator(SQLGenerator):
                         raise ApplicationException(
                             400,
                             "Invalid selection property "
-                            + self.schema_object.entity
+                            + self.schema_object.operation_id
                             + " does not have a property "
                             + parts[0],
                         )
@@ -59,7 +60,7 @@ class SQLSelectGenerator(SQLGenerator):
                         raise ApplicationException(
                             400,
                             "Property not found, "
-                            + relation.child_schema_object.entity
+                            + relation.child_schema_object.operation_id
                             + " does not have property "
                             + parts[1],
                         )
@@ -74,13 +75,14 @@ class SQLSelectGenerator(SQLGenerator):
                     (
                         "Invalid query parameter, property not found. "
                         + "schema object: "
-                        + self.schema_object.entity
+                        + self.schema_object.operation_id
                         + ", property: "
                         + name
                     ),
                 )
 
             assignment, holders = self.search_value_assignment(property, value, prefix)
+            self.active_prefixes.add(prefix)
             conditions.append(assignment)
             self.search_placeholders.update(holders)
 
@@ -88,12 +90,8 @@ class SQLSelectGenerator(SQLGenerator):
 
     @property
     def table_expression(self) -> str:
-        #        if self.single_table:
-        #            return self.schema_object.table_name
-
         joins = []
         parent_prefix = self.prefix_map["$default$"]
-        log.info(f"active_prefixes: {self.active_prefixes}")
         for name, relation in self.schema_object.relations.items():
             child_prefix = self.prefix_map[relation.name]
             if child_prefix in self.active_prefixes:
@@ -121,18 +119,20 @@ class SQLSelectGenerator(SQLGenerator):
 
     def selection_result_map(self) -> dict:
         if "count" in self.operation.metadata_params:
-            self.__selection_result_map = {
+            self._selection_results = {
                 "count": SchemaObjectProperty(
-                    self.operation.entity, "count", {"type": "int"}
+                    self.operation.operation_id,
+                    "count",
+                    {"type": "int"},
+                    spec=ModelFactory.spec,
                 )
             }
-            return self.__selection_result_map
+            return self._selection_results
 
         filter_str = self.operation.metadata_params.get("properties", ".*")
-        self.__selection_result_map = {}
+        self._selection_results = {}
 
         for relation, reg_exs in self.get_regex_map(filter_str).items():
-            log.info(f"xx relation: {relation}, reg_exs: {reg_exs}")
             # Extract the schema object for the current entity
             relation_property = self.schema_object.relations.get(relation)
 
@@ -149,12 +149,11 @@ class SQLSelectGenerator(SQLGenerator):
                 raise ApplicationException(
                     400,
                     "Bad object association: "
-                    + schema_object.entity
+                    + schema_object.operation_id
                     + " does not have a "
                     + relation
                     + " property",
                 )
-
             # Filter and prefix keys for the current entity
             # and regular expressions
             filtered_keys = self.filter_and_prefix_keys(
@@ -162,10 +161,9 @@ class SQLSelectGenerator(SQLGenerator):
             )
 
             # Extend the result map with the filtered keys
-            self.__selection_result_map.update(filtered_keys)
+            self._selection_results.update(filtered_keys)
 
-        log.debug(f"xx select_list_map: {self.__selection_result_map}")
-        return self.__selection_result_map
+        return self._selection_results
 
     def get_regex_map(self, filter_str: str) -> dict[str, list]:
         result = {}
@@ -211,7 +209,6 @@ class SQLSelectGenerator(SQLGenerator):
 
         # determine the columns requested
         fields = fields_str.replace(",", " ").split()
-        log.debug(f"fields: {fields}")
 
         order_set = []
         use_prefixes = False
@@ -226,14 +223,13 @@ class SQLSelectGenerator(SQLGenerator):
 
             # handle entity prefix
             field_parts = field_name.split(".")
-            log.info(f"xx field_parts: {field_parts}")
             if len(field_parts) == 1:
                 prefix = self.prefix_map["$default$"]
                 property = self.schema_object.properties.get(field_parts[0])
                 if not property:
                     raise ApplicationException(
                         400,
-                        f"Invalid order by property, schema object: {self.schema_object.entity} does not have a property: {field_parts[0]}",  # noqa E501
+                        f"Invalid order by property, schema object: {self.schema_object.operation_id} does not have a property: {field_parts[0]}",  # noqa E501
                     )
                 column = property.column_name
             else:
@@ -242,15 +238,14 @@ class SQLSelectGenerator(SQLGenerator):
                 if not relation_property:
                     raise ApplicationException(
                         400,
-                        f"Invalid order by property, schema object: {self.schema_object.entity} does not have a property: {field_parts[0]}",  # noqa E501
+                        f"Invalid order by property, schema object: {self.schema_object.operation_id} does not have a property: {field_parts[0]}",  # noqa E501
                     )
 
-                log.info(f"relation_property: {relation_property}")
                 if relation_property:
                     if relation_property.type == "array":
                         raise ApplicationException(
                             400,
-                            f"Invalid order by array property is not supported, schema object: {self.schema_object.entity} property: {field_parts[0]}",  # noqa E501
+                            f"Invalid order by array property is not supported, schema object: {self.schema_object.operation_id} property: {field_parts[0]}",  # noqa E501
                         )
 
                     # Use a default value if relation_property is None
@@ -263,7 +258,7 @@ class SQLSelectGenerator(SQLGenerator):
                 if not property:
                     raise ApplicationException(
                         400,
-                        f"Invalid order by property, schema object: {schema_object.entity} does not have a property: {field_parts[1]}",  # noqa E501
+                        f"Invalid order by property, schema object: {schema_object.operation_id} does not have a property: {field_parts[1]}",  # noqa E501
                     )
                 column = property.column_name
                 self.active_prefixes.add(prefix)
@@ -297,11 +292,9 @@ class SQLSelectGenerator(SQLGenerator):
     @property
     def offset_expression(self) -> str:
         offset_str = self.operation.metadata_params.get("offset", None)
-        log.debug(f"xx offset: {offset_str}")
         if not offset_str:
             return ""
 
-        log.debug(f"xxx offset: {offset_str}")
         if isinstance(offset_str, str) and not offset_str.isdigit():
             raise ApplicationException(
                 400, f"Offset is not an valid integer {offset_str}"

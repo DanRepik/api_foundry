@@ -6,7 +6,7 @@ from api_maker.operation import Operation
 class MockService(Service):
     def execute(self, operation):
         # Simulating service execution and returning dummy result
-        assert operation.entity == "entity"
+        assert operation.operation_id == "entity"
         assert operation.action == "action"
         assert operation.query_params == {"query": "query"}
         return [{"key": "value"}]
@@ -19,7 +19,7 @@ class MockAdapter(Adapter):
 
     def unmarshal(self, event):
         return Operation(
-            entity="entity",
+            operation_id="entity",
             action="action",
             store_params={"store": "store"},
             query_params={"query": "query"},

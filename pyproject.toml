@@ -36,3 +36,9 @@ postgres_to_openapi = "api_maker.scripts.postgres_to_openapi:main"
 
 # [tool.setuptools.packages.find]
 # where = ["src/api_maker"]
+
+[tool.pytest.ini_options]
+markers = [
+    "unit: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests that operate on real database"
+]

@@ -1,10 +1,7 @@
 import json
 
-from api_maker.utils.logger import logger
 from api_maker.adapters.adapter import Adapter
 from api_maker.operation import Operation
-
-log = logger(__name__)
 
 actions_map = {
     "GET": "read",
@@ -51,7 +48,6 @@ class GatewayAdapter(Adapter):
         )
         if queryStringParameters is not None:
             event_params.update(queryStringParameters)
-        log.info(f"event_params: {event_params}")
 
         query_params, metadata_params = self.split_params(event_params)
 
@@ -61,7 +57,7 @@ class GatewayAdapter(Adapter):
             store_params = json.loads(body)
 
         return Operation(
-            entity=entity,
+            operation_id=entity,
             action=action,
             store_params=store_params,
             query_params=query_params,
