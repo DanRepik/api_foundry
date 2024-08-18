@@ -1,0 +1,30 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+api-maker = {file = ".", editable = true}
+boto3 = "*"
+pyyaml = "*"
+psycopg2-binary = "*"
+oracledb = "*"
+pytest-cov = "*"
+pulumi = "*"
+pulumi-aws = "*"
+moto = "*"
+
+[dev-packages]
+black = "*"
+boto3 = "*"
+build = "*"
+#fake8 ="*"
+ipykernel = "*"
+pytest-cov = "*"
+pytest = "*"
+setuptools = "*"
+twine = "*"
+wheel = "*"
+
+[requires]
+python_version = "3.12"
