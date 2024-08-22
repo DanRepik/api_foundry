@@ -370,5 +370,9 @@ class SQLSchemaQueryHandler(SQLQueryHandler):
                 return "UUID()"
             return "gen_random_uuid()"
         raise ApplicationException(
-            500, "Concurrency control property is unrecognized type"
+            500,
+            (
+                "Concurrency control property is unrecognized type"
+                + f"name: {property.name}, type: {property.api_type}"
+            ),
         )

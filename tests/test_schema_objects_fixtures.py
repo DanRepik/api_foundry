@@ -42,7 +42,7 @@ def invoice_with_version_stamp(load_model):
                     },
                 },
                 "total": {"type": "number", "format": "float"},
-                "version_stamp": {"type": "string"},
+                "version_stamp": {"type": "string", "format": "uuid"},
             },
             "required": [
                 "invoice_id",

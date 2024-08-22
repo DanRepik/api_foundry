@@ -66,7 +66,7 @@ class TestInsertSQLHandler:
                             },
                         },
                         "total": {"type": "number", "format": "float"},
-                        "version_stamp": {"type": "string"},
+                        "version_stamp": {"type": "string", "format": "uuid"},
                     },
                     "required": [
                         "invoice_id",
@@ -231,7 +231,7 @@ class TestInsertSQLHandler:
                             },
                         },
                         "total": {"type": "number", "format": "float"},
-                        "last_updated": {"type": "string"},
+                        "last_updated": {"type": "string", "format": "uuid"},
                     },
                     "required": [
                         "invoice_id",
