@@ -228,7 +228,7 @@ class TestSQLHandler:
             operation_id="invoice",
             name="invoice_id",
             properties={
-                "x-am-column-name": "x_invoice_id",
+                "x-af-column-name": "x_invoice_id",
                 "type": "string",
                 "format": "date",
             },
@@ -248,8 +248,8 @@ class TestSQLHandler:
             "invoice",
             {
                 "type": "object",
-                "x-am-engine": "postgres",
-                "x-am-database": "chinook",
+                "x-af-engine": "postgres",
+                "x-af-database": "chinook",
                 "properties": {
                     "last_updated": {"type": "string", "format": "date-time"}
                 },
@@ -283,8 +283,8 @@ class TestSQLHandler:
             "invoice",
             {
                 "type": "object",
-                "x-am-engine": "postgres",
-                "x-am-database": "chinook",
+                "x-af-engine": "postgres",
+                "x-af-database": "chinook",
                 "properties": {"last_updated": {"type": "string", "format": "date"}},
                 "required": ["invoice_id", "customer_id", "invoice_date", "total"],
             },
@@ -320,7 +320,7 @@ class TestSQLHandler:
         property = SchemaObjectProperty(
             operation_id="invoice",
             name="is_active",
-            properties={"type": "boolean", "x-am-column-type": "integer"},
+            properties={"type": "boolean", "x-af-column-type": "integer"},
             spec=ModelFactory.spec,
         )
 
@@ -390,10 +390,10 @@ class TestSQLHandler:
                 SchemaObject(
                     "genre",
                     {
-                        "x-am-engine": "postgres",
-                        "x-am-database": "chinook",
+                        "x-af-engine": "postgres",
+                        "x-af-database": "chinook",
                         "properties": {
-                            "genre_id": {"type": "integer", "x-am-primary-key": "auto"},
+                            "genre_id": {"type": "integer", "x-af-primary-key": "auto"},
                             "name": {"type": "string", "maxLength": 120},
                         },
                         "required": ["genre_id"],
@@ -426,10 +426,10 @@ class TestSQLHandler:
                 SchemaObject(
                     "genre",
                     {
-                        "x-am-engine": "postgres",
-                        "x-am-database": "chinook",
+                        "x-af-engine": "postgres",
+                        "x-af-database": "chinook",
                         "properties": {
-                            "genre_id": {"type": "integer", "x-am-primary-key": "auto"},
+                            "genre_id": {"type": "integer", "x-af-primary-key": "auto"},
                             "name": {"type": "string", "maxLength": 120},
                         },
                         "required": ["genre_id"],
@@ -457,10 +457,10 @@ class TestSQLHandler:
                 SchemaObject(
                     "genre",
                     {
-                        "x-am-engine": "postgres",
-                        "x-am-database": "chinook",
+                        "x-af-engine": "postgres",
+                        "x-af-database": "chinook",
                         "properties": {
-                            "genre_id": {"type": "integer", "x-am-primary-key": "auto"},
+                            "genre_id": {"type": "integer", "x-af-primary-key": "auto"},
                             "name": {"type": "string", "maxLength": 120},
                         },
                         "required": ["genre_id"],

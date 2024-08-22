@@ -17,7 +17,7 @@ spec = {
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/album",
-                            "x-am-child-property": "artist_id",
+                            "x-af-child-property": "artist_id",
                         },
                     },
                 },
@@ -25,7 +25,7 @@ spec = {
             "album": {
                 "type": "object",
                 "properties": {
-                    "album_id": {"type": "integer", "x-am-primary-key": "auto"},
+                    "album_id": {"type": "integer", "x-af-primary-key": "auto"},
                     "title": {"type": "string", "maxLength": 160},
                     "artist_id": {"type": "integer"},
                 },
@@ -93,4 +93,4 @@ class TestSpecHandler:
         result = spec_handler.get(items, "properties")
         log.info(f"result: {result}")
         assert result
-        assert result["album_id"] == {"type": "integer", "x-am-primary-key": "auto"}
+        assert result["album_id"] == {"type": "integer", "x-af-primary-key": "auto"}

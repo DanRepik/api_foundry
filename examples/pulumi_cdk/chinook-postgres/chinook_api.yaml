@@ -8,8 +8,8 @@ paths:
     get:
       summary: Get top-selling albums
       description: Returns the top 10 selling albums within a specified datetime range.
-      x-am-database: chinook
-      x-am-sql: >
+      x-af-database: chinook
+      x-af-sql: >
         SELECT
             a.album_id as album_id,
             a.title AS album_title,
@@ -77,8 +77,8 @@ paths:
     get:
       summary: Get top-selling albums
       description: Returns the top 10 selling albums within a specified datetime range.
-      x-am-database: chinook
-      x-am-sql: >
+      x-af-database: chinook
+      x-af-sql: >
         SELECT
             a.album_id,
             a.title,
@@ -133,11 +133,11 @@ paths:
                     album_id:
                       type: integer
                       description: The id of the album
-                      x-am-column-name: a.album_id
+                      x-af-column-name: a.album_id
                     album_title:
                       type: string
                       description: The title of the album
-                      x-am-column-name: a.title
+                      x-af-column-name: a.title
                     total_sold:
                       type: integer
                       description: The number of albums sold
@@ -151,12 +151,12 @@ components:
   schemas:
     album:
       type: object
-      x-am-engine: postgres
-      x-am-database: chinook
+      x-af-engine: postgres
+      x-af-database: chinook
       properties:
         album_id:
           type: integer
-          x-am-primary-key: auto
+          x-af-primary-key: auto
         title:
           type: string
           maxLength: 160
@@ -168,12 +168,12 @@ components:
         - artist_id
     artist:
       type: object
-      x-am-engine: postgres
-      x-am-database: chinook
+      x-af-engine: postgres
+      x-af-database: chinook
       properties:
         artist_id:
           type: integer
-          x-am-primary-key: auto
+          x-af-primary-key: auto
         name:
           type: string
           maxLength: 120
@@ -181,13 +181,13 @@ components:
         - artist_id
     customer:
       type: object
-      x-am-engine: postgres
-      x-am-database: chinook
-      x-am-concurrency-control: version_stamp
+      x-af-engine: postgres
+      x-af-database: chinook
+      x-af-concurrency-control: version_stamp
       properties:
         customer_id:
           type: integer
-          x-am-primary-key: auto
+          x-af-primary-key: auto
         first_name:
           type: string
           maxLength: 40
@@ -232,12 +232,12 @@ components:
         - email
     Employee:
       type: object
-      x-am-engine: postgres
-      x-am-database: chinook
+      x-af-engine: postgres
+      x-af-database: chinook
       properties:
         employee_id:
           type: integer
-          x-am-primary-key: auto
+          x-af-primary-key: auto
         last_name:
           type: string
           maxLength: 20
@@ -285,12 +285,12 @@ components:
         - first_name
     Genre:
       type: object
-      x-am-engine: postgres
-      x-am-database: chinook
+      x-af-engine: postgres
+      x-af-database: chinook
       properties:
         genre_id:
           type: integer
-          x-am-primary-key: auto
+          x-af-primary-key: auto
         name:
           type: string
           maxLength: 120
@@ -298,18 +298,18 @@ components:
         - genre_id
     invoice:
       type: object
-      x-am-engine: postgres
-      x-am-database: chinook
-      x-am-concurrency-control: last_updated
+      x-af-engine: postgres
+      x-af-database: chinook
+      x-af-concurrency-control: last_updated
       properties:
         invoice_id:
           type: integer
-          x-am-primary-key: auto
+          x-af-primary-key: auto
         customer_id:
           type: integer
         customer:
           $ref: '#/components/schemas/customer'
-          x-am-parent-property: customer_id
+          x-af-parent-property: customer_id
         invoice_date:
           type: string
           format: date-time
@@ -332,7 +332,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/invoice_line"
-            x-am-child-property: invoice_id
+            x-af-child-property: invoice_id
         total:
           type: number
           format: float
@@ -346,12 +346,12 @@ components:
         - total
     invoice_line:
       type: object
-      x-am-engine: postgres
-      x-am-database: chinook
+      x-af-engine: postgres
+      x-af-database: chinook
       properties:
         invoice_line_id:
           type: integer
-          x-am-primary-key: auto
+          x-af-primary-key: auto
         invoice_id:
           type: integer
         track_id:
@@ -369,12 +369,12 @@ components:
         - quantity
     media_type:
       type: object
-      x-am-engine: postgres
-      x-am-database: chinook
+      x-af-engine: postgres
+      x-af-database: chinook
       properties:
         media_type_id:
           type: integer
-          x-am-primary-key: auto
+          x-af-primary-key: auto
         name:
           type: string
           maxLength: 120
@@ -382,12 +382,12 @@ components:
         - media_type_id
     playlist:
       type: object
-      x-am-engine: postgres
-      x-am-database: chinook
+      x-af-engine: postgres
+      x-af-database: chinook
       properties:
         playlist_id:
           type: integer
-          x-am-primary-key: auto
+          x-af-primary-key: auto
         name:
           type: string
           maxLength: 120
@@ -395,8 +395,8 @@ components:
         - playlist_id
     playlist_track:
       type: object
-      x-am-engine: postgres
-      x-am-database: chinook
+      x-af-engine: postgres
+      x-af-database: chinook
       properties:
         playlist_id:
           type: integer
@@ -407,12 +407,12 @@ components:
         - track_id
     track:
       type: object
-      x-am-engine: postgres
-      x-am-database: chinook
+      x-af-engine: postgres
+      x-af-database: chinook
       properties:
         track_id:
           type: integer
-          x-am-primary-key: auto
+          x-af-primary-key: auto
         name:
           type: string
           maxLength: 200

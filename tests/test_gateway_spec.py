@@ -17,11 +17,11 @@ def setup_model_factory():
                 "TestSchema": {
                     "type": "object",
                     "properties": {
-                        "id": {"type": "integer", "x-am-primary-key": "auto"},
+                        "id": {"type": "integer", "x-af-primary-key": "auto"},
                         "name": {
                             "type": "string",
-                            "x-am-column-name": "name",
-                            "x-am-column-type": "string",
+                            "x-af-column-name": "name",
+                            "x-af-column-type": "string",
                             "minLength": 1,
                             "maxLength": 255,
                             "pattern": "^[a-zA-Z]+$",

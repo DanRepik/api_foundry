@@ -27,8 +27,8 @@ class TestSQLGenerator:
                 path_operation={
                     "summary": "Get top-selling albums",
                     "description": "Returns the top 10 selling albums within a specified datetime range.",
-                    "x-am-database": "chinook",
-                    "x-am-sql": """
+                    "x-af-database": "chinook",
+                    "x-af-sql": """
                         SELECT
                             a.album_id as album_id,
                             a.title AS album_title,

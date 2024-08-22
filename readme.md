@@ -56,11 +56,11 @@ components:
   schemas:
     album:
       type: object
-      x-am-database: chinook
+      x-af-database: chinook
       properties:
         album_id:
           type: integer
-          x-am-primary-key: auto
+          x-af-primary-key: auto
         title:
           type: string
           maxLength: 160
@@ -72,11 +72,11 @@ components:
         - artist_id
     artist:
       type: object
-      x-am-database: chinook
+      x-af-database: chinook
       properties:
         artist_id:
           type: integer
-          x-am-primary-key: auto
+          x-af-primary-key: auto
         name:
           type: string
           maxLength: 120
@@ -84,12 +84,12 @@ components:
         - artist_id
 ```
 
-The above is standard OpenAPI specification with additional custom attributes.  API-Foundry always prefixes custom attributes it uses with 'x-am-'.
+The above is standard OpenAPI specification with additional custom attributes.  API-Foundry always prefixes custom attributes it uses with 'x-af-'.
 
 In this example the following API-Foundry attributes have been added;
 
-* x-am-database - This indicates what database should be accessed for the built services.
-* x-am-primary-key - This attribute can be attached to one of the object properties to indicate that property is the primary key for the component object.  The value of this property is the key generation strategy to use for record creation.
+* x-af-database - This indicates what database should be accessed for the built services.
+* x-af-primary-key - This attribute can be attached to one of the object properties to indicate that property is the primary key for the component object.  The value of this property is the key generation strategy to use for record creation.
 
 In this example table names, albums and artists, is same as the component object names and in turn in the API path operations.  API-Foundry provides additional custom attributes that allow explicit naming of the table.
 
@@ -444,11 +444,11 @@ Since most schema object definitions involve a straightforward mapping between d
 
 #### Schema Object Naming
 
-The name of the schema object by default is always used as the API path and by default the table name.  If needed name of the table can be changed using the 'x-am-table-name' attribute.
+The name of the schema object by default is always used as the API path and by default the table name.  If needed name of the table can be changed using the 'x-af-table-name' attribute.
 
 #### Database Specification
 
-At a minimum API-Foundry requires that a database be specified using an 'x-am-database' attribute.  Only schema objects with this attribute will have services built.  This attribute is used to obtain the AWS secret that contains the engine type (Postgres, Oracle or MySQL) and the connection configuration.
+At a minimum API-Foundry requires that a database be specified using an 'x-af-database' attribute.  Only schema objects with this attribute will have services built.  This attribute is used to obtain the AWS secret that contains the engine type (Postgres, Oracle or MySQL) and the connection configuration.
 
 #### Property Mapping
 
@@ -499,7 +499,7 @@ components:
       properties:
         id:
           type: integer
-          x-am-primary-key: auto
+          x-af-primary-key: auto
           description: Unique identifier for the example.
           example: 1
         name:
@@ -537,9 +537,9 @@ By default, these properties are not included in the result set. They must be ex
 
 In OpenAPI specifications, object properties typically use a `$ref` attribute to reference the component schema object for the property. When the referenced schema object is part of the same database, API-Foundry can automatically populate that property with additional configuration. Specifically, the keys that define the relationship must be identified. The following attributes allow configuring object properties:
 
-* **x-am-parent-property**: Identifies the schema object property containing the key used to select the referenced property value. This attribute is required for object properties.
+* **x-af-parent-property**: Identifies the schema object property containing the key used to select the referenced property value. This attribute is required for object properties.
 
-* **x-am-child-property**: Identifies the property in the referenced schema object to select on. This attribute is optional and defaults to the primary key if omitted. Normally, the parent property key references the primary key, but this attribute can be used if that is not the case.
+* **x-af-child-property**: Identifies the property in the referenced schema object to select on. This attribute is optional and defaults to the primary key if omitted. Normally, the parent property key references the primary key, but this attribute can be used if that is not the case.
 
 Here's an example of the customer field from the Chinook invoice schema object:
 
@@ -548,11 +548,11 @@ customer_id:
   type: integer
 customer:
   $ref: '#/components/schemas/customer'
-  x-am-parent-property: customer_id
+  x-af-parent-property: customer_id
   description: Customer associated with the invoice.
 ```
 
-Note how the `x-am-parent-property` identifies the `customer_id` property to use as the key value for selecting the customer.
+Note how the `x-af-parent-property` identifies the `customer_id` property to use as the key value for selecting the customer.
 
 #### Array of Object Properties
 
@@ -560,18 +560,18 @@ Array properties allow the inclusion of lists of related records representing on
 
 The same additional attributes for defining the relationship as object properties are used:
 
-* **x-am-parent-property**: Identifies the schema object property containing the key used to select the referenced property value. This attribute is optional and defaults to the primary key property.
+* **x-af-parent-property**: Identifies the schema object property containing the key used to select the referenced property value. This attribute is optional and defaults to the primary key property.
 
-* **x-am-child-property**: Required attribute that identifies the property in the referenced schema object to select on.
+* **x-af-child-property**: Required attribute that identifies the property in the referenced schema object to select on.
 
-The following illustrates the specification of an `invoice_line_items` property in the invoice schema object. In this example, the `invoice_line` schema object has a property `invoice_id` (x-am-child-property). API-Foundry will use the invoice primary key property `invoice_id` to select `invoice_line` records with the matching `invoice_id`.
+The following illustrates the specification of an `invoice_line_items` property in the invoice schema object. In this example, the `invoice_line` schema object has a property `invoice_id` (x-af-child-property). API-Foundry will use the invoice primary key property `invoice_id` to select `invoice_line` records with the matching `invoice_id`.
 
 ```yaml
 invoice_line_items:
   type: array
   items:
     $ref: '#/components/schemas/invoice_line'
-    x-am-child-property: invoice_id
+    x-af-child-property: invoice_id
   description: List of invoice_line items associated with this invoice.
 ```
 
@@ -582,7 +582,7 @@ Within the schema component, a property can be designated as the primary key.   
 
 > Schema objects with multiple primary keys is not currently supported.
 
-A property can be specified as a primary key by adding the 'x-am-primary-key' attribute to the property.  In the value the key generation strategy must be definied it can be any of;
+A property can be specified as a primary key by adding the 'x-af-primary-key' attribute to the property.  In the value the key generation strategy must be definied it can be any of;
 
 | Value    | Description |
 |----------|-------------|
@@ -599,12 +599,12 @@ Here is an example of the primary key for the invoice schema object;
       properties:
         invoice_id:
           type: integer
-          x-am-primary-key: auto
+          x-af-primary-key: auto
           description: Unique identifier for the invoice.
           example: 1
 ```
 
-If the key generation strategy is 'sequence' the the 'x-am-sequence-name' attribute must also be defined.
+If the key generation strategy is 'sequence' the the 'x-af-sequence-name' attribute must also be defined.
 
 #### Concurrency Management
 
@@ -616,7 +616,7 @@ When a schema object includes a concurrency control property the following occur
 * For each mutation of the object the value of the property is changed.
 * Clients making mutations to objects must provide both the key and the control property.  If the control property does not match the request will fail.
 
-A concurrency control property is set by adding the 'x-am-concurrency-control' attribute to the schema object definition.  The value must be the name of either a string or integer property of the schema object. API-Foundry applies the following strategies depending on the property type and format specified for the control property:
+A concurrency control property is set by adding the 'x-af-concurrency-control' attribute to the schema object definition.  The value must be the name of either a string or integer property of the schema object. API-Foundry applies the following strategies depending on the property type and format specified for the control property:
 
 | Property Type | Property Format | Column Type | Description |
 |---------------|-----------------|-------------|-------------|
@@ -629,12 +629,12 @@ Here is an example of using a timestamp as a control object;
 ```yaml
     invoice:
       type: object
-      x-am-database: chinook
-      x-am-concurrency-control: last_updated
+      x-af-database: chinook
+      x-af-concurrency-control: last_updated
       properties:
         invoice_id:
           type: integer
-          x-am-primary-key: auto
+          x-af-primary-key: auto
           description: Unique identifier for the invoice.
           example: 1
         last_updated:
@@ -684,8 +684,8 @@ While API-Foundry is designed to obtain parameters from either the path operatio
 
 In your path operation, you must define the following attributes:
 
-* **x-am-database**: Identifies the database on which the custom SQL will be executed, functioning similarly to its use in component schema objects.
-* **x-am-sql**: Contains the SQL query to be executed for the request.
+* **x-af-database**: Identifies the database on which the custom SQL will be executed, functioning similarly to its use in component schema objects.
+* **x-af-sql**: Contains the SQL query to be executed for the request.
 
 For the integration to function correctly, the definition must map input parameters to the custom SQL's placeholders and ensure the SQL response aligns with the defined response structure.
 
@@ -709,7 +709,7 @@ FROM
     ...
 ```
 
-2. **Alternative Strategy**: If the custom SQL doesn't allow for column renaming, use the x-am-column-name attribute in the response properties. For example:
+2. **Alternative Strategy**: If the custom SQL doesn't allow for column renaming, use the x-af-column-name attribute in the response properties. For example:
 ```sql
 SELECT
     a.album_id,
@@ -719,7 +719,7 @@ FROM
     ...
 ```
 
-Then, in the property definitions for the response contain 'x-am-column-name' attributes to access the SQL columns:
+Then, in the property definitions for the response contain 'x-af-column-name' attributes to access the SQL columns:
 
 ```yaml
 responses:
@@ -735,15 +735,15 @@ responses:
               album_id:
                 type: integer
                 description: The ID of the album
-                x-am-column-name: a.album_id
+                x-af-column-name: a.album_id
               album_title:
                 type: string
                 description: The title of the album
-                x-am-column-name: a.title
+                x-af-column-name: a.title
               total_sold:
                 type: integer
                 description: The number of albums sold
-                x-am-column-name: COUNT(il.invoice_line_id)
+                x-af-column-name: COUNT(il.invoice_line_id)
 ```
 
 #### Example Path Operation
@@ -779,8 +779,8 @@ paths:
           default: 10
           description: The number of albums to return.
       # define the SQL to be processed
-      x-am-database: chinook
-      x-am-sql: >
+      x-af-database: chinook
+      x-af-sql: >
         SELECT
             a.album_id AS album_id,
             a.title AS album_title,
@@ -829,13 +829,13 @@ Like any OpenAPI path operation the request parameters and response structure wi
 
 # Configuration
 
-During the implementation of the API specification, schema objects and operation paths were associated with a database name using the `x-am-database` attribute.
+During the implementation of the API specification, schema objects and operation paths were associated with a database name using the `x-af-database` attribute.
 
 In this section, we will cover how API-Foundry uses that attribute to connect to the database and perform the operations needed to complete requests.
 
 First, the connection data that API-Foundry uses to establish database connections is never 'built-in' to the Lambda function or any other part of the deployment. Instead, API-Foundry obtains the connection data from an AWS Secrets Manager secret. Secrets are loaded on demand and only once per instance.
 
-As part of the deployment, a secrets map will need to be provided. This mapping allows API-Foundry to determine the secret name using the `x-am-database` attribute value as the key.  An API can span multiple databases and the secrets map must contain a mapping for all databases referenced.
+As part of the deployment, a secrets map will need to be provided. This mapping allows API-Foundry to determine the secret name using the `x-af-database` attribute value as the key.  An API can span multiple databases and the secrets map must contain a mapping for all databases referenced.
 
 Thus, there are two main configuration tasks: creating the secrets and providing the secrets map in the deployment code.
 
@@ -869,18 +869,18 @@ These attributes map the componnent object to a database table.
 
 | Attribute | Description | Usage |
 |-------|--------|---------|
-| x-am-database | The name of the database where the table is located.   | Required, value is used to access database configuration from the runtime secrets map. |
-| x-am-engine | The type of database being accessed. Determines SQL dilect to use.  | Required, must be one of 'postgres', 'oracle' or 'mysql' |
-| x-am-table | The table name to perform the operations on. | Optional, defaults to schema component object name if not provided.  Must be a valid table name |
-| x-am-concurency-control | The name of the property
+| x-af-database | The name of the database where the table is located.   | Required, value is used to access database configuration from the runtime secrets map. |
+| x-af-engine | The type of database being accessed. Determines SQL dilect to use.  | Required, must be one of 'postgres', 'oracle' or 'mysql' |
+| x-af-table | The table name to perform the operations on. | Optional, defaults to schema component object name if not provided.  Must be a valid table name |
+| x-af-concurency-control | The name of the property
 
 #### Schema Component Object Property Attributes
 
 | Attribute             | Description                                                                                            | Usage                                                                                   |
 |-----------------------|--------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
-| x-am-column-name      | Specifies the database column name if it differs from the property name.                                | Optional                                                                                |
-| x-am-primary-key      | Indicates that this property serves as the primary key for the object and defines how the key is obtained. | Required; must be one of the following: manual, auto, or sequence.                       |
-| x-am-sequence-name    | Specifies the database sequence to be used for generating primary keys.                                     | Required only when the primary key type is "sequence".                                    |
+| x-af-column-name      | Specifies the database column name if it differs from the property name.                                | Optional                                                                                |
+| x-af-primary-key      | Indicates that this property serves as the primary key for the object and defines how the key is obtained. | Required; must be one of the following: manual, auto, or sequence.                       |
+| x-af-sequence-name    | Specifies the database sequence to be used for generating primary keys.                                     | Required only when the primary key type is "sequence".                                    |
 #### Schema Component Object Associations
 
 When defining the api using schema objects the Open API specication allows properties that can be either objects or array of objects in addition to the other basic types.  With additional custom attributes API-Foundry can populate these properties saving the client application the need to make multiple requests to construct objects with these properties.
@@ -894,31 +894,31 @@ components:
   schemas:
     customer:
       type: object
-      x-am-engine: postgres
-      x-am-database: chinook
+      x-af-engine: postgres
+      x-af-database: chinook
       properties:
         customer_id:
           type: integer
-          x-am-primary-key: auto
+          x-af-primary-key: auto
         company:
           type: string
           maxLength: 80
     invoice:
       type: object
-      x-am-engine: postgres
-      x-am-database: chinook
+      x-af-engine: postgres
+      x-af-database: chinook
       properties:
         invoice_id:
           type: integer
-          x-am-primary-key: auto
+          x-af-primary-key: auto
         customer_id:
           type: integer
         customer:
           $ref: '#/components/schemas/customer'
-          x-am-parent-property: customer_id
+          x-af-parent-property: customer_id
 ```
 
-In this example, the `customer` property of the `invoice` schema is an object type after reference resolution. By setting the `x-am-parent-property` attribute to a sibling property, API-Foundry will use the value of that property to resolve the object value. Specifically, in this example, the `customer_id` value of the invoice will be used to select the corresponding customer.
+In this example, the `customer` property of the `invoice` schema is an object type after reference resolution. By setting the `x-af-parent-property` attribute to a sibling property, API-Foundry will use the value of that property to resolve the object value. Specifically, in this example, the `customer_id` value of the invoice will be used to select the corresponding customer.
 
 > Internally API-Foundry uses inner joins to select these objects using a single database operation.
 
@@ -929,38 +929,38 @@ Consider the following api spec:
 ```
     invoice:
       type: object
-      x-am-engine: postgres
-      x-am-database: chinook
+      x-af-engine: postgres
+      x-af-database: chinook
       properties:
         invoice_id:
           type: integer
-          x-am-primary-key: auto
+          x-af-primary-key: auto
         line_items:
           type: array
           items:
             $ref: "#/components/schemas/invoice_line"
-            x-am-child-property: invoice_id
+            x-af-child-property: invoice_id
     invoice_line:
       type: object
-      x-am-engine: postgres
-      x-am-database: chinook
+      x-af-engine: postgres
+      x-af-database: chinook
       properties:
         invoice_line_id:
           type: integer
-          x-am-primary-key: auto
+          x-af-primary-key: auto
         invoice_id:
           type: integer
         track_id:
           type: integer
 ```
 
-In this example, the `line_items` property of the `invoice` schema is an array of `invoice_lines` type after reference resolution.  By setting the `x-am-child-property` attribute to a property in the `invoice_line` schema, API-Foundry will use the primary key value of the invoice to select on that property.  Specifically, in this example, the `invoice_id` values from the selected `invoice`s will be used to filter on the `invoice_id` property of the associated `invoice_line` items.
+In this example, the `line_items` property of the `invoice` schema is an array of `invoice_lines` type after reference resolution.  By setting the `x-af-child-property` attribute to a property in the `invoice_line` schema, API-Foundry will use the primary key value of the invoice to select on that property.  Specifically, in this example, the `invoice_id` values from the selected `invoice`s will be used to filter on the `invoice_id` property of the associated `invoice_line` items.
 
 
 | Attribute             | Description                                          | Usage             |
 |-----------------------|------------------------------------------------------|-------------------|
-| x-am-parent-property  | The name of the 'primary' property that identifies the selection key.  | Optional, defaults to `parent` primary key.  Normally needed for 1:1 associations. |
-| x-am-child-property   | The name of the property in the `secondary` object used as the selection key | Optional, defaults to primary key of  defaults to the child if not specified |
+| x-af-parent-property  | The name of the 'primary' property that identifies the selection key.  | Optional, defaults to `parent` primary key.  Normally needed for 1:1 associations. |
+| x-af-child-property   | The name of the property in the `secondary` object used as the selection key | Optional, defaults to primary key of  defaults to the child if not specified |
 
 ##### One-to-One Associations
 
@@ -976,18 +976,18 @@ Here's an example of how the `customer` property would be specified in the `invo
 
     invoice:
       type: object
-      x-am-engine: postgres
-      x-am-database: chinook
+      x-af-engine: postgres
+      x-af-database: chinook
       properties:
         invoice_id:
           type: integer
-          x-am-primary-key: auto
+          x-af-primary-key: auto
         customer_id:
           type: integer
         customer:
-          x-am-type: relation
-          x-am-schema-object: customer
-          x-am-parent-property: customer_id
+          x-af-type: relation
+          x-af-schema-object: customer
+          x-af-parent-property: customer_id
 
 In this example the `customer` property type is specified as being a relation to the schema component object `customer'.  When fetching data API-Make will then use
 
@@ -995,10 +995,10 @@ With API-Foundry
 
 | Attribute | | Description |
 |-----------|-|-------------|
-| x-am-schema | Required | The name of the schema component object to use as the source of the relation. |
-| x-am-cardinality | Optional | Can be either single or multiple, defaults to single |
-| x-am-parent-property | Required | The name of the sibling property to use as the selection key in the relation |
-| x-am-child-property | Optional |
+| x-af-schema | Required | The name of the schema component object to use as the source of the relation. |
+| x-af-cardinality | Optional | Can be either single or multiple, defaults to single |
+| x-af-parent-property | Required | The name of the sibling property to use as the selection key in the relation |
+| x-af-child-property | Optional |
 
 
 # Appendix
@@ -1047,7 +1047,7 @@ postgres_to_openapi --host localhost --database mydatabase --user myuser --passw
 
 #### Generated OpenAPI Schema
 
-The generated OpenAPI schema will include component schema objects representing the database tables and their columns. Primary keys will be marked with the `x-am-primary-key` attribute, and foreign key relationships will include references to related schemas with the `x-am-parent-property` attribute.
+The generated OpenAPI schema will include component schema objects representing the database tables and their columns. Primary keys will be marked with the `x-af-primary-key` attribute, and foreign key relationships will include references to related schemas with the `x-af-parent-property` attribute.
 
 Here is an example of the generated schema for a table named `invoice`:
 
@@ -1059,12 +1059,12 @@ components:
     # name
     invoice:
       type: object
-      x-am-database: chinook-auto-increment
+      x-af-database: chinook-auto-increment
       properties:
         invoice_id:
           type: integer
           # indicates the property is a primary key
-          x-am-primary-key: auto
+          x-af-primary-key: auto
           description: Unique identifier for the invoice.
           example: 1001
         customer_id:
@@ -1075,7 +1075,7 @@ components:
         # included in query results.
         customer:
           $ref: '#/components/schemas/customer'
-          x-am-parent-property: customer_id
+          x-af-parent-property: customer_id
           description: Customer associated with the invoice.
 ```
 

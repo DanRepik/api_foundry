@@ -9,18 +9,18 @@ def invoice_with_version_stamp(load_model):
         "invoice",
         {
             "type": "object",
-            "x-am-engine": "postgres",
-            "x-am-database": "chinook",
-            "x-am-concurrency-control": "version_stamp",
+            "x-af-engine": "postgres",
+            "x-af-database": "chinook",
+            "x-af-concurrency-control": "version_stamp",
             "properties": {
                 "invoice_id": {
                     "type": "integer",
-                    "x-am-primary-key": "auto",
+                    "x-af-primary-key": "auto",
                 },
                 "customer_id": {"type": "integer"},
                 "customer": {
                     "$ref": "#/components/schemas/customer",
-                    "x-am-parent-property": "customer_id",
+                    "x-af-parent-property": "customer_id",
                 },
                 "invoice_date": {
                     "type": "string",
@@ -38,7 +38,7 @@ def invoice_with_version_stamp(load_model):
                     "type": "array",
                     "items": {
                         "$ref": "#/components/schemas/invoice_line",
-                        "x-am-child-property": "invoice_id",
+                        "x-af-child-property": "invoice_id",
                     },
                 },
                 "total": {"type": "number", "format": "float"},
@@ -61,17 +61,17 @@ def invoice_no_concurrency() -> SchemaObject:
         "invoice",
         {
             "type": "object",
-            "x-am-engine": "postgres",
-            "x-am-database": "chinook",
+            "x-af-engine": "postgres",
+            "x-af-database": "chinook",
             "properties": {
                 "invoice_id": {
                     "type": "integer",
-                    "x-am-primary-key": "auto",
+                    "x-af-primary-key": "auto",
                 },
                 "customer_id": {"type": "integer"},
                 "customer": {
                     "$ref": "#/components/schemas/customer",
-                    "x-am-parent-property": "customer_id",
+                    "x-af-parent-property": "customer_id",
                 },
                 "invoice_date": {
                     "type": "string",
@@ -89,7 +89,7 @@ def invoice_no_concurrency() -> SchemaObject:
                     "type": "array",
                     "items": {
                         "$ref": "#/components/schemas/invoice_line",
-                        "x-am-child-property": "invoice_id",
+                        "x-af-child-property": "invoice_id",
                     },
                 },
                 "total": {"type": "number", "format": "float"},

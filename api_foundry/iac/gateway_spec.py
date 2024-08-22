@@ -44,7 +44,7 @@ class GatewaySpec:
         return yaml.dump(self.api_spec, default_flow_style=False)
 
     def remove_custom_attributes(self, obj):
-        return self.remove_attributes(obj, "^x-am-.*$")
+        return self.remove_attributes(obj, "^x-af-.*$")
 
     def remove_attributes(self, obj, pattern) -> Union[dict, list]:
         """

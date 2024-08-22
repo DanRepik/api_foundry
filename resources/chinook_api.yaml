@@ -7,8 +7,8 @@ paths:
     get:
       summary: Get top-selling albums
       description: Returns the top 10 selling albums within a specified datetime range.
-      x-am-database: chinook
-      x-am-sql: >
+      x-af-database: chinook
+      x-af-sql: >
         SELECT
             a.album_id as album_id,
             a.title AS album_title,
@@ -71,8 +71,8 @@ paths:
     get:
       summary: Get top-selling albums
       description: Returns the top 10 selling albums within a specified datetime range.
-      x-am-database: chinook
-      x-am-sql: >
+      x-af-database: chinook
+      x-af-sql: >
         SELECT
             a.album_id,
             a.title,
@@ -127,15 +127,15 @@ paths:
                     album_id:
                       type: integer
                       description: The id of the album
-                      x-am-column-name: a.album_id
+                      x-af-column-name: a.album_id
                     album_title:
                       type: string
                       description: The title of the album
-                      x-am-column-name: a.title
+                      x-af-column-name: a.title
                     total_sold:
                       type: integer
                       description: The number of albums sold
-                      x-am-column-name: COUNT(il.invoice_line_id)
+                      x-af-column-name: COUNT(il.invoice_line_id)
         '400':
           description: Invalid input
         '500':
@@ -148,7 +148,7 @@ components:
       properties:
         artist_id:
           type: integer
-          x-am-primary-key: auto
+          x-af-primary-key: auto
           description: Unique identifier for the artist.
           example: 1
         name:
@@ -158,17 +158,17 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/album'
-            x-am-child-property: artist_id
+            x-af-child-property: artist_id
           description: List of album items associated with this artist.
       required:
       - artist_id
-      x-am-database: chinook
+      x-af-database: chinook
     album:
       type: object
       properties:
         album_id:
           type: integer
-          x-am-primary-key: auto
+          x-af-primary-key: auto
           description: Unique identifier for the album.
           example: 1
         title:
@@ -178,30 +178,30 @@ components:
           type: integer
         artist:
           $ref: '#/components/schemas/artist'
-          x-am-parent-property: artist_id
+          x-af-parent-property: artist_id
           description: Artist associated with the album.
         track_items:
           type: array
           items:
             $ref: '#/components/schemas/track'
-            x-am-child-property: album_id
+            x-af-child-property: album_id
           description: List of track items associated with this album.
       required:
       - album_id
       - title
       - artist_id
-      x-am-database: chinook
+      x-af-database: chinook
     employee:
       type: object
       properties:
         employee_id:
           type: integer
-          x-am-primary-key: auto
+          x-af-primary-key: auto
           description: Unique identifier for the employee.
           example: 1
         employee:
           $ref: '#/components/schemas/employee'
-          x-am-parent-property: employee_id
+          x-af-parent-property: employee_id
           description: Employee associated with the employee.
         last_name:
           type: string
@@ -248,28 +248,28 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/employee'
-            x-am-child-property: employee_id
+            x-af-child-property: employee_id
           description: List of employee items associated with this employee.
       required:
       - employee_id
       - last_name
       - first_name
-      x-am-database: chinook
+      x-af-database: chinook
     invoice:
       type: object
-      x-am-database: chinook
-      x-am-concurrency-control: last_updated
+      x-af-database: chinook
+      x-af-concurrency-control: last_updated
       properties:
         invoice_id:
           type: integer
-          x-am-primary-key: auto
+          x-af-primary-key: auto
           description: Unique identifier for the invoice.
           example: 1
         customer_id:
           type: integer
         customer:
           $ref: '#/components/schemas/customer'
-          x-am-parent-property: customer_id
+          x-af-parent-property: customer_id
           description: Customer associated with the invoice.
         invoice_date:
           type: string
@@ -298,7 +298,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/invoice_line'
-            x-am-child-property: invoice_id
+            x-af-child-property: invoice_id
           description: List of invoice_line items associated with this invoice.
       required:
       - invoice_id
@@ -311,7 +311,7 @@ components:
       properties:
         genre_id:
           type: integer
-          x-am-primary-key: auto
+          x-af-primary-key: auto
           description: Unique identifier for the genre.
           example: 1
         name:
@@ -323,31 +323,31 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/track'
-            x-am-child-property: genre_id
+            x-af-child-property: genre_id
           description: List of track items associated with this genre.
       required:
       - genre_id
       - version
-      x-am-database: chinook
+      x-af-database: chinook
     invoice_line:
       type: object
       properties:
         invoice_line_id:
           type: integer
-          x-am-primary-key: auto
+          x-af-primary-key: auto
           description: Unique identifier for the invoice_line.
           example: 1
         invoice_id:
           type: integer
         invoice:
           $ref: '#/components/schemas/invoice'
-          x-am-parent-property: invoice_id
+          x-af-parent-property: invoice_id
           description: Invoice associated with the invoice_line.
         track_id:
           type: integer
         track:
           $ref: '#/components/schemas/track'
-          x-am-parent-property: track_id
+          x-af-parent-property: track_id
           description: Track associated with the invoice_line.
         unit_price:
           type: number
@@ -359,13 +359,13 @@ components:
       - track_id
       - unit_price
       - quantity
-      x-am-database: chinook
+      x-af-database: chinook
     track:
       type: object
       properties:
         track_id:
           type: integer
-          x-am-primary-key: auto
+          x-af-primary-key: auto
           description: Unique identifier for the track.
           example: 1
         name:
@@ -375,19 +375,19 @@ components:
           type: integer
         album:
           $ref: '#/components/schemas/album'
-          x-am-parent-property: album_id
+          x-af-parent-property: album_id
           description: Album associated with the track.
         media_type_id:
           type: integer
         media_type:
           $ref: '#/components/schemas/media_type'
-          x-am-parent-property: media_type_id
+          x-af-parent-property: media_type_id
           description: Media_type associated with the track.
         genre_id:
           type: integer
         genre:
           $ref: '#/components/schemas/genre'
-          x-am-parent-property: genre_id
+          x-af-parent-property: genre_id
           description: Genre associated with the track.
         composer:
           type: string
@@ -402,13 +402,13 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/invoice_line'
-            x-am-child-property: track_id
+            x-af-child-property: track_id
           description: List of invoice_line items associated with this track.
         playlist_track_items:
           type: array
           items:
             $ref: '#/components/schemas/playlist_track'
-            x-am-child-property: track_id
+            x-af-child-property: track_id
           description: List of playlist_track items associated with this track.
       required:
       - track_id
@@ -416,13 +416,13 @@ components:
       - media_type_id
       - milliseconds
       - unit_price
-      x-am-database: chinook
+      x-af-database: chinook
     playlist:
       type: object
       properties:
         playlist_id:
           type: integer
-          x-am-primary-key: auto
+          x-af-primary-key: auto
           description: Unique identifier for the playlist.
           example: 1
         name:
@@ -432,38 +432,38 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/playlist_track'
-            x-am-child-property: playlist_id
+            x-af-child-property: playlist_id
           description: List of playlist_track items associated with this playlist.
       required:
       - playlist_id
-      x-am-database: chinook
+      x-af-database: chinook
     playlist_track:
       type: object
       properties:
         playlist_id:
           type: integer
-          x-am-primary-key: required
+          x-af-primary-key: required
         playlist:
           $ref: '#/components/schemas/playlist'
-          x-am-parent-property: playlist_id
+          x-af-parent-property: playlist_id
           description: Playlist associated with the playlist_track.
         track_id:
           type: integer
-          x-am-primary-key: required
+          x-af-primary-key: required
         track:
           $ref: '#/components/schemas/track'
-          x-am-parent-property: track_id
+          x-af-parent-property: track_id
           description: Track associated with the playlist_track.
       required:
       - playlist_id
       - track_id
-      x-am-database: chinook
+      x-af-database: chinook
     media_type:
       type: object
       properties:
         media_type_id:
           type: integer
-          x-am-primary-key: auto
+          x-af-primary-key: auto
           description: Unique identifier for the media_type.
           example: 1
         name:
@@ -473,17 +473,17 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/track'
-            x-am-child-property: media_type_id
+            x-af-child-property: media_type_id
           description: List of track items associated with this media_type.
       required:
       - media_type_id
-      x-am-database: chinook
+      x-af-database: chinook
     customer:
       type: object
       properties:
         customer_id:
           type: integer
-          x-am-primary-key: auto
+          x-af-primary-key: auto
           description: Unique identifier for the customer.
           example: 1
         first_name:
@@ -528,7 +528,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/invoice'
-            x-am-child-property: customer_id
+            x-af-child-property: customer_id
           description: List of invoice items associated with this customer.
       required:
       - customer_id
@@ -536,5 +536,5 @@ components:
       - last_name
       - email
       - version_stamp
-      x-am-database: chinook
-      x-am-concurrency-control: version_stamp
+      x-af-database: chinook
+      x-af-concurrency-control: version_stamp

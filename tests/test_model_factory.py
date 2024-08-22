@@ -22,9 +22,9 @@ def test_set_spec():
                 "schemas": {
                     "TestSchema": {
                         "type": "object",
-                        "x-am-database": "database",
+                        "x-af-database": "database",
                         "properties": {
-                            "id": {"type": "integer", "x-am-primary-key": "auto"},
+                            "id": {"type": "integer", "x-af-primary-key": "auto"},
                             "name": {"type": "string"},
                         },
                     }
@@ -50,9 +50,9 @@ def test_schema_object_initialization():
                 "schemas": {
                     "TestSchema": {
                         "type": "object",
-                        "x-am-database": "testdb",
+                        "x-af-database": "testdb",
                         "properties": {
-                            "id": {"type": "integer", "x-am-primary-key": "auto"},
+                            "id": {"type": "integer", "x-af-primary-key": "auto"},
                             "name": {"type": "string"},
                         },
                     }
@@ -78,7 +78,7 @@ def test_schema_object_property_conversion():
                     "TestSchema": {
                         "type": "object",
                         "properties": {
-                            "id": {"type": "integer", "x-am-primary-key": "auto"},
+                            "id": {"type": "integer", "x-af-primary-key": "auto"},
                             "name": {"type": "string"},
                         },
                     }
@@ -89,9 +89,9 @@ def test_schema_object_property_conversion():
 
     properties = {
         "type": "string",
-        "x-am-column-name": "name",
-        "x-am-column-type": "string",
-        "x-am-primary-key": False,
+        "x-af-column-name": "name",
+        "x-af-column-type": "string",
+        "x-af-primary-key": False,
     }
     property_object = SchemaObjectProperty(
         "test_entity", "name", properties, spec=ModelFactory.spec

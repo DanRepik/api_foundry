@@ -33,18 +33,18 @@ class TestInsertSQLHandler:
                 "invoice",
                 {
                     "type": "object",
-                    "x-am-engine": "postgres",
-                    "x-am-database": "chinook",
-                    "x-am-concurrency-control": "version_stamp",
+                    "x-af-engine": "postgres",
+                    "x-af-database": "chinook",
+                    "x-af-concurrency-control": "version_stamp",
                     "properties": {
                         "invoice_id": {
                             "type": "integer",
-                            "x-am-primary-key": "auto",
+                            "x-af-primary-key": "auto",
                         },
                         "customer_id": {"type": "integer"},
                         "customer": {
                             "$ref": "#/components/schemas/customer",
-                            "x-am-parent-property": "customer_id",
+                            "x-af-parent-property": "customer_id",
                         },
                         "invoice_date": {
                             "type": "string",
@@ -62,7 +62,7 @@ class TestInsertSQLHandler:
                             "type": "array",
                             "items": {
                                 "$ref": "#/components/schemas/invoice_line",
-                                "x-am-child-property": "invoice_id",
+                                "x-af-child-property": "invoice_id",
                             },
                         },
                         "total": {"type": "number", "format": "float"},
@@ -116,17 +116,17 @@ class TestInsertSQLHandler:
                 "invoice",
                 {
                     "type": "object",
-                    "x-am-engine": "postgres",
-                    "x-am-database": "chinook",
+                    "x-af-engine": "postgres",
+                    "x-af-database": "chinook",
                     "properties": {
                         "invoice_id": {
                             "type": "integer",
-                            "x-am-primary-key": "auto",
+                            "x-af-primary-key": "auto",
                         },
                         "customer_id": {"type": "integer"},
                         "customer": {
                             "$ref": "#/components/schemas/customer",
-                            "x-am-parent-property": "customer_id",
+                            "x-af-parent-property": "customer_id",
                         },
                         "invoice_date": {
                             "type": "string",
@@ -144,7 +144,7 @@ class TestInsertSQLHandler:
                             "type": "array",
                             "items": {
                                 "$ref": "#/components/schemas/invoice_line",
-                                "x-am-child-property": "invoice_id",
+                                "x-af-child-property": "invoice_id",
                             },
                         },
                         "total": {"type": "number", "format": "float"},
@@ -198,18 +198,18 @@ class TestInsertSQLHandler:
                 "invoice",
                 {
                     "type": "object",
-                    "x-am-engine": "postgres",
-                    "x-am-database": "chinook",
-                    "x-am-concurrency-control": "last_updated",
+                    "x-af-engine": "postgres",
+                    "x-af-database": "chinook",
+                    "x-af-concurrency-control": "last_updated",
                     "properties": {
                         "invoice_id": {
                             "type": "integer",
-                            "x-am-primary-key": "auto",
+                            "x-af-primary-key": "auto",
                         },
                         "customer_id": {"type": "integer"},
                         "customer": {
                             "$ref": "#/components/schemas/customer",
-                            "x-am-parent-property": "customer_id",
+                            "x-af-parent-property": "customer_id",
                         },
                         "invoice_date": {
                             "type": "string",
@@ -227,7 +227,7 @@ class TestInsertSQLHandler:
                             "type": "array",
                             "items": {
                                 "$ref": "#/components/schemas/invoice_line",
-                                "x-am-child-property": "invoice_id",
+                                "x-af-child-property": "invoice_id",
                             },
                         },
                         "total": {"type": "number", "format": "float"},
@@ -273,12 +273,12 @@ class TestInsertSQLHandler:
                 SchemaObject(
                     "genre",
                     {
-                        "x-am-engine": "postgres",
-                        "x-am-database": "chinook",
+                        "x-af-engine": "postgres",
+                        "x-af-database": "chinook",
                         "properties": {
                             "genre_id": {
                                 "type": "integer",
-                                "x-am-primary-key": "auto",
+                                "x-af-primary-key": "auto",
                             },
                             "name": {"type": "string", "maxLength": 120},
                         },
@@ -306,12 +306,12 @@ class TestInsertSQLHandler:
                 SchemaObject(
                     "genre",
                     {
-                        "x-am-engine": "postgres",
-                        "x-am-database": "chinook",
+                        "x-af-engine": "postgres",
+                        "x-af-database": "chinook",
                         "properties": {
                             "genre_id": {
                                 "type": "integer",
-                                "x-am-primary-key": "required",
+                                "x-af-primary-key": "required",
                             },
                             "name": {"type": "string", "maxLength": 120},
                         },
@@ -336,12 +336,12 @@ class TestInsertSQLHandler:
                 SchemaObject(
                     "genre",
                     {
-                        "x-am-engine": "postgres",
-                        "x-am-database": "chinook",
+                        "x-af-engine": "postgres",
+                        "x-af-database": "chinook",
                         "properties": {
                             "genre_id": {
                                 "type": "integer",
-                                "x-am-primary-key": "auto",
+                                "x-af-primary-key": "auto",
                             },
                             "name": {"type": "string", "maxLength": 120},
                         },
@@ -365,13 +365,13 @@ class TestInsertSQLHandler:
             SchemaObject(
                 "genre",
                 {
-                    "x-am-engine": "postgres",
-                    "x-am-database": "chinook",
+                    "x-af-engine": "postgres",
+                    "x-af-database": "chinook",
                     "properties": {
                         "genre_id": {
                             "type": "integer",
-                            "x-am-primary-key": "sequence",
-                            "x-am-sequence-name": "test-sequence",
+                            "x-af-primary-key": "sequence",
+                            "x-af-sequence-name": "test-sequence",
                         },
                         "name": {"type": "string", "maxLength": 120},
                     },
@@ -400,13 +400,13 @@ class TestInsertSQLHandler:
                 SchemaObject(
                     "genre",
                     {
-                        "x-am-engine": "postgres",
-                        "x-am-database": "chinook",
-                        "x-am-concurrency-control": "last_updated",
+                        "x-af-engine": "postgres",
+                        "x-af-database": "chinook",
+                        "x-af-concurrency-control": "last_updated",
                         "properties": {
                             "genre_id": {
                                 "type": "integer",
-                                "x-am-primary-key": "auto",
+                                "x-af-primary-key": "auto",
                             },
                             "name": {"type": "string", "maxLength": 120},
                             "last_updated": {
@@ -445,13 +445,13 @@ class TestInsertSQLHandler:
                 SchemaObject(
                     "genre",
                     {
-                        "x-am-engine": "postgres",
-                        "x-am-database": "chinook",
-                        "x-am-concurrency-control": "last_updated",
+                        "x-af-engine": "postgres",
+                        "x-af-database": "chinook",
+                        "x-af-concurrency-control": "last_updated",
                         "properties": {
                             "genre_id": {
                                 "type": "integer",
-                                "x-am-primary-key": "auto",
+                                "x-af-primary-key": "auto",
                             },
                             "name": {"type": "string", "maxLength": 120},
                             "last_updated": {
@@ -482,13 +482,13 @@ class TestInsertSQLHandler:
                 SchemaObject(
                     "genre",
                     {
-                        "x-am-engine": "postgres",
-                        "x-am-database": "chinook",
-                        "x-am-concurrency-control": "last_updated",
+                        "x-af-engine": "postgres",
+                        "x-af-database": "chinook",
+                        "x-af-concurrency-control": "last_updated",
                         "properties": {
                             "genre_id": {
                                 "type": "integer",
-                                "x-am-primary-key": "auto",
+                                "x-af-primary-key": "auto",
                             },
                             "name": {"type": "string", "maxLength": 120},
                             "last_updated": {
@@ -523,12 +523,12 @@ class TestInsertSQLHandler:
                 SchemaObject(
                     "genre",
                     {
-                        "x-am-engine": "postgres",
-                        "x-am-database": "chinook",
+                        "x-af-engine": "postgres",
+                        "x-af-database": "chinook",
                         "properties": {
                             "genre_id": {
                                 "type": "integer",
-                                "x-am-primary-key": "sequence",
+                                "x-af-primary-key": "sequence",
                             },
                             "name": {"type": "string", "maxLength": 120},
                         },

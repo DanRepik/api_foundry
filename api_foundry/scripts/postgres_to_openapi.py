@@ -116,7 +116,7 @@ class PostgresSchemaToOpenAPI:
                 column_info = self.map_data_type(column["data_type"])
 
                 if column_name in primary_keys:
-                    column_info["x-am-primary-key"] = primary_keys[column_name]
+                    column_info["x-af-primary-key"] = primary_keys[column_name]
                     if primary_keys[column_name] == "auto":
                         column_info[
                             "description"
@@ -139,7 +139,7 @@ class PostgresSchemaToOpenAPI:
                     foreign_table = column["foreign_table"]
                     properties[foreign_table] = {
                         "$ref": f"#/components/schemas/{foreign_table}",
-                        "x-am-parent-property": column_name,
+                        "x-af-parent-property": column_name,
                         "description": f"{foreign_table.capitalize()} associated with the {table}.",
                     }
 
@@ -152,7 +152,7 @@ class PostgresSchemaToOpenAPI:
                 "type": "object",
                 "properties": properties,
                 "required": required,
-                "x-am-database": self.database,
+                "x-af-database": self.database,
             }
             openapi_schema["components"]["schemas"][table] = schema_object
 
@@ -166,7 +166,7 @@ class PostgresSchemaToOpenAPI:
                         "type": "array",
                         "items": {
                             "$ref": f"#/components/schemas/{child_table}",
-                            "x-am-child-property": foreign_key,
+                            "x-af-child-property": foreign_key,
                         },
                         "description": f"List of {child_table} items associated with this {parent_table}.",
                     }

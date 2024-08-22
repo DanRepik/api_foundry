@@ -44,16 +44,16 @@ class SchemaObjectProperty(OpenAPIElement):
         super().__init__(properties, spec)
         self.operation_id = operation_id
         self.name = name
-        self.column_name = self.get("x-am-column-name") or name
+        self.column_name = self.get("x-af-column-name") or name
         self.type = self.get("type") or "string"
         self.api_type = self.get("format") or self.type
-        self.column_type = self.get("x-am-column-type") or self.api_type
-        self.is_primary_key = self.get("x-am-primary-key") or False
+        self.column_type = self.get("x-af-column-type") or self.api_type
+        self.is_primary_key = self.get("x-af-primary-key") or False
         self.min_length = self.get("minLength")
         self.max_length = self.get("maxLength")
         self.pattern = self.get("pattern")
 
-        self.concurrency_control = self.get("x-am-concurrency-control")
+        self.concurrency_control = self.get("x-af-concurrency-control")
         if self.concurrency_control:
             self.concurrency_control = self.concurrency_control.lower()
             assert self.concurrency_control in [
@@ -111,7 +111,7 @@ class SchemaObjectKey(SchemaObjectProperty):
         spec: Dict[str, Any],
     ):
         super().__init__(operation_id, name, properties, spec)
-        self.key_type = self.get("x-am-primary-key", default="auto")
+        self.key_type = self.get("x-af-primary-key", default="auto")
         if self.key_type not in ["required", "auto", "sequence"]:
             raise ApplicationException(
                 500,
@@ -121,7 +121,7 @@ class SchemaObjectKey(SchemaObjectProperty):
             )
 
         self.sequence_name = (
-            self.get("x-am-sequence-name") if self.key_type == "sequence" else None
+            self.get("x-af-sequence-name") if self.key_type == "sequence" else None
         )
         if self.key_type == "sequence" and not self.sequence_name:
             raise ApplicationException(
@@ -145,7 +145,7 @@ class SchemaObjectAssociation(OpenAPIElement):
 
     @property
     def child_property(self) -> "SchemaObjectProperty":
-        child_property = self.get("x-am-child-property", None)
+        child_property = self.get("x-af-child-property", None)
         if not child_property:
             return self.child_schema_object.primary_key
         return self.child_schema_object.get_property(child_property)
@@ -162,7 +162,7 @@ class SchemaObjectAssociation(OpenAPIElement):
                     f"attribute: {self.name}"
                 ),
             )
-        parent = self.get("x-am-parent-property")
+        parent = self.get("x-af-parent-property")
         if parent:
             return parent_schema_object.get_property(parent)
         return parent_schema_object.primary_key
@@ -192,7 +192,7 @@ class SchemaObject(OpenAPIElement):
         super().__init__(schema_object, spec)
         self.operation_id = operation_id
         self.schema_object = schema_object
-        database = schema_object.get("x-am-database")
+        database = schema_object.get("x-af-database")
         if database:
             self.database = database.lower()
         self.primary_key = None
@@ -256,7 +256,7 @@ class SchemaObject(OpenAPIElement):
     def concurrency_property(self) -> Optional[SchemaObjectProperty]:
         if not hasattr(self, "_concurrency_property"):
             concurrency_prop_name = self.schema_object.get(
-                "x-am-concurrency-control", None
+                "x-af-concurrency-control", None
             )
             if concurrency_prop_name:
                 try:
@@ -274,10 +274,10 @@ class SchemaObject(OpenAPIElement):
 
     @property
     def table_name(self) -> str:
-        schema = self.schema_object.get("x-am-schema")
+        schema = self.schema_object.get("x-af-schema")
         return (
             f"{schema}." if schema else ""
-        ) + f"{self.schema_object.get('x-am-table', self.operation_id)}"
+        ) + f"{self.schema_object.get('x-af-table', self.operation_id)}"
 
     def get_property(self, property_name: str) -> Optional[SchemaObjectProperty]:
         return self.properties.get(property_name)
@@ -307,11 +307,11 @@ class PathOperation(OpenAPIElement):
 
     @property
     def database(self) -> str:
-        return self.path_operation["x-am-database"]
+        return self.path_operation["x-af-database"]
 
     @property
     def sql(self) -> str:
-        return self.path_operation["x-am-sql"]
+        return self.path_operation["x-af-sql"]
 
     @property
     def inputs(self) -> Dict[str, SchemaObjectProperty]:
@@ -408,7 +408,7 @@ class ModelFactory:
 
         schemas = cls.spec.get("components", {}).get("schemas", {})
         for name, schema in schemas.items():
-            if "x-am-database" in schema:
+            if "x-af-database" in schema:
                 cls.schema_objects[name.lower()] = schema
 
         cls.initialize_schema_objects()
@@ -425,7 +425,7 @@ class ModelFactory:
         cls.path_operations = {}
         for path, operations in paths.items():
             for method, operation in operations.items():
-                if "x-am-database" in operation:
+                if "x-af-database" in operation:
                     cls.path_operations[
                         f"{path.lstrip('/')}:{methods_to_actions[method.lower()]}"
                     ] = PathOperation(path, method, operation, cls.spec)
