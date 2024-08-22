@@ -1,7 +1,7 @@
 import pytest
 
-from api_maker.utils.spec_handler import SpecificationHandler
-from api_maker.utils.logger import logger
+from api_foundry.utils.spec_handler import SpecificationHandler
+from api_foundry.utils.logger import logger
 
 log = logger(__name__)
 

@@ -1,5 +1,5 @@
 import requests
-from api_maker.utils.logger import logger
+from api_foundry.utils.logger import logger
 
 from test_secrets_fixture_cp import gateway_endpoint
 

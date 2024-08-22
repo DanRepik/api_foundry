@@ -6,8 +6,8 @@ import sys
 from unittest.mock import patch
 from zipfile import ZipFile
 
-from api_maker.utils.logger import logger
-from api_maker.cloudprints.python_archive_builder import PythonArchiveBuilder
+from api_foundry.utils.logger import logger
+from api_foundry.cloudprints.python_archive_builder import PythonArchiveBuilder
 
 log = logger(__name__)
 

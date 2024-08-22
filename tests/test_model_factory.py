@@ -1,8 +1,8 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from api_maker.utils.app_exception import ApplicationException
-from api_maker.utils.logger import logger
-from api_maker.utils.model_factory import (
+from api_foundry.utils.app_exception import ApplicationException
+from api_foundry.utils.logger import logger
+from api_foundry.utils.model_factory import (
     ModelFactory,
     SchemaObject,
     SchemaObjectProperty,

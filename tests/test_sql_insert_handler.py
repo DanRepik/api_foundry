@@ -2,11 +2,11 @@ import pytest
 
 from datetime import datetime
 
-from api_maker.dao.sql_insert_query_handler import SQLInsertSchemaQueryHandler
-from api_maker.utils.app_exception import ApplicationException
-from api_maker.utils.model_factory import ModelFactory, SchemaObject
-from api_maker.operation import Operation
-from api_maker.utils.logger import logger
+from api_foundry.dao.sql_insert_query_handler import SQLInsertSchemaQueryHandler
+from api_foundry.utils.app_exception import ApplicationException
+from api_foundry.utils.model_factory import ModelFactory, SchemaObject
+from api_foundry.operation import Operation
+from api_foundry.utils.logger import logger
 from test_fixtures import load_model
 
 log = logger(__name__)

@@ -1,7 +1,7 @@
 import pytest
 
-from api_maker.connectors.connection_factory import connection_factory
-from api_maker.utils.logger import logger
+from api_foundry.connectors.connection_factory import connection_factory
+from api_foundry.utils.logger import logger
 
 from test_fixtures import db_secrets
 

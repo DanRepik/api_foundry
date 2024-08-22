@@ -1,6 +1,6 @@
-from api_maker.services.service import Service
-from api_maker.adapters.adapter import Adapter
-from api_maker.operation import Operation
+from api_foundry.services.service import Service
+from api_foundry.adapters.adapter import Adapter
+from api_foundry.operation import Operation
 
 
 class MockService(Service):

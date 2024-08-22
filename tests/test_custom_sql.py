@@ -1,9 +1,9 @@
 import pytest
 
-from api_maker.operation import Operation
-from api_maker.dao.sql_custom_query_handler import SQLCustomQueryHandler
-from api_maker.utils.model_factory import PathOperation, ModelFactory
-from api_maker.utils.logger import logger
+from api_foundry.operation import Operation
+from api_foundry.dao.sql_custom_query_handler import SQLCustomQueryHandler
+from api_foundry.utils.model_factory import PathOperation, ModelFactory
+from api_foundry.utils.logger import logger
 from test_fixtures import load_model  # noqa F401
 
 log = logger(__name__)

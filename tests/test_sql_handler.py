@@ -1,24 +1,30 @@
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+
 import pytest
 
 from datetime import date, datetime, timezone
 
-from api_maker.dao.operation_dao import OperationDAO
-from api_maker.dao.sql_delete_query_handler import SQLDeleteSchemaQueryHandler
-from api_maker.dao.sql_select_query_handler import SQLSelectSchemaQueryHandler
-from api_maker.dao.sql_subselect_query_handler import SQLSubselectSchemaQueryHandler
-from api_maker.utils.app_exception import ApplicationException
-from api_maker.utils.model_factory import (
+from api_foundry.dao.operation_dao import OperationDAO
+from api_foundry.dao.sql_delete_query_handler import SQLDeleteSchemaQueryHandler
+from api_foundry.dao.sql_select_query_handler import SQLSelectSchemaQueryHandler
+from api_foundry.dao.sql_subselect_query_handler import SQLSubselectSchemaQueryHandler
+from api_foundry.utils.app_exception import ApplicationException
+from api_foundry.utils.model_factory import (
     ModelFactory,
     SchemaObject,
     SchemaObjectProperty,
 )
-from api_maker.operation import Operation
-from api_maker.utils.logger import logger
+from api_foundry.operation import Operation
+from api_foundry.utils.logger import logger
 from test_fixtures import load_model  # noqa F401
+
 
 log = logger(__name__)
 
 
+@pytest.mark.unit
 class TestSQLHandler:
     def test_field_selection(self, load_model):  # noqa F811
         sql_handler = SQLSelectSchemaQueryHandler(
@@ -26,7 +32,6 @@ class TestSQLHandler:
             ModelFactory.get_schema_object("invoice"),
             "postgres",
         )
-
         log.info(f"prefix_map: {sql_handler.prefix_map}")
         result_map = sql_handler.selection_result_map()
         log.info(f"result_map: {len(result_map)}")

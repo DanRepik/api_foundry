@@ -2,11 +2,11 @@ import pytest
 
 from datetime import datetime
 
-from api_maker.dao.sql_update_query_handler import SQLUpdateSchemaQueryHandler
-from api_maker.utils.app_exception import ApplicationException
-from api_maker.utils.model_factory import ModelFactory
-from api_maker.operation import Operation
-from api_maker.utils.logger import logger
+from api_foundry.dao.sql_update_query_handler import SQLUpdateSchemaQueryHandler
+from api_foundry.utils.app_exception import ApplicationException
+from api_foundry.utils.model_factory import ModelFactory
+from api_foundry.operation import Operation
+from api_foundry.utils.logger import logger
 
 from test_fixtures import load_model  # noqa F401
 from test_schema_objects_fixtures import invoice_with_version_stamp  # noqa F401

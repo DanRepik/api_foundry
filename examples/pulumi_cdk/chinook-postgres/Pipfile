@@ -4,15 +4,16 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [packages]
-pulumi = ">=3.0.0, <4.0.0"
-pulumi-aws = ">=6.0.2, <7.0.0"
-api-maker = {file = "../../.."}
+pulumi = "*"
+pulumi-aws = "*"
+api-foundry = {file = "../../.."}
 boto3 = "*"
 psycopg2-binary = "*"
+build = "*"
 
 [dev-packages]
 pytest = "*"
 pytest-cov = "*"
 
 [requires]
-python_version = "3.7"
+python_version = "3.9"

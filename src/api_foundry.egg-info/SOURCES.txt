@@ -1,8 +1,0 @@
-LICENSE
-pyproject.toml
-src/__init__.py
-src/api_foundry.egg-info/PKG-INFO
-src/api_foundry.egg-info/SOURCES.txt
-src/api_foundry.egg-info/dependency_links.txt
-src/api_foundry.egg-info/requires.txt
-src/api_foundry.egg-info/top_level.txt

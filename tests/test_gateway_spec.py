@@ -1,9 +1,9 @@
 import pytest
 import json
-from api_maker.utils.model_factory import ModelFactory, SchemaObject
-from api_maker.utils.logger import logger
+from api_foundry.utils.model_factory import ModelFactory, SchemaObject
+from api_foundry.utils.logger import logger
 
-from api_maker.iac.gateway_spec import GatewaySpec
+from api_foundry.iac.gateway_spec import GatewaySpec
 
 log = logger(__name__)
 

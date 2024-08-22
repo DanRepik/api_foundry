@@ -1,10 +1,10 @@
 from datetime import datetime
 import json
 
-from api_maker.utils.app_exception import ApplicationException
-from api_maker.utils.logger import logger
-from api_maker.operation import Operation
-from api_maker.services.transactional_service import TransactionalService
+from api_foundry.utils.app_exception import ApplicationException
+from api_foundry.utils.logger import logger
+from api_foundry.operation import Operation
+from api_foundry.services.transactional_service import TransactionalService
 
 from test_fixtures import load_model, db_secrets
 

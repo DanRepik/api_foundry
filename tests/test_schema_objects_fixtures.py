@@ -1,6 +1,6 @@
 import pytest
 
-from api_maker.utils.model_factory import SchemaObject, ModelFactory
+from api_foundry.utils.model_factory import SchemaObject, ModelFactory
 
 
 @pytest.fixture

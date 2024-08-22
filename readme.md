@@ -1,33 +1,44 @@
-# API-MAKER
+# API-Foundry
 
-Welcome to API-Maker, an open-source tool designed for rapidly building and exposing relational database resource as RESTful services.  The project's primary objective is to offer a solution that requires minimal coding effort to query and manipulate data stored in relational databases.
+The `api_foundry` project is a powerful tool designed to automate the deployment of REST APIs on AWS using Lambda services to access and interact with relational databases (RDBMS). This project leverages the OpenAPI specification to define and manage the APIs.
 
-Database resources that API-MAKER can expose as services can be either tables or custom SQL.
+### Key Features:
 
-With tables API-MAKER provides services to support record management or CRUD operations.  Additionally with table resourses API-MAKER provides a rich record selection API that reduces the need to build custom functions.
+- **AWS REST API Deployment**: `api_foundry` simplifies the deployment of RESTful APIs on AWS by integrating with AWS Lambda, allowing seamless interaction with various relational databases.
 
-Custom SQL operations can also be exposed.
+- **OpenAPI Specification**: The project uses the OpenAPI standard for defining API endpoints, request/response structures, and data schemas. This ensures that the APIs are well-documented, standardized, and easy to maintain.
 
-In the following sections we will provide a brief overview of the following API-MAKER features;
+- **Automatic Record Management**: When OpenAPI schema objects are linked to database tables, `api_foundry` automatically generates record management services. This includes the creation of standard CRUD (Create, Read, Update, Delete) operations, providing a robust and scalable solution for managing database records through the API.
 
-* [Build an API](#Build an API in Five Minutes) - this section provides an abbreviated example of building an API.
-* [Exploring the API deployment](#What API-Maker Deploys) - Briefly looks at resulting the API-MAKER deployment.
-* **Exploring the Services** - This section delves into the API services that that was built, covered are basic operations and the enhanced record selection capabilities provided.
-* **Using Metadata Parameters** - These parameters allow requesting application to customize the results returned from the services.
-* **Managing Concurrency** - This section illustrates how API-MAKER handles currency between application clients.
-* **Object and List Properties** - API-MAKER can return objects that have objects or list of objects as properties.  This section demonstrates how to configure such properties.
+- **Custom SQL Integration**: `api_foundry` allows developers to define custom SQL queries and associate them with specific OpenAPI path operations. This feature provides flexibility to perform complex queries and operations beyond standard CRUD functionalities, tailored to specific application requirements.
 
-The examples presented here are accessing data in a Chinook database.  What is presented in the example is an subset of a complete working example that can be found in the examples.
+### Summary:
+
+The `api_foundry` project streamlines the process of deploying APIs on AWS that interact with relational databases. By utilizing the OpenAPI specification, it not only ensures consistency and clarity in API design but also automates the creation of database-driven services and allows for custom SQL operations. This makes `api_foundry` an invaluable tool for developers looking to quickly deploy and manage data-centric APIs on the AWS platform.
+
+
+## Guide
+
+This guide provides a brief overview of key API-Foundry features, including:
+
+* **Building an API** - A quick introduction to implementing APIs with API-Foundry, featuring a concise example of deploying an API.
+* **Exploring the Deployment** - An overview of the infrastructure deployed to support the API.
+* **Exploring the Services** - A deep dive into the API services built, including basic operations and enhanced record selection capabilities.
+* **Using Metadata Parameters** - How to use metadata parameters to customize the results returned by the services.
+* **Managing Concurrency** - An explanation of how API-Foundry handles concurrency among application clients.
+* **Object and List Properties** - Demonstrations of how API-Foundry can return objects with nested objects or lists as properties, and how to configure these properties.
+
+The examples in this guide use data from the Chinook database. The examples presented here are a subset of a complete working example available in the examples directory.
 
 ## Build an API in Five Minutes
 
-There are three steps to building an API-MAKER api;
+There are three steps to building an API-Foundry api;
 
 1. Define the resources to be exposed in an OpenAPI document.
 1. Create a secret containing the connection parameters to access the database.
-1. Deploy the API-Maker as part of a IAC resource to AWS.
+1. Deploy the API-Foundry as part of a IAC resource to AWS.
 
-This section provides a quick overview of building an minimal API using API-MAKER.  The examples presented here a accessing data in a Chinook database.  What is presented is an subset of a complete working example that can be found in the examples.
+This section provides a quick overview of building an minimal API using API-Foundry.  The examples presented here a accessing data in a Chinook database.  What is presented is an subset of a complete working example that can be found in the examples.
 
 **Define Schema Objects**
 
@@ -73,22 +84,22 @@ components:
         - artist_id
 ```
 
-The above is standard OpenAPI specification with additional custom attributes.  API-MAKER always prefixes custom attributes it uses with 'x-am-'.
+The above is standard OpenAPI specification with additional custom attributes.  API-Foundry always prefixes custom attributes it uses with 'x-am-'.
 
-In this example the following API-MAKER attributes have been added;
+In this example the following API-Foundry attributes have been added;
 
 * x-am-database - This indicates what database should be accessed for the built services.
 * x-am-primary-key - This attribute can be attached to one of the object properties to indicate that property is the primary key for the component object.  The value of this property is the key generation strategy to use for record creation.
 
-In this example table names, albums and artists, is same as the component object names and in turn in the API path operations.  API-MAKER provides additional custom attributes that allow explicit naming of the table.
+In this example table names, albums and artists, is same as the component object names and in turn in the API path operations.  API-Foundry provides additional custom attributes that allow explicit naming of the table.
 
 > TODO: Link to custom attribute documentation
 
 **Define the Database Access Secret**
 
-For the second step you will need to supply API-MAKER with connection parameters for access to databases.
+For the second step you will need to supply API-Foundry with connection parameters for access to databases.
 
-With API-MAKER the connection parameters needed to access the backend database is obtained using a AWS secretsmanager secret.  This secret should be a JSON string defining the connection parameters needed. The following script creates a secret for accessing the Chinook database running on Postgres.
+With API-Foundry the connection parameters needed to access the backend database is obtained using a AWS secretsmanager secret.  This secret should be a JSON string defining the connection parameters needed. The following script creates a secret for accessing the Chinook database running on Postgres.
 
 ```python
 import boto3
@@ -117,9 +128,9 @@ The final step is to deploy the API.  In the example the deployment is made usin
 
 ```python
 #filename: __main.py__
-from api_maker.iac.pulumi.api_maker import APIMaker
+from api_foundry.iac.pulumi.api_foundry import APIMaker
 
-api_maker = APIMaker(
+api_foundry = APIMaker(
     "chinook-postgres",
     props={
         # this references the OpenAPI file created
@@ -133,18 +144,18 @@ api_maker = APIMaker(
 )
 ```
 
-## What API-Maker Deploys
+## What API-Foundry Deploys
 
-Once the API-Maker deployment is complete
+Once the API-Foundry deployment is complete
 
 ```plantuml
 @startuml
-title Deployment Diagram for API-MAKER api with External Database
+title Deployment Diagram for API-Foundry api with External Database
 
 actor Client as client
 
 node "AWS" {
-    node "API-MAKER" {
+    node "API-Foundry" {
       [API Gateway] as apigw
       [Lambda Function] as lambda
     }
@@ -164,9 +175,9 @@ apigw --> client : API Response
 @enduml
 ```
 
-## Using API-Maker Services
+## Using API-Foundry Services
 
-API-Maker provides a robust API that allows clients flexibility in selecting and modifying records. This section explores the API services offered by API-Maker.
+API-Foundry provides a robust API that allows clients flexibility in selecting and modifying records. This section explores the API services offered by API-Foundry.
 
 There are four sections that cover the available services:
 1. **Basic Operations**: CRUD operations on single records.
@@ -177,7 +188,7 @@ Most examples will use an abbreviated API specification, but some will reference
 
 ### Basic Operations
 
-API-Maker supports basic CRUD services using RESTful HTTP methods. Data passed via requests and responses is in JSON format.
+API-Foundry supports basic CRUD services using RESTful HTTP methods. Data passed via requests and responses is in JSON format.
 
 Successful operations return the status via response headers. The response body contains an array of the selected objects. For POST, PUT, and DELETE operations, the body contains the modified or deleted records.
 
@@ -196,7 +207,7 @@ Where:
 
 ### Enhanced Record Selection
 
-In addition to basic CRUD operations, API-Maker offers enhanced record selection using query strings. This feature allows selection of multiple records and does not apply to create operations. The path for these services is:
+In addition to basic CRUD operations, API-Foundry offers enhanced record selection using query strings. This feature allows selection of multiple records and does not apply to create operations. The path for these services is:
 
 ```
 # for GET, PUT and DELETE
@@ -254,11 +265,11 @@ Requests can include metadata parameters in query strings to provide additional 
 
 **__properties**
 
-The `__properties` metadata parameter restricts the properties of objects returned by API-Maker. By default, API-Maker returns all properties of an object, excluding object and array properties. These properties must be explicitly selected using this parameter.
+The `__properties` metadata parameter restricts the properties of objects returned by API-Foundry. By default, API-Foundry returns all properties of an object, excluding object and array properties. These properties must be explicitly selected using this parameter.
 
 The format of the parameter value is a space-delimited list of regular expressions. Only properties matching any of the expressions are included in the result set.
 
-When this parameter is omitted, API-Maker uses the expression `.*` to select all non-object or non-array properties. When included, API-Maker does not include any properties by default, and all properties must be explicitly selected.
+When this parameter is omitted, API-Foundry uses the expression `.*` to select all non-object or non-array properties. When included, API-Foundry does not include any properties by default, and all properties must be explicitly selected.
 
 For example, to select specific properties of the Chinook invoice, you could use the following request:
 
@@ -342,27 +353,27 @@ GET {endpoint}/invoice?__sort=invoice_id&__limit=20
 
 # Developing
 
-As illustrated in the example there are three main components to implementing an API using API-Maker;
+As illustrated in the example there are three main components to implementing an API using API-Foundry;
 
 * **Build the API Specification** First is the development of the API specification for the application.  The focus will be on mapping SQL tables along with any custom SQL into the OpenAPI specification.
 
-* **Configuration** Then we will look at how API-Maker accesses databases the application references, and how to setup the configuration needed for making connections.
+* **Configuration** Then we will look at how API-Foundry accesses databases the application references, and how to setup the configuration needed for making connections.
 
 * **Deployment** Finally we will look at the deployment and how to integrate the resulting provisioned infrastructure the cloud environment.
 
 ## Building an API Definition
 
-With API-Maker, development is focused on creating an application API specification using the OpenAPI Specification. API-Maker uses this specification to configure the REST API gateway and in the Lambda function that's provides the implementation of the services.
+With API-Foundry, development is focused on creating an application API specification using the OpenAPI Specification. API-Foundry uses this specification to configure the REST API gateway and in the Lambda function that's provides the implementation of the services.
 
-The API implementation with API-Maker is driven by data sources, with the database resources of the application guiding the API design. Database resources can be exposed in an API in two primary ways:
+The API implementation with API-Foundry is driven by data sources, with the database resources of the application guiding the API design. Database resources can be exposed in an API in two primary ways:
 
 1. **Table Integration**:
-   When integrating with a table resource, API-Maker generates services to support CRUD (Create, Read, Update, Delete) operations, along with advanced querying capabilities. This integration is accomplished by defining objects in the component schema section of the API specification.
+   When integrating with a table resource, API-Foundry generates services to support CRUD (Create, Read, Update, Delete) operations, along with advanced querying capabilities. This integration is accomplished by defining objects in the component schema section of the API specification.
 
 2. **Custom SQL Integration**:
-   While table integration covers most record management needs, relational databases (RDBMs) offer additional functionality that may require custom SQL. API-Maker enables the specification of custom SQL for individual services by defining path operations in the application's OpenAPI specification.
+   While table integration covers most record management needs, relational databases (RDBMs) offer additional functionality that may require custom SQL. API-Foundry enables the specification of custom SQL for individual services by defining path operations in the application's OpenAPI specification.
 
-By focusing on the OpenAPI Specification and leveraging API-Maker's features, developers can efficiently build robust APIs that interact with relational databases, reducing the need for extensive custom service development.
+By focusing on the OpenAPI Specification and leveraging API-Foundry's features, developers can efficiently build robust APIs that interact with relational databases, reducing the need for extensive custom service development.
 
 
 ```plantuml
@@ -416,9 +427,9 @@ package "Relational Database" {
 
 ### Table Integration
 
-#### API-Maker Integration Guidelines
+#### API-Foundry Integration Guidelines
 
-API-Maker integrates component schema objects with database tables using the following guidelines:
+API-Foundry integrates component schema objects with database tables using the following guidelines:
 
 - **Schema Object Naming**: The name of the schema object is used as both the operation path for the built services and the database table name.
 - **Database Specification**: A database name must be specified to indicate where the table is located. An application API can span multiple databases.
@@ -427,7 +438,7 @@ API-Maker integrates component schema objects with database tables using the fol
 
 Since most schema object definitions involve a straightforward mapping between database table columns and schema object properties,
 
-> API-Maker provides [tooling](#generating-openapi -schemas) to build an initial starting point API specification. This specification should be considered a starting point.
+> API-Foundry provides [tooling](#generating-openapi -schemas) to build an initial starting point API specification. This specification should be considered a starting point.
 
 > **Note**: The gateway API has limitations on the number of operation paths (routes) allowed in a single API. As of this writing, the limit is 300 routes (extensions are available). Each schema object definition results in seven operation paths or routes, so the effective limit per API is approximately 40 schema objects.
 
@@ -437,11 +448,11 @@ The name of the schema object by default is always used as the API path and by d
 
 #### Database Specification
 
-At a minimum API-Maker requires that a database be specified using an 'x-am-database' attribute.  Only schema objects with this attribute will have services built.  This attribute is used to obtain the AWS secret that contains the engine type (Postgres, Oracle or MySQL) and the connection configuration.
+At a minimum API-Foundry requires that a database be specified using an 'x-am-database' attribute.  Only schema objects with this attribute will have services built.  This attribute is used to obtain the AWS secret that contains the engine type (Postgres, Oracle or MySQL) and the connection configuration.
 
 #### Property Mapping
 
-API-Maker leverages the property types from the schema object to generate SQL and convert query result sets into JSON responses. The set of types in OpenAPI is simpler compared to the larger set of database types.
+API-Foundry leverages the property types from the schema object to generate SQL and convert query result sets into JSON responses. The set of types in OpenAPI is simpler compared to the larger set of database types.
 
 For each table column exposed in the API, a corresponding property must be defined in the properties section of the schema object. These property definitions map database column types to their corresponding OpenAPI schema type.
 
@@ -516,7 +527,7 @@ components:
 
 #### Object and Array Properties
 
-API-Maker supports returning objects that can have properties as objects or arrays of objects. From a relational database perspective, an object property represents a one-to-one relationship, while an array of objects represents a one-to-many relationship.
+API-Foundry supports returning objects that can have properties as objects or arrays of objects. From a relational database perspective, an object property represents a one-to-one relationship, while an array of objects represents a one-to-many relationship.
 
 Additional configuration in the API specification document can incorporate these types of properties into service result sets. The schema object types for these properties must refer to the same database.
 
@@ -524,7 +535,7 @@ By default, these properties are not included in the result set. They must be ex
 
 #### Object Properties
 
-In OpenAPI specifications, object properties typically use a `$ref` attribute to reference the component schema object for the property. When the referenced schema object is part of the same database, API-Maker can automatically populate that property with additional configuration. Specifically, the keys that define the relationship must be identified. The following attributes allow configuring object properties:
+In OpenAPI specifications, object properties typically use a `$ref` attribute to reference the component schema object for the property. When the referenced schema object is part of the same database, API-Foundry can automatically populate that property with additional configuration. Specifically, the keys that define the relationship must be identified. The following attributes allow configuring object properties:
 
 * **x-am-parent-property**: Identifies the schema object property containing the key used to select the referenced property value. This attribute is required for object properties.
 
@@ -553,7 +564,7 @@ The same additional attributes for defining the relationship as object propertie
 
 * **x-am-child-property**: Required attribute that identifies the property in the referenced schema object to select on.
 
-The following illustrates the specification of an `invoice_line_items` property in the invoice schema object. In this example, the `invoice_line` schema object has a property `invoice_id` (x-am-child-property). API-Maker will use the invoice primary key property `invoice_id` to select `invoice_line` records with the matching `invoice_id`.
+The following illustrates the specification of an `invoice_line_items` property in the invoice schema object. In this example, the `invoice_line` schema object has a property `invoice_id` (x-am-child-property). API-Foundry will use the invoice primary key property `invoice_id` to select `invoice_line` records with the matching `invoice_id`.
 
 ```yaml
 invoice_line_items:
@@ -566,7 +577,7 @@ invoice_line_items:
 
 #### Handling Primary Keys
 
-Within the schema component, a property can be designated as the primary key.   API-Maker offers support for multiple primary key generation strategies.
+Within the schema component, a property can be designated as the primary key.   API-Foundry offers support for multiple primary key generation strategies.
 
 
 > Schema objects with multiple primary keys is not currently supported.
@@ -601,15 +612,15 @@ Optionally, a property within the schema component can be identified as a concur
 
 When a schema object includes a concurrency control property the following occurs;
 
-* API-Maker manages the value of the property, clients may not change the value.
+* API-Foundry manages the value of the property, clients may not change the value.
 * For each mutation of the object the value of the property is changed.
 * Clients making mutations to objects must provide both the key and the control property.  If the control property does not match the request will fail.
 
-A concurrency control property is set by adding the 'x-am-concurrency-control' attribute to the schema object definition.  The value must be the name of either a string or integer property of the schema object. API-Maker applies the following strategies depending on the property type and format specified for the control property:
+A concurrency control property is set by adding the 'x-am-concurrency-control' attribute to the schema object definition.  The value must be the name of either a string or integer property of the schema object. API-Foundry applies the following strategies depending on the property type and format specified for the control property:
 
 | Property Type | Property Format | Column Type | Description |
 |---------------|-----------------|-------------|-------------|
-| string        | date-time       | timestamp   | Timestamp: API-Maker inserts the current time in the control field, and applications must provide that timestamp. |
+| string        | date-time       | timestamp   | Timestamp: API-Foundry inserts the current time in the control field, and applications must provide that timestamp. |
 | string        |                 |string       | Uses database UUID function in the control value. |
 | interger      |                 | integer     |  When created the value is set to one.  Incremented by one on subsequent updates |
 
@@ -653,21 +664,21 @@ In the context of custom SQL integration, you define the path operation with a m
 
 #### Deployment and Path Operation Precedence
 
-During deployment, API-Maker builds an OpenAPI specification document that configures the AWS API Gateway. This document combines path operations explicitly defined in the API specification with those needed to support the record management functions associated with any component schema objects.
+During deployment, API-Foundry builds an OpenAPI specification document that configures the AWS API Gateway. This document combines path operations explicitly defined in the API specification with those needed to support the record management functions associated with any component schema objects.
 
-When combining these two sets of path operations, API-Maker gives precedence to path operations with custom SQL over the default component schema record management functions. This feature allows you to explicitly override API-Maker's default behavior. However, it can also become a potential 'gotcha' if not managed carefully, as custom path operations may inadvertently override essential default operations.
+When combining these two sets of path operations, API-Foundry gives precedence to path operations with custom SQL over the default component schema record management functions. This feature allows you to explicitly override API-Foundry's default behavior. However, it can also become a potential 'gotcha' if not managed carefully, as custom path operations may inadvertently override essential default operations.
 
 #### Request Inputs
 
 Request inputs can be declared either in the path operation's parameters or in the request body sections of the OpenAPI definition. These inputs are used to parameterize the custom SQL.
 
-- **Path Operation Parameters**: Parameters are generally used for record selection. API-Maker often uses these parameters to filter or identify specific records within the database that match the criteria specified in the custom SQL.
+- **Path Operation Parameters**: Parameters are generally used for record selection. API-Foundry often uses these parameters to filter or identify specific records within the database that match the criteria specified in the custom SQL.
 
 - **Request Body**: The request body is typically used to provide data for storage or updates, and it only applies to `PUT` and `POST` operations. These operations involve creating new records or updating existing ones, and the data to be stored or updated is passed through the request body.
 
-In API-Maker, the names of the inputs defined in the path operation's parameters or request body are used to match placeholders in the custom SQL query. Placeholders in the SQL query are denoted by a colon (`:`) followed by the input name. For example, if you define an input named `user_id`, you would reference this in your custom SQL as `:user_id`. This ensures that the appropriate values are substituted into the SQL query when the API is called.
+In API-Foundry, the names of the inputs defined in the path operation's parameters or request body are used to match placeholders in the custom SQL query. Placeholders in the SQL query are denoted by a colon (`:`) followed by the input name. For example, if you define an input named `user_id`, you would reference this in your custom SQL as `:user_id`. This ensures that the appropriate values are substituted into the SQL query when the API is called.
 
-While API-Maker is designed to obtain parameters from either the path operation parameters or the request body, the convention is to use path operation parameters for selecting records and the request body for storing or updating data. This separation ensures that the custom SQL receives the appropriate inputs depending on the type of operation being performed.
+While API-Foundry is designed to obtain parameters from either the path operation parameters or the request body, the convention is to use path operation parameters for selecting records and the request body for storing or updating data. This separation ensures that the custom SQL receives the appropriate inputs depending on the type of operation being performed.
 
 #### SQL to Execute
 
@@ -682,9 +693,9 @@ Placeholders can be included in the custom SQL query. These placeholders begin w
 
 #### Response Outputs
 
-Upon successful execution of the custom SQL, API-Maker expects a cursor containing the SQL results. It will then attempt to map the cursor's contents into an array of objects to be returned as the path operation result. This mapping must be defined in the responses section of the path operation.
+Upon successful execution of the custom SQL, API-Foundry expects a cursor containing the SQL results. It will then attempt to map the cursor's contents into an array of objects to be returned as the path operation result. This mapping must be defined in the responses section of the path operation.
 
-The path operation must specify a response with a status code in the 200's, using application/json content type, and a schema that defines an array of objects. The properties defined in the array are used by API-Maker to convert the custom SQL cursor into the API response.
+The path operation must specify a response with a status code in the 200's, using application/json content type, and a schema that defines an array of objects. The properties defined in the array are used by API-Foundry to convert the custom SQL cursor into the API response.
 
 When mapping from the SQL result to the API response, there are two strategies to handle mismatches between property names:
 
@@ -820,17 +831,17 @@ Like any OpenAPI path operation the request parameters and response structure wi
 
 During the implementation of the API specification, schema objects and operation paths were associated with a database name using the `x-am-database` attribute.
 
-In this section, we will cover how API-Maker uses that attribute to connect to the database and perform the operations needed to complete requests.
+In this section, we will cover how API-Foundry uses that attribute to connect to the database and perform the operations needed to complete requests.
 
-First, the connection data that API-Maker uses to establish database connections is never 'built-in' to the Lambda function or any other part of the deployment. Instead, API-Maker obtains the connection data from an AWS Secrets Manager secret. Secrets are loaded on demand and only once per instance.
+First, the connection data that API-Foundry uses to establish database connections is never 'built-in' to the Lambda function or any other part of the deployment. Instead, API-Foundry obtains the connection data from an AWS Secrets Manager secret. Secrets are loaded on demand and only once per instance.
 
-As part of the deployment, a secrets map will need to be provided. This mapping allows API-Maker to determine the secret name using the `x-am-database` attribute value as the key.  An API can span multiple databases and the secrets map must contain a mapping for all databases referenced.
+As part of the deployment, a secrets map will need to be provided. This mapping allows API-Foundry to determine the secret name using the `x-am-database` attribute value as the key.  An API can span multiple databases and the secrets map must contain a mapping for all databases referenced.
 
 Thus, there are two main configuration tasks: creating the secrets and providing the secrets map in the deployment code.
 
 ## Configuring Secrets
 
-When API-Maker accesses connection data in a secret, it expects a JSON string containing the required connection parameters.
+When API-Foundry accesses connection data in a secret, it expects a JSON string containing the required connection parameters.
 
 | Parameter     | Description                                               | Value                                                           |
 |---------------|-----------------------------------------------------------|-----------------------------------------------------------------|
@@ -872,7 +883,7 @@ These attributes map the componnent object to a database table.
 | x-am-sequence-name    | Specifies the database sequence to be used for generating primary keys.                                     | Required only when the primary key type is "sequence".                                    |
 #### Schema Component Object Associations
 
-When defining the api using schema objects the Open API specication allows properties that can be either objects or array of objects in addition to the other basic types.  With additional custom attributes API-Maker can populate these properties saving the client application the need to make multiple requests to construct objects with these properties.
+When defining the api using schema objects the Open API specication allows properties that can be either objects or array of objects in addition to the other basic types.  With additional custom attributes API-Foundry can populate these properties saving the client application the need to make multiple requests to construct objects with these properties.
 
 **Including an Object Property**
 
@@ -907,9 +918,9 @@ components:
           x-am-parent-property: customer_id
 ```
 
-In this example, the `customer` property of the `invoice` schema is an object type after reference resolution. By setting the `x-am-parent-property` attribute to a sibling property, API-Maker will use the value of that property to resolve the object value. Specifically, in this example, the `customer_id` value of the invoice will be used to select the corresponding customer.
+In this example, the `customer` property of the `invoice` schema is an object type after reference resolution. By setting the `x-am-parent-property` attribute to a sibling property, API-Foundry will use the value of that property to resolve the object value. Specifically, in this example, the `customer_id` value of the invoice will be used to select the corresponding customer.
 
-> Internally API-Maker uses inner joins to select these objects using a single database operation.
+> Internally API-Foundry uses inner joins to select these objects using a single database operation.
 
 **Including an Array Propety**
 
@@ -943,7 +954,7 @@ Consider the following api spec:
           type: integer
 ```
 
-In this example, the `line_items` property of the `invoice` schema is an array of `invoice_lines` type after reference resolution.  By setting the `x-am-child-property` attribute to a property in the `invoice_line` schema, API-Maker will use the primary key value of the invoice to select on that property.  Specifically, in this example, the `invoice_id` values from the selected `invoice`s will be used to filter on the `invoice_id` property of the associated `invoice_line` items.
+In this example, the `line_items` property of the `invoice` schema is an array of `invoice_lines` type after reference resolution.  By setting the `x-am-child-property` attribute to a property in the `invoice_line` schema, API-Foundry will use the primary key value of the invoice to select on that property.  Specifically, in this example, the `invoice_id` values from the selected `invoice`s will be used to filter on the `invoice_id` property of the associated `invoice_line` items.
 
 
 | Attribute             | Description                                          | Usage             |
@@ -980,7 +991,7 @@ Here's an example of how the `customer` property would be specified in the `invo
 
 In this example the `customer` property type is specified as being a relation to the schema component object `customer'.  When fetching data API-Make will then use
 
-With API-Maker
+With API-Foundry
 
 | Attribute | | Description |
 |-----------|-|-------------|
@@ -997,7 +1008,7 @@ With API-Maker
 ## PostgreSQL Database Schemas
 
 
-This section provides instructions on how to use the `postgres_to_openapi` script, which is included in the `api_maker` package, to generate OpenAPI schemas from PostgreSQL database schemas. The generated OpenAPI schemas will include the necessary components to represent the database tables, columns, primary keys, and foreign key relationships.
+This section provides instructions on how to use the `postgres_to_openapi` script, which is included in the `api_foundry` package, to generate OpenAPI schemas from PostgreSQL database schemas. The generated OpenAPI schemas will include the necessary components to represent the database tables, columns, primary keys, and foreign key relationships.
 
 #### Prerequisites
 
@@ -1005,9 +1016,9 @@ This section provides instructions on how to use the `postgres_to_openapi` scrip
 - `psycopg2-binary` library for PostgreSQL connectivity
 - `pyyaml` library for YAML processing
 
-You can install the `api_maker` package and its dependencies using the following command:
+You can install the `api_foundry` package and its dependencies using the following command:
 ```sh
-pip install api_maker psycopg2-binary
+pip install api_foundry psycopg2-binary
 ```
 
 #### Script Overview
@@ -1071,21 +1082,21 @@ components:
 
 # Attic
 
-With API-Maker, developing RESTful API's is first focused on defining components and services in the form of an Open API specification.  Objects in this specification then can be enhanced by either;
+With API-Foundry, developing RESTful API's is first focused on defining components and services in the form of an Open API specification.  Objects in this specification then can be enhanced by either;
 
-* Schema component objects can be enhanced with database table configuration, allowing API-Maker to provide RESTful CRUD services on table records.
+* Schema component objects can be enhanced with database table configuration, allowing API-Foundry to provide RESTful CRUD services on table records.
 * Path operations can be enhanced with database connection and SQL configuration to provide service based on custom SQL.
 
-For data read operations using HTTP GET, API-Maker provides robust data selection capability reducing the need for building custom services. To achieve this API-Maker provides the following features;
+For data read operations using HTTP GET, API-Foundry provides robust data selection capability reducing the need for building custom services. To achieve this API-Foundry provides the following features;
 
 * Comparison oprands can be applied to a property when selecting data.  These operand such as; less than, between, and in, can be applied to any property for record selection.
 * Associations between component objects can be defined allowing retrieval of complex objects containing associated data in a single request.
 * Requesting applications can restrict the properties being returned.
 * Requesting applications can select the case convention (snake or lower camel) of the ressponse results.
 
-API-Maker is not a traditional object relational model (ORM) library but rather operates by generating and executing SQL queries to perform its services.  Generating operations this way keeps marshaling and unmarshaling objects to a minimum, ensuring efficient data retrieval and manipulation.
+API-Foundry is not a traditional object relational model (ORM) library but rather operates by generating and executing SQL queries to perform its services.  Generating operations this way keeps marshaling and unmarshaling objects to a minimum, ensuring efficient data retrieval and manipulation.
 
-Deploying APIs with API-Maker involves the following steps:
+Deploying APIs with API-Foundry involves the following steps:
 
 1. Store the annotated API specification on Amazon S3.
 2. Configure and deploy the Lambda archive.
@@ -1095,7 +1106,7 @@ Deploying APIs with API-Maker involves the following steps:
 
 # Usage
 
-When utilizing API-Maker to construct APIs, the primary focus of development lies in defining component schema objects and path operations.
+When utilizing API-Foundry to construct APIs, the primary focus of development lies in defining component schema objects and path operations.
 
 Annotations on component schema objects enable seamless operations on database tables. At a minimum, these annotations configure the database and table name. However, additional annotations are available to enhance functionality:
 
@@ -1115,7 +1126,7 @@ This is done via two primary methods.
 
 ## Using API Services
 
-When processing requests, API-Maker categorizes parameters into three categories: query, store, and metadata.
+When processing requests, API-Foundry categorizes parameters into three categories: query, store, and metadata.
 
 **Qeury Parameters**
 
@@ -1138,7 +1149,7 @@ Metadata parameters allow sending of additional instructions in the request.  Th
 
 ### Schema Object Services
 
-When schema objects are enhanced with database configuration API-Maker builds the following services.
+When schema objects are enhanced with database configuration API-Foundry builds the following services.
 
 
 | Operation | URI                     | Method | Description |
@@ -1213,7 +1224,7 @@ https://bobsrecords.com/employee?hire_date=between::2024-01-01,2024-12-31
 ### Updating Data
 
 Updating data is done via PUT method requests.  If in the schema component object a property has been ehanced with a version type attribute
-then API-Maker restricts updates to single records.  Without a version property then normal record selection occurs allowing bulk updates
+then API-Foundry restricts updates to single records.  Without a version property then normal record selection occurs allowing bulk updates
 of records.
 
 
@@ -1226,7 +1237,7 @@ of records.
 | PUT    | update    |
 | DELETE | delete    |
 
-Request parameters for services provided by API-Maker
+Request parameters for services provided by API-Foundry
 
 ### Selecting Data - GET
 

@@ -1,8 +1,8 @@
 import pytest
 
-from api_maker.services.service import Service
-from api_maker.adapters.gateway_adapter import GatewayAdapter
-from api_maker.operation import Operation
+from api_foundry.services.service import Service
+from api_foundry.adapters.gateway_adapter import GatewayAdapter
+from api_foundry.operation import Operation
 
 
 def proto_event(

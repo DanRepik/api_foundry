@@ -1,10 +1,13 @@
 {
   "python.analysis.typeCheckingMode": "basic",
   "python.testing.pytestArgs": [
-    "--cov=src/api_maker/",
+    "--cov=src/api_foundry/",
     "--cov-report=xml",
     "tests/"
   ],
   "python.testing.unittestEnabled": false,
-  "python.testing.pytestEnabled": true
+  "python.testing.pytestEnabled": true,
+  "python.analysis.extraPaths": [
+    "./src"
+  ]
 }

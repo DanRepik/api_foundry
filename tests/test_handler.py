@@ -3,8 +3,8 @@ import json
 import boto3
 import pytest
 
-from api_maker.utils.model_factory import ModelFactory
-from api_maker.iac.handler import lambda_handler
+from api_foundry.utils.model_factory import ModelFactory
+from api_foundry.iac.handler import lambda_handler
 
 from test_fixtures import db_secrets
 
