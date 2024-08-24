@@ -1,3 +1,5 @@
+from typing import Optional
+
 from api_foundry.dao.sql_query_handler import SQLSchemaQueryHandler
 from api_foundry.dao.sql_select_query_handler import SQLSelectSchemaQueryHandler
 from api_foundry.operation import Operation
@@ -42,7 +44,7 @@ class SQLSubselectSchemaQueryHandler(SQLSelectSchemaQueryHandler):
         return self.search_placeholders
 
     @property
-    def sql(self) -> str | None:
+    def sql(self) -> Optional[str]:
         if len(self.select_list_columns) == 1:  # then it only contains the key
             return None
 

@@ -1,3 +1,5 @@
+from typing import Union
+
 from api_foundry.dao.sql_custom_query_handler import SQLCustomQueryHandler
 from api_foundry.dao.sql_delete_query_handler import SQLDeleteSchemaQueryHandler
 from api_foundry.dao.sql_insert_query_handler import SQLInsertSchemaQueryHandler
@@ -67,7 +69,7 @@ class OperationDAO(DAO):
                 )
         return self._query_handler
 
-    def execute(self, cursor: Cursor) -> list[dict] | dict:
+    def execute(self, cursor: Cursor) -> Union[list[dict], dict]:
         """
         Execute the database operation based on the provided cursor.
 

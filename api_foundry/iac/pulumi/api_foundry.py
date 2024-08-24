@@ -84,4 +84,15 @@ class APIFoundry(ComponentResource):
             body=body,
         )
 
+        deployment = aws.apigateway.Deployment(
+            f"{name}-deployment", rest_api=gateway.id
+        )
+
+        aws.apigateway.Stage(
+            f"{name}-stage",
+            rest_api=gateway.id,
+            deployment=deployment.id,
+            stage_name=name,
+        )
+
         export("gateway-api", gateway.id)

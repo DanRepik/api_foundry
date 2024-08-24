@@ -1,6 +1,6 @@
 # Pulumi - Chinook Example
 
-This folder contains a working API-MAKER deployment.
+This folder contains a working API-Foundry deployment.
 
 # Installation
 
@@ -40,7 +40,7 @@ endpoint_url = http://localhost.localstack.cloud:4566
 
 ## Dev Playground
 
-The Dev Playground is a docker compose file that sets up both Localstack and a collection of databases running in Docker.  The playground provides a local environment where API-MAKER deployments can be made.
+The Dev Playground is a docker compose file that sets up both Localstack and a collection of databases running in Docker.  The playground provides a local environment where API-Foundry deployments can be made.
 
 The Dev Playground runs with Postgres, Oracle, and MySQL databases and they are initialized with the Chinook open source database.
 
