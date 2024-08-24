@@ -26,7 +26,7 @@ create table employee
   dept_id smallint unsigned,
   title varchar(20),
   assigned_branch_id smallint unsigned,
-  constraint fk_e_emp_id 
+  constraint fk_e_emp_id
     foreign key (superior_emp_id) references employee (emp_id),
   constraint fk_dept_id
     foreign key (dept_id) references department (dept_id),
@@ -47,7 +47,7 @@ create table product
   product_type_cd varchar(10) not null,
   date_offered date,
   date_retired date,
-  constraint fk_product_type_cd foreign key (product_type_cd) 
+  constraint fk_product_type_cd foreign key (product_type_cd)
     references product_type (product_type_cd),
   constraint pk_product primary key (product_cd)
  );
@@ -160,113 +160,113 @@ insert into branch (branch_id, name, address, city, state, zip)
 values (null, 'So. NH Branch', '378 Maynard Ln.', 'Salem', 'NH', '03079');
 
 /* employee data */
-insert into employee (emp_id, fname, lname, start_date, 
+insert into employee (emp_id, fname, lname, start_date,
   dept_id, title, assigned_branch_id)
-values (null, 'Michael', 'Smith', '2001-06-22', 
-  (select dept_id from department where name = 'Administration'), 
-  'President', 
+values (null, 'Michael', 'Smith', '2001-06-22',
+  (select dept_id from department where name = 'Administration'),
+  'President',
   (select branch_id from branch where name = 'Headquarters'));
-insert into employee (emp_id, fname, lname, start_date, 
+insert into employee (emp_id, fname, lname, start_date,
   dept_id, title, assigned_branch_id)
-values (null, 'Susan', 'Barker', '2002-09-12', 
-  (select dept_id from department where name = 'Administration'), 
-  'Vice President', 
+values (null, 'Susan', 'Barker', '2002-09-12',
+  (select dept_id from department where name = 'Administration'),
+  'Vice President',
   (select branch_id from branch where name = 'Headquarters'));
-insert into employee (emp_id, fname, lname, start_date, 
+insert into employee (emp_id, fname, lname, start_date,
   dept_id, title, assigned_branch_id)
 values (null, 'Robert', 'Tyler', '2000-02-09',
-  (select dept_id from department where name = 'Administration'), 
-  'Treasurer', 
+  (select dept_id from department where name = 'Administration'),
+  'Treasurer',
   (select branch_id from branch where name = 'Headquarters'));
-insert into employee (emp_id, fname, lname, start_date, 
+insert into employee (emp_id, fname, lname, start_date,
   dept_id, title, assigned_branch_id)
-values (null, 'Susan', 'Hawthorne', '2002-04-24', 
-  (select dept_id from department where name = 'Operations'), 
-  'Operations Manager', 
+values (null, 'Susan', 'Hawthorne', '2002-04-24',
+  (select dept_id from department where name = 'Operations'),
+  'Operations Manager',
   (select branch_id from branch where name = 'Headquarters'));
-insert into employee (emp_id, fname, lname, start_date, 
+insert into employee (emp_id, fname, lname, start_date,
   dept_id, title, assigned_branch_id)
-values (null, 'John', 'Gooding', '2003-11-14', 
-  (select dept_id from department where name = 'Loans'), 
-  'Loan Manager', 
+values (null, 'John', 'Gooding', '2003-11-14',
+  (select dept_id from department where name = 'Loans'),
+  'Loan Manager',
   (select branch_id from branch where name = 'Headquarters'));
-insert into employee (emp_id, fname, lname, start_date, 
+insert into employee (emp_id, fname, lname, start_date,
   dept_id, title, assigned_branch_id)
-values (null, 'Helen', 'Fleming', '2004-03-17', 
-  (select dept_id from department where name = 'Operations'), 
-  'Head Teller', 
+values (null, 'Helen', 'Fleming', '2004-03-17',
+  (select dept_id from department where name = 'Operations'),
+  'Head Teller',
   (select branch_id from branch where name = 'Headquarters'));
-insert into employee (emp_id, fname, lname, start_date, 
+insert into employee (emp_id, fname, lname, start_date,
   dept_id, title, assigned_branch_id)
-values (null, 'Chris', 'Tucker', '2004-09-15', 
-  (select dept_id from department where name = 'Operations'), 
-  'Teller', 
+values (null, 'Chris', 'Tucker', '2004-09-15',
+  (select dept_id from department where name = 'Operations'),
+  'Teller',
   (select branch_id from branch where name = 'Headquarters'));
-insert into employee (emp_id, fname, lname, start_date, 
+insert into employee (emp_id, fname, lname, start_date,
   dept_id, title, assigned_branch_id)
-values (null, 'Sarah', 'Parker', '2002-12-02', 
-  (select dept_id from department where name = 'Operations'), 
-  'Teller', 
+values (null, 'Sarah', 'Parker', '2002-12-02',
+  (select dept_id from department where name = 'Operations'),
+  'Teller',
   (select branch_id from branch where name = 'Headquarters'));
-insert into employee (emp_id, fname, lname, start_date, 
+insert into employee (emp_id, fname, lname, start_date,
   dept_id, title, assigned_branch_id)
-values (null, 'Jane', 'Grossman', '2002-05-03', 
-  (select dept_id from department where name = 'Operations'), 
-  'Teller', 
+values (null, 'Jane', 'Grossman', '2002-05-03',
+  (select dept_id from department where name = 'Operations'),
+  'Teller',
   (select branch_id from branch where name = 'Headquarters'));
-insert into employee (emp_id, fname, lname, start_date, 
+insert into employee (emp_id, fname, lname, start_date,
   dept_id, title, assigned_branch_id)
-values (null, 'Paula', 'Roberts', '2002-07-27', 
-  (select dept_id from department where name = 'Operations'), 
-  'Head Teller', 
+values (null, 'Paula', 'Roberts', '2002-07-27',
+  (select dept_id from department where name = 'Operations'),
+  'Head Teller',
   (select branch_id from branch where name = 'Woburn Branch'));
-insert into employee (emp_id, fname, lname, start_date, 
+insert into employee (emp_id, fname, lname, start_date,
   dept_id, title, assigned_branch_id)
-values (null, 'Thomas', 'Ziegler', '2000-10-23', 
-  (select dept_id from department where name = 'Operations'), 
-  'Teller', 
+values (null, 'Thomas', 'Ziegler', '2000-10-23',
+  (select dept_id from department where name = 'Operations'),
+  'Teller',
   (select branch_id from branch where name = 'Woburn Branch'));
-insert into employee (emp_id, fname, lname, start_date, 
+insert into employee (emp_id, fname, lname, start_date,
   dept_id, title, assigned_branch_id)
-values (null, 'Samantha', 'Jameson', '2003-01-08', 
-  (select dept_id from department where name = 'Operations'), 
-  'Teller', 
+values (null, 'Samantha', 'Jameson', '2003-01-08',
+  (select dept_id from department where name = 'Operations'),
+  'Teller',
   (select branch_id from branch where name = 'Woburn Branch'));
-insert into employee (emp_id, fname, lname, start_date, 
+insert into employee (emp_id, fname, lname, start_date,
   dept_id, title, assigned_branch_id)
-values (null, 'John', 'Blake', '2000-05-11', 
-  (select dept_id from department where name = 'Operations'), 
-  'Head Teller', 
+values (null, 'John', 'Blake', '2000-05-11',
+  (select dept_id from department where name = 'Operations'),
+  'Head Teller',
   (select branch_id from branch where name = 'Quincy Branch'));
-insert into employee (emp_id, fname, lname, start_date, 
+insert into employee (emp_id, fname, lname, start_date,
   dept_id, title, assigned_branch_id)
-values (null, 'Cindy', 'Mason', '2002-08-09', 
-  (select dept_id from department where name = 'Operations'), 
-  'Teller', 
+values (null, 'Cindy', 'Mason', '2002-08-09',
+  (select dept_id from department where name = 'Operations'),
+  'Teller',
   (select branch_id from branch where name = 'Quincy Branch'));
-insert into employee (emp_id, fname, lname, start_date, 
+insert into employee (emp_id, fname, lname, start_date,
   dept_id, title, assigned_branch_id)
-values (null, 'Frank', 'Portman', '2003-04-01', 
-  (select dept_id from department where name = 'Operations'), 
-  'Teller', 
+values (null, 'Frank', 'Portman', '2003-04-01',
+  (select dept_id from department where name = 'Operations'),
+  'Teller',
   (select branch_id from branch where name = 'Quincy Branch'));
-insert into employee (emp_id, fname, lname, start_date, 
+insert into employee (emp_id, fname, lname, start_date,
   dept_id, title, assigned_branch_id)
-values (null, 'Theresa', 'Markham', '2001-03-15', 
-  (select dept_id from department where name = 'Operations'), 
-  'Head Teller', 
+values (null, 'Theresa', 'Markham', '2001-03-15',
+  (select dept_id from department where name = 'Operations'),
+  'Head Teller',
   (select branch_id from branch where name = 'So. NH Branch'));
-insert into employee (emp_id, fname, lname, start_date, 
+insert into employee (emp_id, fname, lname, start_date,
   dept_id, title, assigned_branch_id)
-values (null, 'Beth', 'Fowler', '2002-06-29', 
-  (select dept_id from department where name = 'Operations'), 
-  'Teller', 
+values (null, 'Beth', 'Fowler', '2002-06-29',
+  (select dept_id from department where name = 'Operations'),
+  'Teller',
   (select branch_id from branch where name = 'So. NH Branch'));
-insert into employee (emp_id, fname, lname, start_date, 
+insert into employee (emp_id, fname, lname, start_date,
   dept_id, title, assigned_branch_id)
-values (null, 'Rick', 'Tulman', '2002-12-12', 
-  (select dept_id from department where name = 'Operations'), 
-  'Teller', 
+values (null, 'Rick', 'Tulman', '2002-12-12',
+  (select dept_id from department where name = 'Operations'),
+  'Teller',
   (select branch_id from branch where name = 'So. NH Branch'));
 
 /* create data for self-referencing foreign key 'superior_emp_id' */
@@ -284,26 +284,26 @@ update employee set superior_emp_id =
  (select emp_id from emp_tmp where lname = 'Hawthorne' and fname = 'Susan')
 where ((lname = 'Gooding' and fname = 'John')
   or (lname = 'Fleming' and fname = 'Helen')
-  or (lname = 'Roberts' and fname = 'Paula') 
-  or (lname = 'Blake' and fname = 'John') 
-  or (lname = 'Markham' and fname = 'Theresa')); 
+  or (lname = 'Roberts' and fname = 'Paula')
+  or (lname = 'Blake' and fname = 'John')
+  or (lname = 'Markham' and fname = 'Theresa'));
 update employee set superior_emp_id =
  (select emp_id from emp_tmp where lname = 'Fleming' and fname = 'Helen')
-where ((lname = 'Tucker' and fname = 'Chris') 
-  or (lname = 'Parker' and fname = 'Sarah') 
-  or (lname = 'Grossman' and fname = 'Jane'));  
+where ((lname = 'Tucker' and fname = 'Chris')
+  or (lname = 'Parker' and fname = 'Sarah')
+  or (lname = 'Grossman' and fname = 'Jane'));
 update employee set superior_emp_id =
  (select emp_id from emp_tmp where lname = 'Roberts' and fname = 'Paula')
-where ((lname = 'Ziegler' and fname = 'Thomas')  
-  or (lname = 'Jameson' and fname = 'Samantha'));   
+where ((lname = 'Ziegler' and fname = 'Thomas')
+  or (lname = 'Jameson' and fname = 'Samantha'));
 update employee set superior_emp_id =
  (select emp_id from emp_tmp where lname = 'Blake' and fname = 'John')
-where ((lname = 'Mason' and fname = 'Cindy')   
-  or (lname = 'Portman' and fname = 'Frank'));    
+where ((lname = 'Mason' and fname = 'Cindy')
+  or (lname = 'Portman' and fname = 'Frank'));
 update employee set superior_emp_id =
  (select emp_id from emp_tmp where lname = 'Markham' and fname = 'Theresa')
-where ((lname = 'Fowler' and fname = 'Beth')   
-  or (lname = 'Tulman' and fname = 'Rick'));    
+where ((lname = 'Fowler' and fname = 'Beth')
+  or (lname = 'Tulman' and fname = 'Rick'));
 
 drop table emp_tmp;
 
@@ -441,8 +441,8 @@ insert into account (account_id, product_cd, cust_id, open_date,
   open_emp_id, avail_balance, pending_balance)
 select null, a.prod_cd, c.cust_id, a.open_date, a.last_date, 'ACTIVE',
   e.branch_id, e.emp_id, a.avail, a.pend
-from customer c cross join 
- (select b.branch_id, e.emp_id 
+from customer c cross join
+ (select b.branch_id, e.emp_id
   from branch b inner join employee e on e.assigned_branch_id = b.branch_id
   where b.city = 'Woburn' limit 1) e
   cross join
@@ -458,8 +458,8 @@ insert into account (account_id, product_cd, cust_id, open_date,
   open_emp_id, avail_balance, pending_balance)
 select null, a.prod_cd, c.cust_id, a.open_date, a.last_date, 'ACTIVE',
   e.branch_id, e.emp_id, a.avail, a.pend
-from customer c cross join 
- (select b.branch_id, e.emp_id 
+from customer c cross join
+ (select b.branch_id, e.emp_id
   from branch b inner join employee e on e.assigned_branch_id = b.branch_id
   where b.city = 'Woburn' limit 1) e
   cross join
@@ -473,8 +473,8 @@ insert into account (account_id, product_cd, cust_id, open_date,
   open_emp_id, avail_balance, pending_balance)
 select null, a.prod_cd, c.cust_id, a.open_date, a.last_date, 'ACTIVE',
   e.branch_id, e.emp_id, a.avail, a.pend
-from customer c cross join 
- (select b.branch_id, e.emp_id 
+from customer c cross join
+ (select b.branch_id, e.emp_id
   from branch b inner join employee e on e.assigned_branch_id = b.branch_id
   where b.city = 'Quincy' limit 1) e
   cross join
@@ -488,8 +488,8 @@ insert into account (account_id, product_cd, cust_id, open_date,
   open_emp_id, avail_balance, pending_balance)
 select null, a.prod_cd, c.cust_id, a.open_date, a.last_date, 'ACTIVE',
   e.branch_id, e.emp_id, a.avail, a.pend
-from customer c cross join 
- (select b.branch_id, e.emp_id 
+from customer c cross join
+ (select b.branch_id, e.emp_id
   from branch b inner join employee e on e.assigned_branch_id = b.branch_id
   where b.city = 'Waltham' limit 1) e
   cross join
@@ -505,8 +505,8 @@ insert into account (account_id, product_cd, cust_id, open_date,
   open_emp_id, avail_balance, pending_balance)
 select null, a.prod_cd, c.cust_id, a.open_date, a.last_date, 'ACTIVE',
   e.branch_id, e.emp_id, a.avail, a.pend
-from customer c cross join 
- (select b.branch_id, e.emp_id 
+from customer c cross join
+ (select b.branch_id, e.emp_id
   from branch b inner join employee e on e.assigned_branch_id = b.branch_id
   where b.city = 'Salem' limit 1) e
   cross join
@@ -518,8 +518,8 @@ insert into account (account_id, product_cd, cust_id, open_date,
   open_emp_id, avail_balance, pending_balance)
 select null, a.prod_cd, c.cust_id, a.open_date, a.last_date, 'ACTIVE',
   e.branch_id, e.emp_id, a.avail, a.pend
-from customer c cross join 
- (select b.branch_id, e.emp_id 
+from customer c cross join
+ (select b.branch_id, e.emp_id
   from branch b inner join employee e on e.assigned_branch_id = b.branch_id
   where b.city = 'Waltham' limit 1) e
   cross join
@@ -533,8 +533,8 @@ insert into account (account_id, product_cd, cust_id, open_date,
   open_emp_id, avail_balance, pending_balance)
 select null, a.prod_cd, c.cust_id, a.open_date, a.last_date, 'ACTIVE',
   e.branch_id, e.emp_id, a.avail, a.pend
-from customer c cross join 
- (select b.branch_id, e.emp_id 
+from customer c cross join
+ (select b.branch_id, e.emp_id
   from branch b inner join employee e on e.assigned_branch_id = b.branch_id
   where b.city = 'Woburn' limit 1) e
   cross join
@@ -546,8 +546,8 @@ insert into account (account_id, product_cd, cust_id, open_date,
   open_emp_id, avail_balance, pending_balance)
 select null, a.prod_cd, c.cust_id, a.open_date, a.last_date, 'ACTIVE',
   e.branch_id, e.emp_id, a.avail, a.pend
-from customer c cross join 
- (select b.branch_id, e.emp_id 
+from customer c cross join
+ (select b.branch_id, e.emp_id
   from branch b inner join employee e on e.assigned_branch_id = b.branch_id
   where b.city = 'Salem' limit 1) e
   cross join
@@ -561,8 +561,8 @@ insert into account (account_id, product_cd, cust_id, open_date,
   open_emp_id, avail_balance, pending_balance)
 select null, a.prod_cd, c.cust_id, a.open_date, a.last_date, 'ACTIVE',
   e.branch_id, e.emp_id, a.avail, a.pend
-from customer c cross join 
- (select b.branch_id, e.emp_id 
+from customer c cross join
+ (select b.branch_id, e.emp_id
   from branch b inner join employee e on e.assigned_branch_id = b.branch_id
   where b.city = 'Waltham' limit 1) e
   cross join
@@ -580,8 +580,8 @@ insert into account (account_id, product_cd, cust_id, open_date,
   open_emp_id, avail_balance, pending_balance)
 select null, a.prod_cd, c.cust_id, a.open_date, a.last_date, 'ACTIVE',
   e.branch_id, e.emp_id, a.avail, a.pend
-from customer c cross join 
- (select b.branch_id, e.emp_id 
+from customer c cross join
+ (select b.branch_id, e.emp_id
   from branch b inner join employee e on e.assigned_branch_id = b.branch_id
   where b.city = 'Salem' limit 1) e
   cross join
@@ -595,8 +595,8 @@ insert into account (account_id, product_cd, cust_id, open_date,
   open_emp_id, avail_balance, pending_balance)
 select null, a.prod_cd, c.cust_id, a.open_date, a.last_date, 'ACTIVE',
   e.branch_id, e.emp_id, a.avail, a.pend
-from customer c cross join 
- (select b.branch_id, e.emp_id 
+from customer c cross join
+ (select b.branch_id, e.emp_id
   from branch b inner join employee e on e.assigned_branch_id = b.branch_id
   where b.city = 'Woburn' limit 1) e
   cross join
@@ -608,8 +608,8 @@ insert into account (account_id, product_cd, cust_id, open_date,
   open_emp_id, avail_balance, pending_balance)
 select null, a.prod_cd, c.cust_id, a.open_date, a.last_date, 'ACTIVE',
   e.branch_id, e.emp_id, a.avail, a.pend
-from customer c cross join 
- (select b.branch_id, e.emp_id 
+from customer c cross join
+ (select b.branch_id, e.emp_id
   from branch b inner join employee e on e.assigned_branch_id = b.branch_id
   where b.city = 'Salem' limit 1) e
   cross join
@@ -621,8 +621,8 @@ insert into account (account_id, product_cd, cust_id, open_date,
   open_emp_id, avail_balance, pending_balance)
 select null, a.prod_cd, c.cust_id, a.open_date, a.last_date, 'ACTIVE',
   e.branch_id, e.emp_id, a.avail, a.pend
-from customer c cross join 
- (select b.branch_id, e.emp_id 
+from customer c cross join
+ (select b.branch_id, e.emp_id
   from branch b inner join employee e on e.assigned_branch_id = b.branch_id
   where b.city = 'Quincy' limit 1) e
   cross join

@@ -1,12 +1,9 @@
 import pytest
-from unittest.mock import patch, MagicMock
-from api_foundry.utils.app_exception import ApplicationException
 from api_foundry.utils.logger import logger
 from api_foundry.utils.model_factory import (
     ModelFactory,
     SchemaObject,
     SchemaObjectProperty,
-    OpenAPIElement,
 )
 
 log = logger(__name__)
@@ -33,13 +30,10 @@ def test_set_spec():
         }
     )
 
-    assert "testschema" in ModelFactory.schema_objects
-    schema_object = ModelFactory.get_schema_object("testschema")
+    assert "TestSchema" in ModelFactory.schema_objects
+    schema_object = ModelFactory.get_schema_object("TestSchema")
     assert isinstance(schema_object, SchemaObject)
-    assert schema_object.operation_id == "testschema"
-
-
-#    assert schema_object.get_property("id").is_primary_key is True
+    assert schema_object.operation_id == "TestSchema"
 
 
 def test_schema_object_initialization():
@@ -61,8 +55,8 @@ def test_schema_object_initialization():
         }
     )
 
-    schema_object = ModelFactory.get_schema_object("testschema")
-    assert schema_object.operation_id == "testschema"
+    schema_object = ModelFactory.get_schema_object("TestSchema")
+    assert schema_object.operation_id == "TestSchema"
     assert schema_object.database == "testdb"
 
 

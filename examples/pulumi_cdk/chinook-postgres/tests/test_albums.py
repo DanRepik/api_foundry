@@ -1,12 +1,12 @@
 import requests
 from api_foundry.utils.logger import logger
 
-from test_secrets_fixture_cp import gateway_endpoint
+from test_secrets_fixture_cp import gateway_endpoint  # noqa F401
 
 log = logger(__name__)
 
 
-def test_get_request_all(gateway_endpoint):
+def test_get_request_all(gateway_endpoint):  # noqa F811
     # Define the endpoint
     endpoint = gateway_endpoint + "/album"
 
@@ -33,7 +33,7 @@ def test_get_request_all(gateway_endpoint):
     assert isinstance(albums[0]["artist_id"], int), "Expected 'value' to be an integer"
 
 
-def test_get_request_by_id(gateway_endpoint):
+def test_get_request_by_id(gateway_endpoint):  # noqa F811
     # Define the endpoint
     endpoint = gateway_endpoint + "/album/5"
 

@@ -6,21 +6,21 @@ from api_foundry.utils.logger import logger
 from api_foundry.operation import Operation
 from api_foundry.services.transactional_service import TransactionalService
 
-from test_fixtures import load_model, db_secrets
+from test_fixtures import load_model, db_secrets  # noqa F811
 
 log = logger(__name__)
 
 
 @pytest.mark.integration
 class TestQueryOperations:
-    def test_select_all(self, load_model, db_secrets):
+    def test_select_all(self, load_model, db_secrets):  # noqa F811
         result = TransactionalService().execute(
             Operation(operation_id="invoice", action="read")
         )
         log.debug(f"len: {len(result)}")
         assert len(result) == 412
 
-    def test_select_one(self, load_model, db_secrets):
+    def test_select_one(self, load_model, db_secrets):  # noqa F811
         result = TransactionalService().execute(
             Operation(
                 operation_id="invoice", action="read", query_params={"invoice_id": 2}
@@ -30,7 +30,7 @@ class TestQueryOperations:
         assert len(result) == 1
         assert result[0]["invoice_id"] == 2
 
-    def test_select_multiple(self, load_model, db_secrets):
+    def test_select_multiple(self, load_model, db_secrets):  # noqa F811
         result = TransactionalService().execute(
             Operation(
                 operation_id="invoice",
@@ -41,9 +41,9 @@ class TestQueryOperations:
         log.info(f"count: {len(result)}")
         assert len(result) == 24
 
-    def test_select_invalid(self, load_model, db_secrets):
+    def test_select_invalid(self, load_model, db_secrets):  # noqa F811
         try:
-            result = TransactionalService().execute(
+            TransactionalService().execute(
                 Operation(
                     operation_id="invoice",
                     action="read",
@@ -58,7 +58,7 @@ class TestQueryOperations:
                 == "Invalid query parameter, property not found. schema object: invoice, property: otal"
             )
 
-    def test_select_gt_le_int(self, load_model, db_secrets):
+    def test_select_gt_le_int(self, load_model, db_secrets):  # noqa F811
         result = TransactionalService().execute(
             Operation(
                 operation_id="invoice",
@@ -87,7 +87,7 @@ class TestQueryOperations:
 
         assert total_count == gt_count + le_count
 
-    def test_select_ge_lt_int(self, load_model, db_secrets):
+    def test_select_ge_lt_int(self, load_model, db_secrets):  # noqa F811
         result = TransactionalService().execute(
             Operation(
                 operation_id="invoice",
@@ -115,7 +115,7 @@ class TestQueryOperations:
 
         assert total_count == ge_count + lt_count
 
-    def test_select_between_int(self, load_model, db_secrets):
+    def test_select_between_int(self, load_model, db_secrets):  # noqa F811
         result = TransactionalService().execute(
             Operation(
                 operation_id="invoice",
@@ -144,7 +144,7 @@ class TestQueryOperations:
 
         assert total_count == between_count + not_between_count
 
-    def test_select_in_int(self, load_model, db_secrets):
+    def test_select_in_int(self, load_model, db_secrets):  # noqa F811
         result = TransactionalService().execute(
             Operation(
                 operation_id="invoice",
@@ -173,7 +173,7 @@ class TestQueryOperations:
 
         assert total_count == in_count + not_in_count
 
-    def test_select_ge_lt_timestamp(self, load_model, db_secrets):
+    def test_select_ge_lt_timestamp(self, load_model, db_secrets):  # noqa F811
         result = TransactionalService().execute(
             Operation(
                 operation_id="invoice",

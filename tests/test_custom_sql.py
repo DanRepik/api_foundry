@@ -116,7 +116,13 @@ class TestSQLGenerator:
 
         assert (
             sql_operation.sql
-            == "SELECT a.album_id as album_id, a.title AS album_title, COUNT(il.invoice_line_id) AS total_sold FROM invoice_line il JOIN track t ON il.track_id = t.track_id JOIN album a ON t.album_id = a.album_id WHERE i.invoice_date >= %(start)s AND i.invoice_date <= %(end)s GROUP BY a.title ORDER BY total_sold DESC LIMIT %(limit)s"
+            == "SELECT a.album_id as album_id, a.title AS album_title, "
+            + "COUNT(il.invoice_line_id) AS total_sold FROM invoice_line il "
+            + "JOIN track t ON il.track_id = t.track_id "
+            + "JOIN album a ON t.album_id = a.album_id "
+            + "WHERE i.invoice_date >= %(start)s "
+            + "AND i.invoice_date <= %(end)s "
+            + "GROUP BY a.title ORDER BY total_sold DESC LIMIT %(limit)s"
         )
         assert sql_operation.placeholders == {
             "start": "2022-01-01T00:00:00",

@@ -122,7 +122,7 @@ class TestUpdateSQLHandler:
             "total": 2.63,
         }
 
-    def test_update_missing_version(self, load_model):
+    def test_update_missing_version(self, load_model):  # noqa F811
         schema_object = ModelFactory.get_schema_object("invoice")
         operation = Operation(
             operation_id="invoice",
@@ -148,7 +148,7 @@ class TestUpdateSQLHandler:
                 == "Missing required concurrency management property.  schema_object: invoice, property: last_updated"
             )
 
-    def test_update_overwrite_version(self, load_model):
+    def test_update_overwrite_version(self, load_model):  # noqa F811
         try:
             sql_handler = SQLUpdateSchemaQueryHandler(
                 Operation(

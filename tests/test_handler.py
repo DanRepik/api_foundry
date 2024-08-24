@@ -1,16 +1,15 @@
 import os
 import json
-import boto3
 import pytest
 
 from api_foundry.utils.model_factory import ModelFactory
 from api_foundry.iac.handler import lambda_handler
 
-from test_fixtures import db_secrets
+from test_fixtures import db_secrets  # noqa F401
 
 
 @pytest.fixture(autouse=True)
-def set_environment_variables(db_secrets):
+def set_environment_variables(db_secrets):  # noqa F811
     os.environ["API_SPEC"] = "resources/chinook_api.yaml"
 
     event = {

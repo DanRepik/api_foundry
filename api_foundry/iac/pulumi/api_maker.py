@@ -1,10 +1,7 @@
-import json
 import pkgutil
-from typing import Any, Awaitable, Mapping, Optional, Sequence, Union, overload
-from zipfile import ZipFile
+from typing import Any, Awaitable, Mapping
 
 import pulumi
-from pulumi.output import Inputs
 import pulumi_aws as aws
 
 from api_foundry.utils.logger import logger, DEBUG, write_logging_file
@@ -12,7 +9,6 @@ from api_foundry.utils.model_factory import ModelFactory
 from api_foundry.iac.gateway_spec import GatewaySpec
 from api_foundry.cloudprints.python_archive_builder import PythonArchiveBuilder
 from api_foundry.cloudprints.pulumi.lambda_ import PythonFunctionCloudprint
-from api_foundry.cloudprints.pulumi.rest_api import GatewayAPICloudprint
 
 log = logger(__name__)
 
@@ -32,7 +28,9 @@ class APIMaker(pulumi.ComponentResource):
 
         assert "secrets" in props, "Missing secrets map"
 
-        api_foundry_source = "/Users/clydedanielrepik/workspace/api_foundry/src/api_foundry"
+        api_foundry_source = (
+            "/Users/clydedanielrepik/workspace/api_foundry/src/api_foundry"
+        )
 
         self.archive_builder = PythonArchiveBuilder(
             name=f"{name}-archive-builder",

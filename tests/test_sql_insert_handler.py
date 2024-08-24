@@ -7,14 +7,14 @@ from api_foundry.utils.app_exception import ApplicationException
 from api_foundry.utils.model_factory import ModelFactory, SchemaObject
 from api_foundry.operation import Operation
 from api_foundry.utils.logger import logger
-from test_fixtures import load_model
+from test_fixtures import load_model  # noqa f401
 
 log = logger(__name__)
 
 
 @pytest.mark.unit
 class TestInsertSQLHandler:
-    def test_insert_uuid(self, load_model):
+    def test_insert_uuid(self, load_model):  # noqa F811
         sql_handler = SQLInsertSchemaQueryHandler(
             Operation(
                 operation_id="invoice",
@@ -84,7 +84,14 @@ class TestInsertSQLHandler:
 
         assert (
             sql_handler.sql
-            == "INSERT INTO invoice ( customer_id, invoice_date, billing_address, billing_city, billing_country, billing_postal_code, total, version_stamp ) VALUES ( %(customer_id)s, %(invoice_date)s, %(billing_address)s, %(billing_city)s, %(billing_country)s, %(billing_postal_code)s, %(total)s, gen_random_uuid()) RETURNING invoice_id, customer_id, invoice_date, billing_address, billing_city, billing_state, billing_country, billing_postal_code, total, version_stamp"
+            == "INSERT INTO invoice ( customer_id, invoice_date, billing_address, "
+            + "billing_city, billing_country, billing_postal_code, total, version_stamp ) "
+            + "VALUES ( %(customer_id)s, %(invoice_date)s, %(billing_address)s, "
+            + "%(billing_city)s, %(billing_country)s, %(billing_postal_code)s, %(total)s, "
+            + "gen_random_uuid()) "
+            + "RETURNING invoice_id, customer_id, invoice_date, billing_address, "
+            + "billing_city, billing_state, billing_country, billing_postal_code, "
+            + "total, version_stamp"
         )
 
         assert sql_handler.placeholders == {
@@ -97,7 +104,7 @@ class TestInsertSQLHandler:
             "total": 1.63,
         }
 
-    def test_insert_no_cc(self, load_model):
+    def test_insert_no_cc(self, load_model):  # noqa F811
         sql_handler = SQLInsertSchemaQueryHandler(
             Operation(
                 operation_id="invoice",
@@ -165,7 +172,13 @@ class TestInsertSQLHandler:
 
         assert (
             sql_handler.sql
-            == "INSERT INTO invoice ( customer_id, invoice_date, billing_address, billing_city, billing_country, billing_postal_code, total ) VALUES ( %(customer_id)s, %(invoice_date)s, %(billing_address)s, %(billing_city)s, %(billing_country)s, %(billing_postal_code)s, %(total)s) RETURNING invoice_id, customer_id, invoice_date, billing_address, billing_city, billing_state, billing_country, billing_postal_code, total"
+            == "INSERT INTO invoice ( customer_id, invoice_date, billing_address, "
+            + "billing_city, billing_country, billing_postal_code, total ) "
+            + "VALUES ( %(customer_id)s, %(invoice_date)s, %(billing_address)s, "
+            + "%(billing_city)s, %(billing_country)s, %(billing_postal_code)s, "
+            + "%(total)s) RETURNING invoice_id, customer_id, invoice_date, "
+            + "billing_address, billing_city, billing_state, billing_country, "
+            + "billing_postal_code, total"
         )
 
         assert sql_handler.placeholders == {
@@ -178,7 +191,7 @@ class TestInsertSQLHandler:
             "total": 1.63,
         }
 
-    def test_insert_property_selection(self, load_model):
+    def test_insert_property_selection(self, load_model):  # noqa F811
         sql_handler = SQLInsertSchemaQueryHandler(
             Operation(
                 operation_id="invoice",
@@ -249,7 +262,11 @@ class TestInsertSQLHandler:
 
         assert (
             sql_handler.sql
-            == "INSERT INTO invoice ( customer_id, invoice_date, billing_address, billing_city, billing_country, billing_postal_code, total, last_updated ) VALUES ( %(customer_id)s, %(invoice_date)s, %(billing_address)s, %(billing_city)s, %(billing_country)s, %(billing_postal_code)s, %(total)s, gen_random_uuid()) RETURNING customer_id, invoice_date"
+            == "INSERT INTO invoice ( customer_id, invoice_date, billing_address, "
+            + "billing_city, billing_country, billing_postal_code, total, last_updated ) "
+            + "VALUES ( %(customer_id)s, %(invoice_date)s, %(billing_address)s, "
+            + "%(billing_city)s, %(billing_country)s, %(billing_postal_code)s, %(total)s, "
+            + "gen_random_uuid()) RETURNING customer_id, invoice_date"
         )
 
         assert sql_handler.placeholders == {
@@ -262,9 +279,9 @@ class TestInsertSQLHandler:
             "total": 1.63,
         }
 
-    def test_insert_bad_key(self, load_model):
+    def test_insert_bad_key(self, load_model):  # noqa F811
         try:
-            sql_handler = SQLInsertSchemaQueryHandler(
+            SQLInsertSchemaQueryHandler(
                 Operation(
                     operation_id="genre",
                     action="create",
@@ -295,7 +312,7 @@ class TestInsertSQLHandler:
                 == "Primary key values cannot be inserted when key type is auto. schema_object: genre"
             )
 
-    def test_insert_missing_required_key(self, load_model):
+    def test_insert_missing_required_key(self, load_model):  # noqa F811
         try:
             SQLInsertSchemaQueryHandler(
                 Operation(
@@ -322,12 +339,12 @@ class TestInsertSQLHandler:
                 "postgres",
             )
             assert False, "Attempt to insert without a required key did not fail"
-        except ApplicationException as e:
+        except ApplicationException:
             pass
 
-    def test_insert_auto_key(self, load_model):
+    def test_insert_auto_key(self, load_model):  # noqa F811
         try:
-            sql_handler = SQLInsertSchemaQueryHandler(
+            SQLInsertSchemaQueryHandler(
                 Operation(
                     operation_id="genre",
                     action="create",
@@ -352,10 +369,10 @@ class TestInsertSQLHandler:
                 "postgres",
             )
             assert False, "Attempt to set primary key during insert did not fail"
-        except ApplicationException as e:
+        except ApplicationException:
             pass
 
-    def test_insert_sequence(self, load_model):
+    def test_insert_sequence(self, load_model):  # noqa F811
         sql_handler = SQLInsertSchemaQueryHandler(
             Operation(
                 operation_id="genre",
@@ -385,11 +402,13 @@ class TestInsertSQLHandler:
 
         assert (
             sql_handler.sql
-            == "INSERT INTO genre ( name, genre_id ) VALUES ( %(name)s, nextval('test-sequence')) RETURNING genre_id, name"
+            == "INSERT INTO genre ( name, genre_id ) "
+            + "VALUES ( %(name)s, nextval('test-sequence')) "
+            + "RETURNING genre_id, name"
         )
         assert sql_handler.placeholders == {"name": "Good genre"}
 
-    def test_insert_timestamp(self, load_model):
+    def test_insert_timestamp(self, load_model):  # noqa F811
         try:
             sql_handler = SQLInsertSchemaQueryHandler(
                 Operation(
@@ -425,13 +444,14 @@ class TestInsertSQLHandler:
             )
             assert (
                 sql_handler.sql
-                == "INSERT INTO genre ( name, last_updated ) VALUES ( %(name)s, CURRENT_TIMESTAMP) RETURNING genre_id, name, last_updated"
+                == "INSERT INTO genre ( name, last_updated ) VALUES ( %(name)s, "
+                + "CURRENT_TIMESTAMP) RETURNING genre_id, name, last_updated"
             )
             assert sql_handler.placeholders == {"name": "New genre"}
-        except ApplicationException as e:
+        except ApplicationException:
             assert False
 
-    def test_insert_cc_with_param(self, load_model):
+    def test_insert_cc_with_param(self, load_model):  # noqa F811
         try:
             SQLInsertSchemaQueryHandler(
                 Operation(
@@ -468,10 +488,11 @@ class TestInsertSQLHandler:
         except ApplicationException as e:
             assert (
                 e.message
-                == "Versioned properties can not be supplied a store parameters. schema_object: genre, property: last_updated"
+                == "Versioned properties can not be supplied a store parameters. "
+                + "schema_object: genre, property: last_updated"
             )
 
-    def test_insert_serial(self, load_model):
+    def test_insert_serial(self, load_model):  # noqa F811
         try:
             sql_handler = SQLInsertSchemaQueryHandler(
                 Operation(
@@ -506,15 +527,16 @@ class TestInsertSQLHandler:
             )
             assert (
                 sql_handler.sql
-                == "INSERT INTO genre ( name, last_updated ) VALUES ( %(name)s, 1) RETURNING genre_id, name, last_updated"
+                == "INSERT INTO genre ( name, last_updated ) VALUES ( %(name)s, 1) "
+                + "RETURNING genre_id, name, last_updated"
             )
             assert sql_handler.placeholders == {"name": "New genre"}
-        except ApplicationException as e:
+        except ApplicationException:
             assert False
 
-    def test_insert_sequence_missing_name(self, load_model):
+    def test_insert_sequence_missing_name(self, load_model):  # noqa F811
         try:
-            sql_handler = SQLInsertSchemaQueryHandler(
+            SQLInsertSchemaQueryHandler(
                 Operation(
                     operation_id="genre",
                     action="create",

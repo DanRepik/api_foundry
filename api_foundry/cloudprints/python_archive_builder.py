@@ -1,4 +1,3 @@
-import json
 import os
 import shutil
 import subprocess
@@ -42,7 +41,7 @@ class PythonArchiveBuilder(ArchiveBuilder):
             self.build_archive()
             self._hash = new_hash
             hash_comparator.write(self._hash, self._base_dir)
-    
+
     def hash(self) -> str:
         return self._hash
 
@@ -71,7 +70,7 @@ class PythonArchiveBuilder(ArchiveBuilder):
                         file_path = os.path.join(folder_name, filename)
                         archive_path = os.path.relpath(file_path, self._staging)
                         zipf.write(file_path, archive_path)
-                
+
                 # Add installed libraries
                 for folder_name, _, filenames in os.walk(self._libs):
                     for filename in filenames:
@@ -90,7 +89,7 @@ class PythonArchiveBuilder(ArchiveBuilder):
             return
         for destination, source in self._sources.items():
             destination_path = os.path.join(self._staging, destination)
-                        
+
             try:
                 if os.path.isdir(source):
                     shutil.copytree(source, destination_path)
@@ -99,12 +98,15 @@ class PythonArchiveBuilder(ArchiveBuilder):
                     os.makedirs(os.path.dirname(destination_path), exist_ok=True)
                     shutil.copy2(source, destination_path)
                     log.info(f"File copied from {source} to {destination_path}")
-                else:  #inline
+                else:  # inline
                     try:
                         with open(destination_path, "w") as f:
                             f.write(source + "\n")
                     except Exception as e:
-                        log.error(f"Error writing requirements to {requirements_path}: {e}")
+                        log.error(
+                            "Error writing requirements to "
+                            + f"{destination_path}: {e}"
+                        )
                         raise
             except Exception as e:
                 log.error(f"Error copying {source} to {destination_path}: {e}")
@@ -130,7 +132,12 @@ class PythonArchiveBuilder(ArchiveBuilder):
             log.warning(f"No requirements file found at {requirements_file}")
             return
 
-        log.info(f"Installing packages using: {sys.executable} -m pip3 install --target {self._libs} --platform manylinux2010_x86_64 --implementation cp --only-binary=:all: --upgrade --python-version 3.9 -r {requirements_file}")
+        log.info(
+            f"Installing packages using: {sys.executable} -m pip3 "
+            + f"install --target {self._libs} --platform manylinux2010_x86_64 "
+            + "--implementation cp --only-binary=:all: --upgrade "
+            + f"--python-version 3.9 -r {requirements_file}"
+        )
         self.clean_folder(self._libs)
 
         try:
@@ -161,7 +168,8 @@ class PythonArchiveBuilder(ArchiveBuilder):
 
     def create_clean_folder(self, folder_path):
         """
-        Create a clean folder by removing existing contents or creating the folder if it doesn't exist.
+        Create a clean folder by removing existing contents or creating
+        the folder if it doesn't exist.
 
         Args:
             folder_path (str): Path to the folder to clean or create.
@@ -179,7 +187,8 @@ class PythonArchiveBuilder(ArchiveBuilder):
         Remove all files and folders from the specified folder.
 
         Args:
-            folder_path (str): Path to the folder from which to remove files and folders.
+            folder_path (str): Path to the folder from which to remove
+            files and folders.
 
         Returns:
             None

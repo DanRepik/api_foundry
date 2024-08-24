@@ -1,9 +1,4 @@
-import boto3
-import os
 import pytest
-import json
-
-from botocore.exceptions import ClientError
 
 from api_foundry.utils.model_factory import ModelFactory
 from api_foundry.utils.logger import logger

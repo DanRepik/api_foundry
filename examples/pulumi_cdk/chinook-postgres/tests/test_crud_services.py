@@ -1,18 +1,16 @@
 from datetime import datetime
 import json
-import os
 import requests
 
-from api_foundry.utils.app_exception import ApplicationException
 from api_foundry.utils.logger import logger
 
-from test_secrets_fixture_cp import gateway_endpoint
+from test_secrets_fixture_cp import gateway_endpoint  # noqa F401
 
 log = logger(__name__)
 
 
 class TestCrudService:
-    def test_crud_service(self, gateway_endpoint):
+    def test_crud_service(self, gateway_endpoint):  # noqa F811
         """
         Integration test to check basic crud services.  Media type does not have
         a primary key so query strings are required.
@@ -76,7 +74,7 @@ class TestCrudService:
 
         assert len(result) == 0
 
-    def test_crud_with_timestamp_service(self, gateway_endpoint):
+    def test_crud_with_timestamp_service(self, gateway_endpoint):  # noqa F811
         """
         Integration test to check insert
         """
@@ -181,7 +179,7 @@ class TestCrudService:
 
         assert len(result) == 0
 
-    def test_crud_with_uuid_service(self, gateway_endpoint):
+    def test_crud_with_uuid_service(self, gateway_endpoint):  # noqa F811
         """
         Integration test to check insert
         """
@@ -293,7 +291,7 @@ class TestCrudService:
 
         assert len(result) == 0
 
-    def test_crud_with_version_number_service(self, gateway_endpoint):
+    def test_crud_with_version_number_service(self, gateway_endpoint):  # noqa F811
         """
         Integration test to check insert
         """

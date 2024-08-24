@@ -1,10 +1,4 @@
-import boto3
-import json
-import os
-import re
-
 from api_foundry.utils.logger import logger
-from api_foundry.utils.app_exception import ApplicationException
 
 # Initialize the logger
 log = logger(__name__)

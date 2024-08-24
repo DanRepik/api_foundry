@@ -28,7 +28,11 @@ class GatewaySpec:
         log.info(f"invoke_arn: {function_invoke_arn}")
         document = ModelFactory.spec
 
-        self.api_spec = dict(self.remove_custom_attributes(copy.deepcopy(document)))
+        self.api_spec = dict(
+            self.remove_custom_attributes(
+                self.convert_component_schema_names(copy.deepcopy(document))
+            )
+        )
         if enable_cors:
             self.enable_cors()
 
@@ -67,6 +71,49 @@ class GatewaySpec:
             return [self.remove_attributes(item, pattern) for item in obj]
         else:
             return obj
+
+    def convert_component_schema_names(self, openapi_doc) -> dict:
+        """
+        Converts all component schema object names to lowercase in an OpenAPI document and updates any $ref references.
+
+        Args:
+            openapi_doc (dict): The OpenAPI document as a dictionary.
+
+        Returns:
+            dict: The modified OpenAPI document with lowercase component schema names.
+        """
+        # Step 1: Convert all schema names in the components section to lowercase
+        components = openapi_doc.get("components", {})
+        schemas = components.get("schemas", {})
+
+        new_schemas = {}
+        name_mapping = {}  # To map old names to new lowercase names
+
+        for schema_name, schema_content in schemas.items():
+            lowercase_name = schema_name.lower()
+            new_schemas[lowercase_name] = schema_content
+            name_mapping[
+                f"#/components/schemas/{schema_name}"
+            ] = f"#/components/schemas/{lowercase_name}"
+
+        components["schemas"] = new_schemas
+        openapi_doc["components"] = components
+
+        # Step 2: Fix $ref references throughout the document
+        def fix_refs(obj):
+            if isinstance(obj, dict):
+                for key, value in obj.items():
+                    if key == "$ref" and value in name_mapping:
+                        obj[key] = name_mapping[value]
+                    else:
+                        fix_refs(value)
+            elif isinstance(obj, list):
+                for item in obj:
+                    fix_refs(item)
+
+        fix_refs(openapi_doc)
+
+        return openapi_doc
 
     def add_custom_authentication(self, authentication_invoke_arn: str):
         components = self.api_spec.get("components", None)

@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional, List, Union
 from datetime import datetime
 from api_foundry.utils.app_exception import ApplicationException
 from api_foundry.utils.spec_handler import SpecificationHandler
-from api_foundry.utils.logger import logger
+from api_foundry.utils.logger import logger, DEBUG
 
 log = logger(__name__)
 
@@ -351,7 +351,8 @@ class PathOperation(OpenAPIElement):
                 pattern = re.compile(r"2\d{2}|2xx")
                 for status_code, response in responses.items():
                     if pattern.fullmatch(status_code):
-                        log.info(f"response: {response}")
+                        if log.isEnabledFor(DEBUG):
+                            log.debug(f"response: {response}")
                         content = (
                             self.get(
                                 [
@@ -365,7 +366,8 @@ class PathOperation(OpenAPIElement):
                             )
                             or {}
                         )
-                        log.info(f"content: {content}")
+                        if log.isEnabledFor(DEBUG):
+                            log.debug(f"content: {content}")
                         for name, property in content.items():
                             properties[name] = SchemaObjectProperty(
                                 self.path, name, property, self.spec
@@ -409,18 +411,8 @@ class ModelFactory:
         schemas = cls.spec.get("components", {}).get("schemas", {})
         for name, schema in schemas.items():
             if "x-af-database" in schema:
-                cls.schema_objects[name.lower()] = schema
+                cls.schema_objects[name] = SchemaObject(name, schema, cls.spec)
 
-        cls.initialize_schema_objects()
-        cls.initialize_path_operations()
-
-    @classmethod
-    def initialize_schema_objects(cls):
-        for name, schema in cls.schema_objects.items():
-            cls.schema_objects[name] = SchemaObject(name, schema, cls.spec)
-
-    @classmethod
-    def initialize_path_operations(cls):
         paths = cls.spec.get("paths", {})
         cls.path_operations = {}
         for path, operations in paths.items():
@@ -432,11 +424,6 @@ class ModelFactory:
 
     @classmethod
     def get_schema_object(cls, name: str) -> SchemaObject:
-        if name not in cls.schema_objects:
-            cls.schema_objects[name] = SchemaObject(
-                name, cls.schema_objects[name], cls.spec
-            )
-
         return cls.schema_objects[name]
 
     @classmethod

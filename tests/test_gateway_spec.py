@@ -1,6 +1,5 @@
 import pytest
-import json
-from api_foundry.utils.model_factory import ModelFactory, SchemaObject
+from api_foundry.utils.model_factory import ModelFactory
 from api_foundry.utils.logger import logger
 
 from api_foundry.iac.gateway_spec import GatewaySpec
@@ -15,6 +14,7 @@ def setup_model_factory():
         "components": {
             "schemas": {
                 "TestSchema": {
+                    "x-af-database": "test-db",
                     "type": "object",
                     "properties": {
                         "id": {"type": "integer", "x-af-primary-key": "auto"},
@@ -49,6 +49,7 @@ def test_gateway_spec_initialization(setup_model_factory):
     assert "paths" in gateway_spec.api_spec
     assert "components" in gateway_spec.api_spec
     assert "schemas" in gateway_spec.api_spec["components"]
+    log.info(f"schemas: {gateway_spec.api_spec['components']['schemas']}")
     assert "testschema" in gateway_spec.api_spec["components"]["schemas"]
 
 
@@ -93,7 +94,7 @@ def test_gateway_spec_operations(setup_model_factory):
     )
 
     schema_name = "TestSchema"
-    schema_object = ModelFactory.get_schema_object(schema_name.lower())
+    schema_object = ModelFactory.get_schema_object(schema_name)
     gateway_spec.generate_crud_operations(schema_name, schema_object)
 
     assert f"/{schema_name.lower()}" in gateway_spec.api_spec["paths"]

@@ -16,4 +16,3 @@ def log_group(scope: Construct, name: str, retention_in_days: int = 3) -> Cloudw
         retention_in_days=retention_in_days,
         tags=make_tags(scope, name)
     )
-

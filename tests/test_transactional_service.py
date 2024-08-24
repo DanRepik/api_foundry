@@ -6,13 +6,13 @@ from api_foundry.utils.logger import logger
 from api_foundry.operation import Operation
 from api_foundry.services.transactional_service import TransactionalService
 
-from test_fixtures import load_model, db_secrets
+from test_fixtures import load_model, db_secrets  # noqa F401
 
 log = logger(__name__)
 
 
 class TestTransactionalService:
-    def test_crud_service(self, load_model, db_secrets):
+    def test_crud_service(self, load_model, db_secrets):  # noqa F811
         """
         Integration test to check insert
         """
@@ -81,7 +81,7 @@ class TestTransactionalService:
         log.info(f"result: {json.dumps(result, indent=4)}")
         assert len(result) == 0
 
-    def test_crud_with_timestamp_service(self, load_model, db_secrets):
+    def test_crud_with_timestamp_service(self, load_model, db_secrets):  # noqa F811
         """
         Integration test to check insert
         """
@@ -201,7 +201,7 @@ class TestTransactionalService:
         log.info(f"result: {json.dumps(result, indent=4)}")
         assert len(result) == 0
 
-    def test_crud_with_uuid_service(self, load_model, db_secrets):
+    def test_crud_with_uuid_service(self, load_model, db_secrets):  # noqa F811
         """
         Integration test to check insert
         """

@@ -1,6 +1,5 @@
 import pytest
 
-from api_foundry.utils.app_exception import ApplicationException
 from api_foundry.utils.logger import logger
 from api_foundry.operation import Operation
 from api_foundry.services.transactional_service import TransactionalService

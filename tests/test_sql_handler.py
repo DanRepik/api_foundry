@@ -1,7 +1,3 @@
-import sys
-import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
-
 import pytest
 
 from datetime import date, datetime, timezone
@@ -58,7 +54,7 @@ class TestSQLHandler:
         assert "i.invoice_id" in sql_handler.select_list
         assert "c.customer_id" in sql_handler.select_list
 
-    def test_search_condition(self, load_model):
+    def test_search_condition(self, load_model):  # noqa F811
         sql_handler = SQLSelectSchemaQueryHandler(
             Operation(
                 operation_id="invoice",
@@ -214,7 +210,7 @@ class TestSQLHandler:
         assert placeholders["i_invoice_id_1"] == 1250.0
         assert placeholders["i_invoice_id_2"] == 1300.0
 
-    def test_search_value_assignment_column_rename(self, load_model):
+    def test_search_value_assignment_column_rename(self, load_model):  # noqa F811
         schema_object = ModelFactory.get_schema_object("invoice")
         operation = Operation(
             operation_id="invoice",
@@ -243,7 +239,7 @@ class TestSQLHandler:
         assert isinstance(placeholders["i_invoice_id"], date)
         assert placeholders["i_invoice_id"] == date(2000, 12, 12)
 
-    def test_search_value_assignment_datetime(self, load_model):
+    def test_search_value_assignment_datetime(self, load_model):  # noqa F811
         schema_object = SchemaObject(
             "invoice",
             {
@@ -278,7 +274,7 @@ class TestSQLHandler:
             2000, 12, 12, 12, 34, 56, tzinfo=timezone.utc
         )
 
-    def test_search_value_assignment_date(self, load_model):
+    def test_search_value_assignment_date(self, load_model):  # noqa F811
         schema_object = SchemaObject(
             "invoice",
             {
@@ -310,7 +306,7 @@ class TestSQLHandler:
         assert placeholders["i_last_updated"] == date(2000, 12, 12)
 
     @pytest.mark.skip
-    def test_search_value_assignment_bool_to_int(self, load_model):
+    def test_search_value_assignment_bool_to_int(self, load_model):  # noqa F811
         schema_object = ModelFactory.get_schema_object("invoice")
         operation = Operation(
             operation_id="invoice", action="read", query_params={"is_active": "true"}
@@ -381,7 +377,7 @@ class TestSQLHandler:
         )
         assert sql_handler.placeholders == {"i_billing_state": "FL"}
 
-    def test_select_simple_table(self, load_model):
+    def test_select_simple_table(self, load_model):  # noqa F811
         try:
             sql_handler = SQLSelectSchemaQueryHandler(
                 Operation(
@@ -414,7 +410,7 @@ class TestSQLHandler:
         except ApplicationException as e:
             assert False, e.message
 
-    def test_select_condition_with_count(self, load_model):
+    def test_select_condition_with_count(self, load_model):  # noqa F811
         try:
             sql_handler = SQLSelectSchemaQueryHandler(
                 Operation(
@@ -450,7 +446,7 @@ class TestSQLHandler:
         except ApplicationException as e:
             assert False, e.message
 
-    def test_select_single_table_no_conditions(self, load_model):
+    def test_select_single_table_no_conditions(self, load_model):  # noqa F811
         try:
             sql_handler = SQLSelectSchemaQueryHandler(
                 Operation(operation_id="genre", action="read"),
