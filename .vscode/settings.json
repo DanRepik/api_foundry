@@ -7,5 +7,13 @@
   ],
   "python.testing.pytestArgs": [
     "tests"
-  ]
+  ],
+  "coverage-gutters.coverageFileNames": [
+    "lcov.info",
+    "cov.xml",
+    "coverage.xml",
+    "jacoco.xml",
+    "coverage.cobertura.xml"
+  ],
+  "coverage-gutters.coverageReportFileName": ""
 }

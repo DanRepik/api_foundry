@@ -13,7 +13,7 @@ from api_foundry.cloudprints.pulumi.lambda_ import PythonFunctionCloudprint
 log = logger(__name__)
 
 
-class APIMaker(pulumi.ComponentResource):
+class APIFoundry(pulumi.ComponentResource):
     def __init__(
         self,
         name: str,
