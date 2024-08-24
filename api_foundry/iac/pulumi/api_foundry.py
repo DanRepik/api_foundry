@@ -1,36 +1,36 @@
 import pkgutil
+import importlib.resources as pkg_resources
+from pathlib import Path
+from pulumi import ComponentResource, Output, ResourceOptions, export
+import pulumi_aws as aws
 from typing import Any, Awaitable, Mapping
 
-import pulumi
-import pulumi_aws as aws
-
-from api_foundry.utils.logger import logger, DEBUG, write_logging_file
-from api_foundry.utils.model_factory import ModelFactory
 from api_foundry.iac.gateway_spec import GatewaySpec
 from api_foundry.cloudprints.python_archive_builder import PythonArchiveBuilder
 from api_foundry.cloudprints.pulumi.lambda_ import PythonFunctionCloudprint
+from api_foundry.utils.logger import logger, DEBUG, write_logging_file
+from api_foundry.utils.model_factory import ModelFactory
 
 log = logger(__name__)
 
 
-class APIFoundry(pulumi.ComponentResource):
+class APIFoundry(ComponentResource):
     def __init__(
         self,
         name: str,
-        props: Mapping[str, Any | Awaitable[Any] | pulumi.Output[Any]],
-        opts: pulumi.ResourceOptions | None = None,
+        props: Mapping[str, Any | Awaitable[Any] | Output[Any]],
+        opts: ResourceOptions | None = None,
         remote: bool = False,
     ) -> None:
         super().__init__("api_foundry", name, props, opts, remote)
 
         api_spec = str(props.get("api_spec", None))
         assert api_spec, "api_spec is not set, a location must be provided."
-
         assert "secrets" in props, "Missing secrets map"
 
-        api_foundry_source = (
-            "/Users/clydedanielrepik/workspace/api_foundry/src/api_foundry"
-        )
+        # Dynamically obtain the path to the `api_foundry` package
+        with pkg_resources.path("api_foundry", "__init__.py") as p:
+            api_foundry_source = str(Path(p).parent)
 
         self.archive_builder = PythonArchiveBuilder(
             name=f"{name}-archive-builder",
@@ -42,7 +42,6 @@ class APIFoundry(pulumi.ComponentResource):
             requirements=[
                 "psycopg2-binary",
                 "pyyaml",
-                #                "-e /Users/clydedanielrepik/workspace/api_foundry",
             ],
             working_dir="temp",
         )
@@ -85,4 +84,4 @@ class APIFoundry(pulumi.ComponentResource):
             body=body,
         )
 
-        pulumi.export("gateway-api", gateway.id)
+        export("gateway-api", gateway.id)
