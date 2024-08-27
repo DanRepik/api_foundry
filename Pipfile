@@ -15,7 +15,8 @@ pulumi-aws = "*"
 build = "*"
 requests = "*"
 twine = "*"
-api-foundry = {file = ".", editable = true}
+api-foundry = "*"
+pytest = "*"
 
 [dev-packages]
 black = "*"

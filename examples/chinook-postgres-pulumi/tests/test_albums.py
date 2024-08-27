@@ -36,6 +36,33 @@ def test_get_request_all(gateway_endpoint):
 def test_get_request_by_id(gateway_endpoint):
     # Define the endpoint
     endpoint = gateway_endpoint + "/album/5"
+    log.info(f"endpoint: {endpoint}")
+
+    # Send the GET request
+    response = requests.get(endpoint)
+
+    # Validate the response status code
+    assert (
+        response.status_code == 200
+    ), f"Expected status code 200, got {response.status_code}"
+
+    # Validate the response content
+    albums = response.json()
+    log.info(f"albums: {albums}")
+    assert len(albums) == 1
+    expected_keys = ["album_id", "title", "artist_id"]
+    for key in expected_keys:
+        assert key in albums[0], f"Missing key '{key}' in response"
+
+    # Additional validation (if necessary)
+    assert albums[0]["album_id"] == 5
+    assert albums[0]["title"] == "Big Ones"
+    assert albums[0]["artist_id"] == 3
+
+def test_get_request_by_id_query(gateway_endpoint):
+    # Define the endpoint
+    endpoint = gateway_endpoint + "/album?album_id=5"
+    log.info(f"endpoint: {endpoint}")
 
     # Send the GET request
     response = requests.get(endpoint)

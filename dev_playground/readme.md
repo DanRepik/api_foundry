@@ -6,6 +6,10 @@ The Dev Playground runs with Postgres, Oracle, and MySQL databases and they are 
 
 The playground must be running if your making local deployments and using the Chinook example databases.
 
+Localstack Playground is a Docker Compose setup with LocalStack and databases (Postgres, Oracle, MySQL) in containers, enabling local development and testing of AWS apps with RDBMS data.
+
+The Dev Playground is a Docker Compose setup that provisions LocalStack alongside a collection of databases (Postgres, Oracle, MySQL) in Docker containers. This environment is designed to facilitate local development and testing of cloud based AWS applications accessing RDBMS data.
+
 **Start Playground**
 
 To start the playground run;

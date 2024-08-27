@@ -587,7 +587,7 @@ A property can be specified as a primary key by adding the 'x-af-primary-key' at
 | Value    | Description |
 |----------|-------------|
 | manual   | The responsibility for providing the key rests with the requesting application. |
-| guid     | The database guid generator is usted to  generate the key. |
+| uuid     | The database uuid generator is usted to  generate the key. |
 |auto      | The database table automatically generates the key.
 | sequence | Employed in databases like Oracle, where a sequence object serve as the source of keys. |
 

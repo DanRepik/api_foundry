@@ -1,7 +1,11 @@
-alias up="pulumi up --yes --stack local"
-alias down="pulumi destroy --yes --stack local"
+alias up="pulumi up --yes --stack dev"
+alias down="pulumi destroy --yes --stack dev"
 
 # import playground commands
-source "$(dirname "$0")/../../../dev_playground/devtools.sh"
+source "$(dirname "$0")/../../../localstack_playground/devtools.sh"
+
+alias dev_up="playground_postgres; ./install_secrets.py"
+alias dev_down="playground_down"
+alias dev_reset="playground_reset"
 
 export AWS_PROFILE=localstack

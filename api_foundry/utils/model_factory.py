@@ -112,11 +112,11 @@ class SchemaObjectKey(SchemaObjectProperty):
     ):
         super().__init__(operation_id, name, properties, spec)
         self.key_type = self.get("x-af-primary-key", default="auto")
-        if self.key_type not in ["required", "auto", "sequence"]:
+        if self.key_type not in ["manual", "uuid", "auto", "sequence"]:
             raise ApplicationException(
                 500,
-                "Invalid primary key type must be one of required, "
-                + f"auto, sequence.  schema_object: {self.operation_id}, "
+                "Invalid primary key type must be one of auto, uuid, "
+                + f"manual, sequence.  schema_object: {self.operation_id}, "
                 + f"property: {self.name}, type: {self.type}",
             )
 

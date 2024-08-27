@@ -24,7 +24,7 @@ class TestUpdateSQLHandler:
                 action="update",
                 query_params={
                     "customer_id": "2",
-                    "version_stamp": "this is a guid",
+                    "version_stamp": "this is a uuid",
                 },
                 store_params={"invoice_date": "2024-03-18", "total": "2.63"},
             ),
@@ -40,7 +40,7 @@ class TestUpdateSQLHandler:
         )
         assert sql_handler.placeholders == {
             "customer_id": 2,
-            "version_stamp": "this is a guid",
+            "version_stamp": "this is a uuid",
             "invoice_date": datetime(2024, 3, 18, 0, 0),
             "total": 2.63,
         }

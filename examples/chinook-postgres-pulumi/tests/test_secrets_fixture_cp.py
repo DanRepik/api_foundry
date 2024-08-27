@@ -23,13 +23,17 @@ def get_stack_output_value(stack_name: str, work_dir: str, output_name: str):
             stack_name=stack_name,
             work_dir=work_dir,
         )
+        log.info(f"stack: {stack}")
 
         # Refresh the stack to get the latest outputs
         stack.refresh(on_output=print)
+        log.info(f"stack: {stack}")
 
         # Get the stack outputs
         outputs = stack.outputs()
-    except auto.errors.CommandError:
+        log.info(f"outputs: {outputs}")
+    except auto.errors.CommandError as ce:
+        log.error(f"error: {ce}")
         return None
 
     # Return the requested output value
@@ -38,6 +42,7 @@ def get_stack_output_value(stack_name: str, work_dir: str, output_name: str):
 
 @pytest.fixture
 def gateway_endpoint():
+    log.info("gateway endpoint")
     api_id = get_stack_output_value("dev", ".", "gateway-api")  # "nt5zecklg7"
     return (
         f"http://{api_id}.execute-api.localhost.localstack.cloud:4566/chinook_postgres"

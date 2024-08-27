@@ -39,7 +39,7 @@ class TestInsertSQLHandler:
                     "properties": {
                         "invoice_id": {
                             "type": "integer",
-                            "x-af-primary-key": "auto",
+                            "x-af-primary-key": "uuid",
                         },
                         "customer_id": {"type": "integer"},
                         "customer": {
