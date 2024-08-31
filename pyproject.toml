@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "api-foundry"
-version = "0.1.10"
+version = "0.1.11"
 authors = [
     { name="Daniel Repik", email="danrepik@icloud.com" },
 ]
@@ -37,6 +37,7 @@ include = ["api_foundry"]
 
 [tool.hatch.metadata.scripts]
 postgres_to_openapi = "api_foundry.scripts.postgres_to_openapi:main"
+install_secret = "api_foundry.scripts.install_secret:main"
 
 [tool.pytest.ini_options]
 markers = [

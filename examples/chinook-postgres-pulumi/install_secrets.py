@@ -12,6 +12,7 @@ except ImportError:
 import json
 from botocore.exceptions import ClientError
 
+
 def create_secret_if_not_exists(secret_name, secret_value):
     # Create a Secrets Manager client
     client = boto3.client(

@@ -59,6 +59,7 @@ def test_get_request_by_id(gateway_endpoint):
     assert albums[0]["title"] == "Big Ones"
     assert albums[0]["artist_id"] == 3
 
+
 def test_get_request_by_id_query(gateway_endpoint):
     # Define the endpoint
     endpoint = gateway_endpoint + "/album?album_id=5"
