@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "api-foundry"
-version = "0.1.11"
+version = "0.1.14"
 authors = [
     { name="Daniel Repik", email="danrepik@icloud.com" },
 ]
@@ -35,7 +35,7 @@ include = ["api_foundry"]
 [tool.hatch.build.targets.wheel]
 include = ["api_foundry"]
 
-[tool.hatch.metadata.scripts]
+[project.scripts]
 postgres_to_openapi = "api_foundry.scripts.postgres_to_openapi:main"
 install_secret = "api_foundry.scripts.install_secret:main"
 

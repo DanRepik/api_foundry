@@ -48,14 +48,10 @@ def main():
         help="The type of database engine. Required, one of: mysql, oracle, postgres",
     )
     parser.add_argument("--host", required=True, help="The database host name")
-    parser.add_argument(
-        "--port", help="The database port. Optional, defaults to 5432."
-    )
+    parser.add_argument("--port", help="The database port. Optional, defaults to 5432.")
     parser.add_argument("--database", required=True, help="The database name")
     parser.add_argument("--user", required=True, help="The database user")
-    parser.add_argument(
-        "--password", required=True, help="The database password"
-    )
+    parser.add_argument("--password", required=True, help="The database password")
     parser.add_argument(
         "--schema", default="public", help="The database schema (default: public)"
     )

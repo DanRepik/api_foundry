@@ -69,7 +69,7 @@ class PostgresSchemaToOpenAPI:
         primary_keys = {}
         for pk in pks:
             primary_keys[pk["column_name"]] = (
-                "auto" if pk["is_identity"] == "YES" else True
+                "auto" if pk["is_identity"] == "YES" else "manual"
             )
 
         return primary_keys
@@ -120,8 +120,7 @@ class PostgresSchemaToOpenAPI:
                     if primary_keys[column_name] == "auto":
                         column_info[
                             "description"
-                        ] = f"Unique identifier for the {table}."
-                        column_info["example"] = 1
+                        ] = f"Unique identifier for the {table}. Read only"
 
                 if (
                     column_info["type"] == "string"
