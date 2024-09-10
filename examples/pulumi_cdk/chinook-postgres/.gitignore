@@ -1,5 +1,0 @@
-*.pyc
-venv/
-
-temp/**
-Pulumi.*.yaml

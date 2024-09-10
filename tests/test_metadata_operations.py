@@ -15,12 +15,14 @@ class TestMetadataOperations:
     def test_count(self, load_model, db_secrets):  # noqa F811
         result = TransactionalService().execute(
             Operation(
-                operation_id="invoice", action="read", metadata_params={"count": True}
+                operation_id="media_type",
+                action="read",
+                metadata_params={"count": True},
             )
         )
         log.debug(f"result: {result}")
         assert isinstance(result, dict)
-        assert result["count"] == 412
+        assert result["count"] == 5
 
     def test_order(self, load_model, db_secrets):  # noqa F811
         result = TransactionalService().execute(

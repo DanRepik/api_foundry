@@ -36,7 +36,9 @@ def test_set_spec():
     assert schema_object.operation_id == "TestSchema"
 
 
+@pytest.mark.unit
 def test_schema_object_initialization():
+    log.info("starting test")
     ModelFactory.set_spec(
         {
             "openapi": "3.0.0",
@@ -58,6 +60,9 @@ def test_schema_object_initialization():
     schema_object = ModelFactory.get_schema_object("TestSchema")
     assert schema_object.operation_id == "TestSchema"
     assert schema_object.database == "testdb"
+    assert schema_object.primary_key
+    assert schema_object.primary_key.name == "id"
+    assert schema_object.primary_key.key_type == "auto"
 
 
 #    assert schema_object.primary_key.name == "id"

@@ -477,15 +477,19 @@ class TestSQLHandler:
 
     def test_delete(self, load_model):  # noqa F811
         schema_object = ModelFactory.get_schema_object("playlist_track")
-        operation = Operation(
-            operation_id="playlist_track",
-            action="delete",
-            query_params={
-                "playlist_id": "2",
-            },
-            metadata_params={"_properties": "track_id"},
+
+        sql_handler = SQLDeleteSchemaQueryHandler(
+            Operation(
+                operation_id="playlist_track",
+                action="delete",
+                query_params={
+                    "playlist_id": "2",
+                },
+                metadata_params={"_properties": "track_id"},
+            ),
+            schema_object,
+            "postgres",
         )
-        sql_handler = SQLDeleteSchemaQueryHandler(operation, schema_object, "postgres")
 
         log.info(f"sql: {sql_handler.sql}, placeholders: {sql_handler.placeholders}")
 

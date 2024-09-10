@@ -1,6 +1,6 @@
 import re
 import yaml
-from typing import Any, Dict, Optional, List, Union
+from typing import Any, Dict, Optional, List, Union, cast
 from datetime import datetime
 from api_foundry.utils.app_exception import ApplicationException
 from api_foundry.utils.spec_handler import SpecificationHandler
@@ -111,6 +111,8 @@ class SchemaObjectKey(SchemaObjectProperty):
         spec: Dict[str, Any],
     ):
         super().__init__(operation_id, name, properties, spec)
+        log.info(f"properties: {properties}")
+        log.info(f"key_type: {self.get('x-af-primary-key')}")
         self.key_type = self.get("x-af-primary-key", default="auto")
         if self.key_type not in ["manual", "uuid", "auto", "sequence"]:
             raise ApplicationException(
@@ -146,9 +148,15 @@ class SchemaObjectAssociation(OpenAPIElement):
     @property
     def child_property(self) -> "SchemaObjectProperty":
         child_property = self.get("x-af-child-property", None)
-        if not child_property:
-            return self.child_schema_object.primary_key
-        return self.child_schema_object.get_property(child_property)
+
+        return cast(
+            SchemaObjectProperty,
+            (
+                self.child_schema_object.get_property(child_property)
+                if child_property
+                else self.child_schema_object.primary_key
+            ),
+        )
 
     @property
     def parent_property(self) -> "SchemaObjectProperty":
@@ -163,9 +171,14 @@ class SchemaObjectAssociation(OpenAPIElement):
                 ),
             )
         parent = self.get("x-af-parent-property")
-        if parent:
-            return parent_schema_object.get_property(parent)
-        return parent_schema_object.primary_key
+        return cast(
+            SchemaObjectProperty,
+            (
+                parent_schema_object.get_property(parent)
+                if parent
+                else parent_schema_object.primary_key
+            ),
+        )
 
     @property
     def child_schema_object(self) -> "SchemaObject":
@@ -190,29 +203,40 @@ class SchemaObject(OpenAPIElement):
         self, operation_id: str, schema_object: Dict[str, Any], spec: Dict[str, Any]
     ):
         super().__init__(schema_object, spec)
+        log.info(f"schema_object init: {schema_object}")
         self.operation_id = operation_id
         self.schema_object = schema_object
         database = schema_object.get("x-af-database")
         if database:
             self.database = database.lower()
-        self.primary_key = None
 
     @property
     def properties(self) -> Dict[str, SchemaObjectProperty]:
+        log.info("properties")
         if not hasattr(self, "_properties"):
             self._resolve_properties()
         return self._properties
 
     @property
     def relations(self) -> Dict[str, SchemaObjectAssociation]:
+        log.info("relations")
         if not hasattr(self, "_relations"):
             self._resolve_properties()
         return self._relations
 
+    @property
+    def primary_key(self) -> SchemaObjectKey:
+        log.info("primary_key")
+        if not hasattr(self, "_primary_key"):
+            self._resolve_properties()
+        return self._primary_key
+
     def _resolve_properties(self):
+        log.info("resolve_properties")
         self._properties = dict()
         self._relations = dict()
-        for property_name, prop in self.get("properties").items():
+        for property_name, prop in cast(dict, self.get("properties")).items():
+            log.info(f"name: {property_name}, prop: {prop}")
             assert prop is not None, (
                 f"Property is none operation_id: {self.operation_id}, "
                 + f"property: {property_name}"
@@ -222,6 +246,7 @@ class SchemaObject(OpenAPIElement):
                 self._properties[property_name] = object_property
 
     def _resolve_property(self, property_name: str, prop: Dict[str, Any]):
+        log.info("resolve property")
         type = self.get("type", prop, None)
 
         if not type:
@@ -231,11 +256,16 @@ class SchemaObject(OpenAPIElement):
             )
 
         if type in ["object", "array"]:
+            log.info(f"relations: {property_name}")
             self._relations[property_name] = SchemaObjectAssociation(
                 self.operation_id,
                 property_name,
                 {
-                    **(prop if type == "object" else self.get("items", prop)),
+                    **(
+                        prop
+                        if type == "object"
+                        else cast(dict, self.get("items", prop))
+                    ),
                     "type": type,
                 },
                 self.spec,
@@ -245,7 +275,7 @@ class SchemaObject(OpenAPIElement):
                 self.operation_id, property_name, prop, self.spec
             )
             if object_property.is_primary_key:
-                self.primary_key = SchemaObjectKey(
+                self._primary_key = SchemaObjectKey(
                     self.operation_id, property_name, prop, self.spec
                 )
             return object_property
@@ -375,7 +405,7 @@ class PathOperation(OpenAPIElement):
         return properties
 
     def _get_schema_properties(
-        self, schema: Dict[str, Any], param_name: str = None
+        self, schema: Dict[str, Any], param_name: Optional[str] = None
     ) -> Dict[str, SchemaObjectProperty]:
         properties = {}
         schema_ref = schema.get("$ref")
@@ -387,14 +417,16 @@ class PathOperation(OpenAPIElement):
                     self.path, prop_name, prop_spec, self.spec
                 )
         elif param_name:
-            properties[param_name] = SchemaObjectProperty(self.path, param_name, schema)
+            properties[param_name] = SchemaObjectProperty(
+                self.path, param_name, schema, self.spec
+            )
         return properties
 
 
 class ModelFactory:
     spec: dict
     schema_objects: Dict[str, SchemaObject] = {}
-    path_operations: Dict[str, PathOperation] = []
+    path_operations: Dict[str, PathOperation] = {}
 
     @classmethod
     def load_yaml(cls, api_spec_path: str):
@@ -405,12 +437,14 @@ class ModelFactory:
 
     @classmethod
     def set_spec(cls, spec: dict):
+        log.info("set_spec")
         cls.spec = spec
         cls.schema_objects = {}
 
         schemas = cls.spec.get("components", {}).get("schemas", {})
         for name, schema in schemas.items():
             if "x-af-database" in schema:
+                log.info(f"schema_object: {name}")
                 cls.schema_objects[name] = SchemaObject(name, schema, cls.spec)
 
         paths = cls.spec.get("paths", {})

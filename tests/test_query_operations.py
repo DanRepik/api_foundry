@@ -15,10 +15,10 @@ log = logger(__name__)
 class TestQueryOperations:
     def test_select_all(self, load_model, db_secrets):  # noqa F811
         result = TransactionalService().execute(
-            Operation(operation_id="invoice", action="read")
+            Operation(operation_id="media_type", action="read")
         )
         log.debug(f"len: {len(result)}")
-        assert len(result) == 412
+        assert len(result) == 5
 
     def test_select_one(self, load_model, db_secrets):  # noqa F811
         result = TransactionalService().execute(

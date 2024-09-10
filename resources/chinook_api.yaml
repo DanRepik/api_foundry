@@ -442,14 +442,14 @@ components:
       properties:
         playlist_id:
           type: integer
-          x-af-primary-key: required
+          x-af-primary-key: manual
         playlist:
           $ref: '#/components/schemas/playlist'
           x-af-parent-property: playlist_id
           description: Playlist associated with the playlist_track.
         track_id:
           type: integer
-          x-af-primary-key: required
+          x-af-primary-key: manual
         track:
           $ref: '#/components/schemas/track'
           x-af-parent-property: track_id
