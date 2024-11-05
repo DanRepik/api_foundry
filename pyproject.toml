@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "api-foundry"
-version = "0.1.15"
+version = "0.1.16"
 authors = [
     { name="Daniel Repik", email="danrepik@icloud.com" },
 ]
@@ -23,6 +23,7 @@ dependencies = [
     "boto3",
     "pulumi",
     "pulumi-aws",
+    "cloud-foundry"
 ]
 
 [project.urls]

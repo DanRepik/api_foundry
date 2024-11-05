@@ -1,13 +1,12 @@
 import re
 import yaml
-from typing import Any, Dict, Optional, List, Union, cast
-from datetime import datetime
+from typing import Any, Dict, Optional
 from api_foundry.utils.app_exception import ApplicationException
-from api_foundry.utils.spec_handler import SpecificationHandler
-from api_foundry.utils.logger import logger, DEBUG
+from api_foundry.utils.logger import logger
 
 log = logger(__name__)
 
+# Mapping of HTTP methods to CRUD-like actions
 methods_to_actions = {
     "get": "read",
     "post": "create",
@@ -17,466 +16,333 @@ methods_to_actions = {
 
 
 class OpenAPIElement:
-    def __init__(self, element: Dict[str, Any], spec: Dict[str, Any]):
-        self.element = element
-        self.spec = spec
-        self.spec_handler = SpecificationHandler(spec)
-        self.title = self.element.get("title", None)
-        self.description = self.element.get("description", None)
-        self.required = self.element.get("required", None)
-        self.type = self.element.get("type", None)
+    """Base class for OpenAPI elements like schema properties and associations."""
 
-    def get(
-        self, key: Union[List[str], str], element=None, default: Optional[str] = None
-    ) -> Optional[Any]:
-        result = self.spec_handler.get(element if element else self.element, key)
-        return result if result else default
+    def to_dict(self) -> Dict[str, Any]:
+        """Converts the OpenAPI element to a dictionary, including nested properties."""
+        return {
+            k: (v.to_dict() if isinstance(v, OpenAPIElement) else v)
+            for k, v in self.__dict__.items()
+            if v is not None  # Exclude items with a value of None
+        }
 
 
 class SchemaObjectProperty(OpenAPIElement):
-    def __init__(
-        self,
-        operation_id: str,
-        name: str,
-        properties: Dict[str, Any],
-        spec: Dict[str, Any],
-    ):
-        super().__init__(properties, spec)
-        self.operation_id = operation_id
-        self.name = name
-        self.column_name = self.get("x-af-column-name") or name
-        self.type = self.get("type") or "string"
-        self.api_type = self.get("format") or self.type
-        self.column_type = self.get("x-af-column-type") or self.api_type
-        self.is_primary_key = self.get("x-af-primary-key") or False
-        self.min_length = self.get("minLength")
-        self.max_length = self.get("maxLength")
-        self.pattern = self.get("pattern")
+    """Represents a property of a schema object in the OpenAPI specification."""
 
-        self.concurrency_control = self.get("x-af-concurrency-control")
-        if self.concurrency_control:
-            self.concurrency_control = self.concurrency_control.lower()
-            assert self.concurrency_control in [
+    def __init__(self, schema_name: str, name: str, property: Dict[str, Any]):
+        super().__init__()
+        self.api_name = name
+        self.column_name = property.get("x-af-column-name") or name
+        self.type = property.get("type") or "string"
+        self.api_type = property.get("format") or self.type
+        self.column_type = property.get("x-af-column-type") or self.api_type
+        self.required = property.get("required", False)
+        self.min_length = property.get("minLength", None)
+        self.max_length = property.get("maxLength", None)
+        self.pattern = property.get("pattern", None)
+        self.default = property.get("default", None)
+        self.key_type = None
+        self.sequence_name = None
+        self.concurrency_control = self._concurrency_control(schema_name, property)
+
+    def _concurrency_control(self, schema_name: str, property: dict) -> Optional[str]:
+        concurrency_control = property.get("x-af-concurrency-control", None)
+        if concurrency_control:
+            concurrency_control = concurrency_control.lower()
+            assert concurrency_control in [
                 "uuid",
                 "timestamp",
                 "serial",
-            ], (
-                "Unrecognized version type, schema object: {self.operation_id}, "
-                + f"property: {name}, version_type: {self.concurrency_control}"
-            )
-
-    @property
-    def default(self):
-        return self.get("default")
-
-    def convert_to_db_value(self, value: str) -> Optional[Any]:
-        if value is None:
-            return None
-        conversion_mapping = {
-            "string": lambda x: x,
-            "number": float,
-            "float": float,
-            "integer": int,
-            "boolean": lambda x: x.lower() == "true",
-            "date": lambda x: datetime.strptime(x, "%Y-%m-%d").date() if x else None,
-            "date-time": lambda x: datetime.fromisoformat(x) if x else None,
-            "time": lambda x: datetime.strptime(x, "%H:%M:%S").time() if x else None,
-        }
-        conversion_func = conversion_mapping.get(self.column_type, lambda x: x)
-        return conversion_func(value)
-
-    def convert_to_api_value(self, value) -> Optional[Any]:
-        if value is None:
-            return None
-        conversion_mapping = {
-            "string": lambda x: x,
-            "number": float,
-            "float": float,
-            "integer": int,
-            "boolean": str,
-            "date": lambda x: x.date().isoformat() if x else None,
-            "date-time": lambda x: x.isoformat() if x else None,
-            "time": lambda x: x.time().isoformat() if x else None,
-        }
-        conversion_func = conversion_mapping.get(self.api_type, lambda x: x)
-        return conversion_func(value)
+            ], f"Invalid concurrency control type '{concurrency_control}' in schema object '{schema_name}', property '{self.api_name}'"
+        return concurrency_control
 
 
 class SchemaObjectKey(SchemaObjectProperty):
-    def __init__(
-        self,
-        operation_id: str,
-        name: str,
-        properties: Dict[str, Any],
-        spec: Dict[str, Any],
-    ):
-        super().__init__(operation_id, name, properties, spec)
-        log.info(f"properties: {properties}")
-        log.info(f"key_type: {self.get('x-af-primary-key')}")
-        self.key_type = self.get("x-af-primary-key", default="auto")
+    """Represents a primary key in a schema object."""
+
+    def __init__(self, schema_name: str, name: str, properties: Dict[str, Any]):
+        super().__init__(schema_name, name, properties)
+        self.key_type = properties.get("x-af-primary-key", "auto")
+
         if self.key_type not in ["manual", "uuid", "auto", "sequence"]:
             raise ApplicationException(
                 500,
-                "Invalid primary key type must be one of auto, uuid, "
-                + f"manual, sequence.  schema_object: {self.operation_id}, "
-                + f"property: {self.name}, type: {self.type}",
+                f"Invalid primary key type '{self.key_type}' in schema object '{schema_name}', property '{self.api_name}'",
             )
 
         self.sequence_name = (
-            self.get("x-af-sequence-name") if self.key_type == "sequence" else None
+            properties.get("x-af-sequence-name")
+            if self.key_type == "sequence"
+            else None
         )
         if self.key_type == "sequence" and not self.sequence_name:
             raise ApplicationException(
                 500,
-                "Sequence-based primary keys must have a sequence "
-                + f"name. Schema object: {self.operation_id}, Property: {self.name}",
+                f"Sequence-based primary keys must have a sequence name in schema object '{schema_name}', property '{self.api_name}'",
             )
 
 
 class SchemaObjectAssociation(OpenAPIElement):
-    def __init__(
-        self,
-        operation_id: str,
-        name: str,
-        properties: Dict[str, Any],
-        spec: Dict[str, Any],
-    ):
-        super().__init__(properties, spec)
-        self.operation_id = operation_id
-        self.name = name
+    """Represents an association (relationship) between schema objects."""
 
-    @property
-    def child_property(self) -> "SchemaObjectProperty":
-        child_property = self.get("x-af-child-property", None)
+    def __init__(self, name: str, property: Dict[str, Any], parent_key):
+        super().__init__()
+        self.api_name = name
+        self.type = property["type"]
 
-        return cast(
-            SchemaObjectProperty,
-            (
-                self.child_schema_object.get_property(child_property)
-                if child_property
-                else self.child_schema_object.primary_key
-            ),
-        )
+        self.schema_name = (
+            property["items"]["$ref"] if self.type == "array" else property["$ref"]
+        ).split("/")[-1]
 
-    @property
-    def parent_property(self) -> "SchemaObjectProperty":
-        parent_schema_object = ModelFactory.get_schema_object(self.operation_id)
-        if not parent_schema_object:
-            raise ApplicationException(
-                500,
-                (
-                    "Parent schema object not found for relation"
-                    + f"operation_id: {self.operation_id}, "
-                    f"attribute: {self.name}"
-                ),
-            )
-        parent = self.get("x-af-parent-property")
-        return cast(
-            SchemaObjectProperty,
-            (
-                parent_schema_object.get_property(parent)
-                if parent
-                else parent_schema_object.primary_key
-            ),
-        )
-
-    @property
-    def child_schema_object(self) -> "SchemaObject":
-        if not hasattr(self, "_child_schema_object"):
-            if "$ref" not in self.element:
-                raise ApplicationException(
-                    500,
-                    f"Missing $ref, operation_id: {self.operation_id}, "
-                    + f"attrbute: {self.name}",
-                )
-            schema_name = self.element["$ref"].split("/")[-1]
-            self._child_schema_object = ModelFactory.get_schema_object(schema_name)
-        return self._child_schema_object
+        self.child_property = property.get("x-af-child-property", None)
+        self.parent_property = property.get("x-af-parent-property", parent_key)
 
 
 class SchemaObject(OpenAPIElement):
-    _properties: Dict[str, SchemaObjectProperty]
-    _relations: Dict[str, SchemaObjectAssociation]
-    _concurrency_property: Optional[SchemaObjectProperty]
+    """Represents a schema object in the OpenAPI specification."""
 
-    def __init__(
-        self, operation_id: str, schema_object: Dict[str, Any], spec: Dict[str, Any]
-    ):
-        super().__init__(schema_object, spec)
-        log.info(f"schema_object init: {schema_object}")
-        self.operation_id = operation_id
-        self.schema_object = schema_object
-        database = schema_object.get("x-af-database")
-        if database:
-            self.database = database.lower()
+    def __init__(self, api_name: str, schema_object: Dict[str, Any]):
+        super().__init__()
+        self.api_name = api_name
+        self.database = schema_object.get("x-af-database", "").lower()
+        self.table_name = self._get_table_name(schema_object)
+        self.properties = self._resolve_properties(schema_object)
+        self.primary_key = self._get_primary_key(schema_object)
+        self.relations = self._resolve_relations(schema_object)
+        self.concurrency_property = self._get_concurrency_property(schema_object)
 
-    @property
-    def properties(self) -> Dict[str, SchemaObjectProperty]:
-        log.info("properties")
-        if not hasattr(self, "_properties"):
-            self._resolve_properties()
-        return self._properties
+    def _get_table_name(self, schema_object: dict) -> str:
+        schema = schema_object.get("x-af-schema")
+        return (
+            f"{schema}."
+            if schema
+            else "" + schema_object.get("x-af-table", self.api_name)
+        )
 
-    @property
-    def relations(self) -> Dict[str, SchemaObjectAssociation]:
-        log.info("relations")
-        if not hasattr(self, "_relations"):
-            self._resolve_properties()
-        return self._relations
-
-    @property
-    def primary_key(self) -> SchemaObjectKey:
-        log.info("primary_key")
-        if not hasattr(self, "_primary_key"):
-            self._resolve_properties()
-        return self._primary_key
-
-    def _resolve_properties(self):
-        log.info("resolve_properties")
-        self._properties = dict()
-        self._relations = dict()
-        for property_name, prop in cast(dict, self.get("properties")).items():
-            log.info(f"name: {property_name}, prop: {prop}")
-            assert prop is not None, (
-                f"Property is none operation_id: {self.operation_id}, "
-                + f"property: {property_name}"
-            )  # noqa E501
+    def _resolve_properties(
+        self, schema_object: dict
+    ) -> Dict[str, SchemaObjectProperty]:
+        properties = {}
+        for property_name, prop in schema_object.get("properties", {}).items():
             object_property = self._resolve_property(property_name, prop)
             if object_property:
-                self._properties[property_name] = object_property
+                properties[property_name] = object_property
+        return properties
 
-    def _resolve_property(self, property_name: str, prop: Dict[str, Any]):
-        log.info("resolve property")
-        type = self.get("type", prop, None)
+    def _resolve_property(
+        self, property_name: str, prop: Dict[str, Any]
+    ) -> Optional[SchemaObjectProperty]:
+        prop_type = prop.get("type")
+        if prop_type == "object" or prop_type == "array":
+            return None
+        return SchemaObjectProperty(self.api_name, property_name, prop)
 
-        if not type:
+    def _resolve_relations(
+        self, schema_object: dict
+    ) -> Dict[str, SchemaObjectAssociation]:
+        relations = {}
+        for property_name, prop in schema_object.get("properties", {}).items():
+            if prop.get("type") == "object" or prop.get("type") == "array":
+                relations[property_name.lower()] = SchemaObjectAssociation(
+                    property_name, prop, self.primary_key
+                )
+        return relations
+
+    def _get_concurrency_property(self, schema_object: dict) -> Optional[str]:
+        concurrency_property_name = schema_object.get("x-af-concurrency-control")
+        if (
+            concurrency_property_name
+            and concurrency_property_name not in self.properties
+        ):
             raise ApplicationException(
                 500,
-                f"Cannot resolve type, object_schema: {self.operation_id}, property: {property_name}",  # noqa E501
+                f"Invalid concurrency property: {concurrency_property_name} not found in properties.",
             )
+        return concurrency_property_name
 
-        if type in ["object", "array"]:
-            log.info(f"relations: {property_name}")
-            self._relations[property_name] = SchemaObjectAssociation(
-                self.operation_id,
-                property_name,
-                {
-                    **(
-                        prop
-                        if type == "object"
-                        else cast(dict, self.get("items", prop))
-                    ),
-                    "type": type,
-                },
-                self.spec,
-            )
-        else:
-            object_property = SchemaObjectProperty(
-                self.operation_id, property_name, prop, self.spec
-            )
-            if object_property.is_primary_key:
-                self._primary_key = SchemaObjectKey(
-                    self.operation_id, property_name, prop, self.spec
-                )
-            return object_property
+    def _get_primary_key(self, schema_object: dict) -> Optional[str]:
+        for property_name, properties in schema_object.get("properties", {}).items():
+            if "x-af-primary-key" in properties:
+                log.info(f"primary_key: {property_name}")
+                property = self.properties[property_name]
+                property.key_type = properties.get("x-af-primary-key", "auto")
 
-        return None
-
-    @property
-    def concurrency_property(self) -> Optional[SchemaObjectProperty]:
-        if not hasattr(self, "_concurrency_property"):
-            concurrency_prop_name = self.schema_object.get(
-                "x-af-concurrency-control", None
-            )
-            if concurrency_prop_name:
-                try:
-                    self._concurrency_property = self.properties[concurrency_prop_name]
-                except KeyError:
+                if property.key_type not in ["manual", "uuid", "auto", "sequence"]:
                     raise ApplicationException(
                         500,
-                        "Concurrency control property does not exist. "
-                        + f"operation_id: {self.operation_id}, "
-                        + f"property: {concurrency_prop_name}",
+                        f"Invalid primary key type '{property.key_type}' in schema object '{self.api_name}', property '{property_name}'",
                     )
-            else:
-                self._concurrency_property = None
-        return self._concurrency_property
 
-    @property
-    def table_name(self) -> str:
-        schema = self.schema_object.get("x-af-schema")
-        return (
-            f"{schema}." if schema else ""
-        ) + f"{self.schema_object.get('x-af-table', self.operation_id)}"
+                if property.key_type == "sequence":
+                    property.sequence_name = properties.get("x-af-sequence-name", None)
+                    if not property.sequence_name:
+                        raise ApplicationException(
+                            500,
+                            f"Sequence-based primary keys must have a sequence name in schema object '{self.api_name}', property '{property_name}'",
+                        )
+                log.info(f"primary property: {vars(property)}")
+                return property_name
+        return None
 
-    def get_property(self, property_name: str) -> Optional[SchemaObjectProperty]:
-        return self.properties.get(property_name)
-
-    def get_relation(self, property_name: str) -> SchemaObjectAssociation:
-        try:
-            return self.relations[property_name]
-        except KeyError:
-            raise ApplicationException(
-                500, f"Unknown relation {property_name}, check api spec.subselect sql:"
-            )
+    def to_dict(self) -> Dict[str, Any]:
+        """Recursively converts the schema object and its properties to a dictionary."""
+        data = super().to_dict()
+        data["properties"] = {k: v.to_dict() for k, v in self.properties.items()}
+        data["relations"] = {k: v.to_dict() for k, v in self.relations.items()}
+        if self.concurrency_property:
+            data["concurrency_property"] = self.concurrency_property
+        return data
 
 
 class PathOperation(OpenAPIElement):
-    def __init__(
-        self,
-        path: str,
-        method: str,
-        path_operation: Dict[str, Any],
-        spec: Dict[str, Any],
-    ):
-        super().__init__(path_operation, spec)
-        self.path = path
-        self.method = method
-        self.path_operation = path_operation
-        self.spec = spec
+    """Represents a single operation (method) on a path in the OpenAPI specification."""
 
-    @property
-    def database(self) -> str:
-        return self.path_operation["x-af-database"]
+    def __init__(self, path: str, method: str, path_operation: Dict[str, Any]):
+        super().__init__()
+        self.entity = path.lower().rsplit("/", 1)[-1]
+        self.action = methods_to_actions[method]
+        self.database = path_operation["x-af-database"]
+        self.sql = path_operation["x-af-sql"]
+        self.inputs = self.get_inputs(path_operation)
+        self.outputs = self._extract_properties(path_operation, "responses")
 
-    @property
-    def sql(self) -> str:
-        return self.path_operation["x-af-sql"]
+    def get_inputs(
+        self, path_operation: Dict[str, Any]
+    ) -> Dict[str, SchemaObjectProperty]:
+        result = {}
+        result = self._extract_properties(path_operation, "requestBody")
+        result.update(self._extract_properties(path_operation, "parameters"))
+        return result
 
-    @property
-    def inputs(self) -> Dict[str, SchemaObjectProperty]:
-        if not hasattr(self, "_inputs"):
-            self._inputs = dict()
-            self._inputs.update(
-                self._extract_properties(self.path_operation, "requestBody")
-            )
-            self._inputs.update(
-                self._extract_properties(self.path_operation, "parameters")
-            )
-        return self._inputs
-
-    @property
-    def outputs(self) -> Dict[str, SchemaObjectProperty]:
-        if not hasattr(self, "_outputs"):
-            self._outputs = self._extract_properties(self.path_operation, "responses")
-        return self._outputs
+    def to_dict(self) -> Dict[str, Any]:
+        """Recursively converts the schema object and its properties to a dictionary."""
+        data = super().to_dict()
+        data["inputs"] = {k: v.to_dict() for k, v in self.inputs.items()}
+        data["outputs"] = {k: v.to_dict() for k, v in self.outputs.items()}
+        return data
 
     def _extract_properties(
-        self, operation: Dict[str, Any], section: str
+        self, path_operation: Dict[str, Any], section: str
     ) -> Dict[str, SchemaObjectProperty]:
         properties = {}
         if section == "requestBody":
-            for name, property in (self.get(["requestBody", "content"]) or {}).items():
-                properties[name] = SchemaObjectProperty(
-                    self.path, name, property, self.spec
-                )
+            for name, property in (
+                path_operation.get("requestBody", {}).get("content", {}) or {}
+            ).items():
+                properties[name] = SchemaObjectProperty(self.entity, name, property)
         elif section == "parameters":
-            for property in self.get("parameters") or {}:
+            for property in path_operation.get("parameters", {}) or []:
                 properties[property["name"]] = SchemaObjectProperty(
-                    self.path, property["name"], property, self.spec
+                    self.entity, property["name"], property
                 )
         elif section == "responses":
-            responses = self.get("responses")
-            if responses:
-                pattern = re.compile(r"2\d{2}|2xx")
-                for status_code, response in responses.items():
-                    if pattern.fullmatch(status_code):
-                        if log.isEnabledFor(DEBUG):
-                            log.debug(f"response: {response}")
-                        content = (
-                            self.get(
-                                [
-                                    "content",
-                                    "application/json",
-                                    "schema",
-                                    "items",
-                                    "properties",
-                                ],
-                                response,
-                            )
-                            or {}
+            responses = path_operation.get("responses", {})
+            pattern = re.compile(r"2\d{2}|2xx")
+            for status_code, response in responses.items():
+                if pattern.fullmatch(status_code):
+                    content = (
+                        response.get("content", {})
+                        .get("application/json", {})
+                        .get("schema", {})
+                        .get("items", {})
+                        .get("properties", {})
+                    )
+                    for name, property in content.items():
+                        properties[name] = SchemaObjectProperty(
+                            self.entity, name, property
                         )
-                        if log.isEnabledFor(DEBUG):
-                            log.debug(f"content: {content}")
-                        for name, property in content.items():
-                            properties[name] = SchemaObjectProperty(
-                                self.path, name, property, self.spec
-                            )
-        return properties
-
-    def _get_schema_properties(
-        self, schema: Dict[str, Any], param_name: Optional[str] = None
-    ) -> Dict[str, SchemaObjectProperty]:
-        properties = {}
-        schema_ref = schema.get("$ref")
-        if schema_ref:
-            schema = self.resolve_reference(schema_ref)
-        if "properties" in schema:
-            for prop_name, prop_spec in schema["properties"].items():
-                properties[prop_name] = SchemaObjectProperty(
-                    self.path, prop_name, prop_spec, self.spec
-                )
-        elif param_name:
-            properties[param_name] = SchemaObjectProperty(
-                self.path, param_name, schema, self.spec
-            )
         return properties
 
 
 class ModelFactory:
-    spec: dict
-    schema_objects: Dict[str, SchemaObject] = {}
-    path_operations: Dict[str, PathOperation] = {}
+    """Factory class to load and process OpenAPI specifications into models."""
 
-    @classmethod
-    def load_yaml(cls, api_spec_path: str):
-        if api_spec_path:
-            with open(api_spec_path, "r") as yaml_file:
-                spec = yaml.safe_load(yaml_file)
-        cls.set_spec(spec)
+    def __init__(self):
+        self.spec: Dict[str, Any] = {}
+        self.schema_objects: Dict[str, SchemaObject] = {}
+        self.path_operations: Dict[str, PathOperation] = {}
 
-    @classmethod
-    def set_spec(cls, spec: dict):
-        log.info("set_spec")
-        cls.spec = spec
-        cls.schema_objects = {}
+    def load_yaml(self, api_spec_path: str):
+        """Loads a YAML file and sets the spec."""
+        with open(api_spec_path, "r") as yaml_file:
+            spec = yaml.safe_load(yaml_file)
+        self.set_spec(spec)
 
-        schemas = cls.spec.get("components", {}).get("schemas", {})
+    def set_spec(self, spec: dict):
+        """Sets the OpenAPI spec and resolves all references."""
+        self.spec = self.resolve_all_refs(spec)
+        self.schema_objects = self._load_schema_objects()
+        self.path_operations = self._load_path_operations()
+
+    def resolve_reference(self, ref: str, base_spec: Dict[str, Any]) -> Any:
+        """Resolve a single $ref reference."""
+        ref_parts = ref.lstrip("#/").split("/")
+        result = base_spec
+        for part in ref_parts:
+            result = result.get(part)
+            if result is None:
+                raise KeyError(
+                    f"Reference part '{part}' not found in the OpenAPI spec."
+                )
+        return result
+
+    def merge_dicts(
+        self, base: Dict[str, Any], override: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Merge two dictionaries. The override values take precedence."""
+        merged = base.copy()  # Start with base values
+        merged.update(override)  # Override with any values from the second dict
+        return merged
+
+    def resolve_all_refs(self, spec: Dict[str, Any]) -> Dict[str, Any]:
+        """Recursively resolves all $ref references in an OpenAPI specification."""
+
+        def resolve(obj: Any) -> Any:
+            if isinstance(obj, dict):
+                if "$ref" in obj:
+                    # Resolve the reference
+                    resolved_ref = self.resolve_reference(obj["$ref"], spec)
+                    # Merge the resolved reference with the original object (so we keep attributes like x-af-child-property)
+                    return self.merge_dicts(resolved_ref, obj)
+                # Recursively resolve other properties
+                return {k: resolve(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [resolve(v) for v in obj]
+            return obj
+
+        return resolve(spec)
+
+    def _load_schema_objects(self) -> Dict[str, SchemaObject]:
+        """Loads all schema objects from the OpenAPI specification."""
+        schema_objects = {}
+        schemas = self.spec.get("components", {}).get("schemas", {})
         for name, schema in schemas.items():
             if "x-af-database" in schema:
-                log.info(f"schema_object: {name}")
-                cls.schema_objects[name] = SchemaObject(name, schema, cls.spec)
+                schema_objects[name] = SchemaObject(name, schema)
+        return schema_objects
 
-        paths = cls.spec.get("paths", {})
-        cls.path_operations = {}
-        for path, operations in paths.items():
-            for method, operation in operations.items():
+    def _load_path_operations(self) -> Dict[str, PathOperation]:
+        """Loads all path operations from the OpenAPI specification."""
+        path_operations = {}
+        paths = self.spec.get("paths", {})
+        for path, methods in paths.items():
+            for method, operation in methods.items():
                 if "x-af-database" in operation:
-                    cls.path_operations[
-                        f"{path.lstrip('/')}:{methods_to_actions[method.lower()]}"
-                    ] = PathOperation(path, method, operation, cls.spec)
+                    path_operation = PathOperation(path, method, operation)
+                    path_operations[
+                        f"{path_operation.entity}_{path_operation.action}"
+                    ] = path_operation
+        return path_operations
 
-    @classmethod
-    def get_schema_object(cls, name: str) -> SchemaObject:
-        return cls.schema_objects[name]
-
-    @classmethod
-    def get_schema_names(cls) -> List[str]:
-        return list(cls.schema_objects.keys())
-
-    @classmethod
-    def get_path_operations(cls) -> Dict[str, PathOperation]:
-        return cls.path_operations
-
-    @classmethod
-    def get_path_operation(cls, name: str, action: str) -> Optional[PathOperation]:
-        return cls.path_operations.get(f"{name}:{action}")
-
-    @classmethod
-    def get_api_object(
-        cls, name: str, action: str
-    ) -> Union[SchemaObject, PathOperation]:
-        result = cls.get_path_operation(name, action)
-        if not result:
-            result = cls.get_schema_object(name)
-        return result
+    def get_config_output(self) -> Dict[str, Any]:
+        """Generates and returns the configuration output."""
+        log.info(f"path_operations: {self.path_operations}")
+        return {
+            "schema_objects": {
+                name: obj.to_dict() for name, obj in self.schema_objects.items()
+            },
+            "path_operations": {
+                name: obj.to_dict() for name, obj in self.path_operations.items()
+            },
+        }

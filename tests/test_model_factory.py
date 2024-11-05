@@ -1,10 +1,10 @@
+# test_model_factory.py
+
+import os
+import yaml
 import pytest
 from api_foundry.utils.logger import logger
-from api_foundry.utils.model_factory import (
-    ModelFactory,
-    SchemaObject,
-    SchemaObjectProperty,
-)
+from api_foundry.utils.model_factory import ModelFactory
 
 log = logger(__name__)
 
@@ -12,7 +12,8 @@ log = logger(__name__)
 @pytest.mark.unit
 def test_set_spec():
     # Mock the file content of api_spec.yaml
-    ModelFactory.set_spec(
+    model_factory = ModelFactory()
+    model_factory.set_spec(
         {
             "openapi": "3.0.0",
             "components": {
@@ -30,72 +31,275 @@ def test_set_spec():
         }
     )
 
-    assert "TestSchema" in ModelFactory.schema_objects
-    schema_object = ModelFactory.get_schema_object("TestSchema")
-    assert isinstance(schema_object, SchemaObject)
-    assert schema_object.operation_id == "TestSchema"
-
-
-@pytest.mark.unit
-def test_schema_object_initialization():
-    log.info("starting test")
-    ModelFactory.set_spec(
-        {
-            "openapi": "3.0.0",
-            "components": {
-                "schemas": {
-                    "TestSchema": {
-                        "type": "object",
-                        "x-af-database": "testdb",
-                        "properties": {
-                            "id": {"type": "integer", "x-af-primary-key": "auto"},
-                            "name": {"type": "string"},
-                        },
-                    }
-                }
-            },
-        }
-    )
-
-    schema_object = ModelFactory.get_schema_object("TestSchema")
-    assert schema_object.operation_id == "TestSchema"
-    assert schema_object.database == "testdb"
-    assert schema_object.primary_key
-    assert schema_object.primary_key.name == "id"
-    assert schema_object.primary_key.key_type == "auto"
-
-
-#    assert schema_object.primary_key.name == "id"
-
-
-def test_schema_object_property_conversion():
-    ModelFactory.set_spec(
-        {
-            "openapi": "3.0.0",
-            "components": {
-                "schemas": {
-                    "TestSchema": {
-                        "type": "object",
-                        "properties": {
-                            "id": {"type": "integer", "x-af-primary-key": "auto"},
-                            "name": {"type": "string"},
-                        },
-                    }
-                }
-            },
-        }
-    )
-
-    properties = {
-        "type": "string",
-        "x-af-column-name": "name",
-        "x-af-column-type": "string",
-        "x-af-primary-key": False,
+    result = model_factory.get_config_output()
+    log.info(f"result: {result}")
+    assert result == {
+        "schema_objects": {
+            "TestSchema": {
+                "api_name": "TestSchema",
+                "database": "database",
+                "table_name": "TestSchema",
+                "properties": {
+                    "id": {
+                        "api_name": "id",
+                        "column_name": "id",
+                        "type": "integer",
+                        "api_type": "integer",
+                        "column_type": "integer",
+                        "required": False,
+                        "key_type": "auto",
+                    },
+                    "name": {
+                        "api_name": "name",
+                        "column_name": "name",
+                        "type": "string",
+                        "api_type": "string",
+                        "column_type": "string",
+                        "required": False,
+                    },
+                },
+                "primary_key": "id",
+                "relations": {},
+            }
+        },
+        "path_operations": {},
     }
-    property_object = SchemaObjectProperty(
-        "test_entity", "name", properties, spec=ModelFactory.spec
-    )
-    db_value = property_object.convert_to_db_value("test_value")
-    assert db_value == "test_value"
-    api_value = property_object.convert_to_api_value("test_value")
-    assert api_value == "test_value"
+
+
+def test_invalidate_relation():
+    # album has the relation of track_items but schema does not include tracks
+    log.info("starting test")
+
+    test_spec = """
+components:
+  schemas:
+    artist:
+      type: object
+      properties:
+        artist_id:
+          type: integer
+          x-af-primary-key: auto
+          description: Unique identifier for the artist.
+          example: 1
+        name:
+          type: string
+          maxLength: 120
+        album_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/album'
+            x-af-child-property: artist_id
+          description: List of album items associated with this artist.
+      required:
+      - artist_id
+      x-af-database: chinook
+    album:
+      type: object
+      properties:
+        album_id:
+          type: integer
+          x-af-primary-key: auto
+          description: Unique identifier for the album.
+          example: 1
+        title:
+          type: string
+          maxLength: 160
+        artist_id:
+          type: integer
+        artist:
+          $ref: '#/components/schemas/artist'
+          x-af-parent-property: artist_id
+          description: Artist associated with the album.
+        track_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/track'
+            x-af-child-property: album_id
+          description: List of track items associated with this album.
+      required:
+      - album_id
+      - title
+      - artist_id
+      x-af-database: chinook
+"""
+    model_factory = ModelFactory()
+    try:
+        model_factory.set_spec(yaml.safe_load(test_spec))
+        assert False
+    except KeyError as ke:
+        log.info(f"ke: {ke}")
+        assert str(ke) == "\"Reference part 'track' not found in the OpenAPI spec.\""
+
+
+def test_relation():
+    # album has the relation of track_items but schema does not include tracks
+    log.info("starting test")
+
+    test_spec = """
+components:
+  schemas:
+    artist:
+      type: object
+      properties:
+        artist_id:
+          type: integer
+          x-af-primary-key: auto
+          description: Unique identifier for the artist.
+          example: 1
+        name:
+          type: string
+          maxLength: 120
+        album_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/album'
+            x-af-child-property: artist_id
+          description: List of album items associated with this artist.
+      required:
+      - artist_id
+      x-af-database: chinook
+    album:
+      type: object
+      properties:
+        album_id:
+          type: integer
+          x-af-primary-key: auto
+          description: Unique identifier for the album.
+          example: 1
+        title:
+          type: string
+          maxLength: 160
+        artist_id:
+          type: integer
+        artist:
+          $ref: '#/components/schemas/artist'
+          x-af-parent-property: artist_id
+          description: Artist associated with the album.
+      required:
+      - album_id
+      - title
+      - artist_id
+      x-af-database: chinook
+"""
+
+    model_factory = ModelFactory()
+    try:
+        model_factory.set_spec(yaml.safe_load(test_spec))
+    except KeyError as ke:
+        log.info(f"ke: {ke}")
+        assert str(ke) == "\"Reference part 'track' not found in the OpenAPI spec.\""
+    result = model_factory.get_config_output()
+    log.info(f"result: {result}")
+    assert result == {
+        "schema_objects": {
+            "artist": {
+                "api_name": "artist",
+                "database": "chinook",
+                "table_name": "artist",
+                "properties": {
+                    "artist_id": {
+                        "api_name": "artist_id",
+                        "column_name": "artist_id",
+                        "type": "integer",
+                        "api_type": "integer",
+                        "column_type": "integer",
+                        "required": False,
+                        "key_type": "auto",
+                    },
+                    "name": {
+                        "api_name": "name",
+                        "column_name": "name",
+                        "type": "string",
+                        "api_type": "string",
+                        "column_type": "string",
+                        "required": False,
+                        "max_length": 120,
+                    },
+                },
+                "primary_key": "artist_id",
+                "relations": {
+                    "album_items": {
+                        "api_name": "album_items",
+                        "type": "array",
+                        "schema_name": "album",
+                        "parent_property": "artist_id",
+                    }
+                },
+            },
+            "album": {
+                "api_name": "album",
+                "database": "chinook",
+                "table_name": "album",
+                "properties": {
+                    "album_id": {
+                        "api_name": "album_id",
+                        "column_name": "album_id",
+                        "type": "integer",
+                        "api_type": "integer",
+                        "column_type": "integer",
+                        "required": False,
+                        "key_type": "auto",
+                    },
+                    "title": {
+                        "api_name": "title",
+                        "column_name": "title",
+                        "type": "string",
+                        "api_type": "string",
+                        "column_type": "string",
+                        "required": False,
+                        "max_length": 160,
+                    },
+                    "artist_id": {
+                        "api_name": "artist_id",
+                        "column_name": "artist_id",
+                        "type": "integer",
+                        "api_type": "integer",
+                        "column_type": "integer",
+                        "required": False,
+                    },
+                },
+                "primary_key": "album_id",
+                "relations": {
+                    "artist": {
+                        "api_name": "artist",
+                        "type": "object",
+                        "schema_name": "artist",
+                        "parent_property": "artist_id",
+                    }
+                },
+            },
+        },
+        "path_operations": {},
+    }
+
+
+def test_chinook_generation():
+    # Define the path to the YAML test spec file
+    spec_file_path = os.path.join(os.getcwd(), "resources/chinook_api.yaml")
+
+    model_factory = ModelFactory()
+
+    try:
+        # Load YAML from file
+        with open(spec_file_path, "r") as file:
+            test_spec = yaml.safe_load(file)
+
+        # Set the specification in the model factory
+        model_factory.set_spec(test_spec)
+
+        # Get the configuration output
+        result = model_factory.get_config_output()
+        # log.info(f"result: {result}")
+
+        # Write result to a file in the temp directory
+        output_file = os.path.join(os.getcwd(), "resources/api_spec.yaml")
+        with open(output_file, "w") as out_file:
+            yaml.dump(result, out_file, indent=4)
+
+        # Ensure the result file exists
+        assert os.path.exists(output_file)
+
+    except KeyError as ke:
+        log.info(f"KeyError: {ke}")
+        # Adjust the assertion to match the exact KeyError message
+        assert str(ke) == "\"Reference part 'track' not found in the OpenAPI spec.\""

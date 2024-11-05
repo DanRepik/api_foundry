@@ -1,102 +1,766 @@
-import pytest
-from api_foundry.utils.model_factory import ModelFactory
-from api_foundry.utils.logger import logger
+# test_gateway_spec.py
 
-from api_foundry.iac.gateway_spec import GatewaySpec
+import re
+import pytest
+from typing import Any
+from cloud_foundry import Function, logger
+
+from api_foundry.iac.gateway_spec import APISpecEditor
+from tests.test_fixtures import read_spec, write_spec
 
 log = logger(__name__)
 
 
-@pytest.fixture(scope="module")
-def setup_model_factory():
-    api_spec = {
-        "openapi": "3.0.0",
-        "components": {
-            "schemas": {
-                "TestSchema": {
-                    "x-af-database": "test-db",
-                    "type": "object",
-                    "properties": {
-                        "id": {"type": "integer", "x-af-primary-key": "auto"},
-                        "name": {
-                            "type": "string",
-                            "x-af-column-name": "name",
-                            "x-af-column-type": "string",
-                            "minLength": 1,
-                            "maxLength": 255,
-                            "pattern": "^[a-zA-Z]+$",
-                        },
+class MockFunction(Function):
+    def __init__(self, invoke_url: str):
+        self._invoke_url = invoke_url
+
+    def invoke_url(self) -> str:
+        return self._invoke_url
+
+
+date_property = {"type": "string", "format": "date"}
+date_time_property = {"type": "string", "format": "date-time"}
+integer_property = {"type": "integer", "minimum": 5}
+
+
+class TestGatewaySpec:
+    @pytest.mark.parametrize(
+        "property, value, valid",
+        [
+            (
+                integer_property,
+                "123",
+                True,
+            ),
+            (
+                integer_property,
+                "1n23",
+                False,
+            ),
+            (
+                integer_property,
+                "ne::23",
+                True,
+            ),
+            (
+                integer_property,
+                "between::2,3",
+                True,
+            ),
+            (
+                integer_property,
+                "in::2,3,5,7",
+                True,
+            ),
+            (
+                integer_property,
+                "123456",
+                True,
+            ),
+            (
+                date_property,
+                "1997-12-33",
+                False,
+            ),
+            (
+                date_property,
+                "1997-12-01",
+                True,
+            ),
+            (
+                date_property,
+                "1997-13-01",
+                False,
+            ),
+            (
+                date_property,
+                "lt::2000-01-01",
+                True,
+            ),
+            (
+                date_property,
+                "lt::2000-01-01,2001-01-01",
+                False,
+            ),
+            (
+                date_property,
+                "between::2000-01-01,2001-01-01",
+                True,
+            ),
+            (
+                date_property,
+                "123",
+                False,
+            ),
+        ],
+    )
+    def test_generate_regex(self, property: dict[str, Any], value: str, valid: bool):
+        spec_editor = APISpecEditor(
+            open_api_spec={}, function=MockFunction("url"), function_name="test"
+        )
+        pattern = spec_editor.generate_regex(property)
+        log.info(f"pattern: {pattern}")
+
+        if valid:
+            assert re.fullmatch(pattern, value), f"Expected {value} to match {pattern}"
+        else:
+            # Test invalid input
+            assert not re.fullmatch(
+                pattern, value
+            ), f"Expected {value} to not match {pattern}"
+
+    def test_create_operation(self):
+        spec = read_spec("./resources/chinook_api.yaml")
+        schema_object = spec.get("components", {}).get("schemas", {})["genre"]
+        log.info(f"schema_object: {schema_object}")
+        rest_api_spec = APISpecEditor(
+            open_api_spec=spec,
+            function_name="test_function",
+            function=MockFunction("function_url_value"),
+        )
+        rest_api_spec.generate_create_operation("/genre", "genre", schema_object)
+        result = rest_api_spec.editor.get_spec_part(["paths", "/genre", "post"])
+
+        log.info(f"result: {result}")
+
+        assert result == {
+            "summary": "Create a new genre",
+            "requestBody": {
+                "required": True,
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "name": {"type": "string", "maxLength": 120}
+                            },
+                            "required": ["name"],
+                        }
+                    }
+                },
+            },
+            "responses": {
+                "201": {
+                    "description": "genre created successfully",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "array",
+                                "items": {"$ref": "#/components/schemas/genre"},
+                            }
+                        }
                     },
                 }
-            }
-        },
-    }
-    ModelFactory.set_spec(api_spec)
+            },
+        }
 
+    def test_get_many_operation(self):
+        spec = read_spec("./resources/chinook_api.yaml")
+        schema_object = spec.get("components", {}).get("schemas", {})["genre"]
+        log.info(f"schema_object: {schema_object}")
+        rest_api_spec = APISpecEditor(
+            open_api_spec=spec,
+            function_name="test_function",
+            function=MockFunction("function_url_value"),
+        )
+        rest_api_spec.generate_get_many_operation("/genre", "genre", schema_object)
+        result = rest_api_spec.editor.get_spec_part(["paths", "/genre", "get"])
 
-@pytest.mark.unit
-def test_gateway_spec_initialization(setup_model_factory):
-    function_name = "test_function"
-    function_invoke_arn = "arn:aws:lambda:us-east-1:000000000000:function:test_function"
-    gateway_spec = GatewaySpec(
-        function_name=function_name,
-        function_invoke_arn=function_invoke_arn,
-        enable_cors=True,
-    )
+        log.info(f"result: {result}")
 
-    assert gateway_spec.function_name == function_name
-    assert gateway_spec.function_invoke_arn == function_invoke_arn
-    assert "paths" in gateway_spec.api_spec
-    assert "components" in gateway_spec.api_spec
-    assert "schemas" in gateway_spec.api_spec["components"]
-    log.info(f"schemas: {gateway_spec.api_spec['components']['schemas']}")
-    assert "testschema" in gateway_spec.api_spec["components"]["schemas"]
+        assert result == {
+            "summary": "Retrieve all genre",
+            "parameters": [
+                {
+                    "in": "query",
+                    "name": "genre_id",
+                    "required": False,
+                    "schema": {
+                        "type": "integer",
+                        "pattern": "^[\\-\\+]?\\d+$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\-\\+]?\\d+$|^between::[\\-\\+]?\\d+,[\\-\\+]?\\d+$|^not-between::[\\-\\+]?\\d+,[\\-\\+]?\\d+,|^in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$|^not-in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$",
+                    },
+                    "description": "Filter by genre_id",
+                },
+                {
+                    "in": "query",
+                    "name": "name",
+                    "required": False,
+                    "schema": {
+                        "type": "string",
+                        "pattern": "^[\\w\\s]{min_length,max_length}$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\w\\s]{min_length,max_length}$|^between::[\\w\\s]{min_length,max_length},[\\w\\s]{min_length,max_length}$|^not-between::[\\w\\s]{min_length,max_length},[\\w\\s]{min_length,max_length},|^in::[\\w\\s]{min_length,max_length}(,[\\w\\s]{min_length,max_length})*$|^not-in::[\\w\\s]{min_length,max_length}(,[\\w\\s]{min_length,max_length})*$",
+                    },
+                    "description": "Filter by name",
+                },
+            ],
+            "responses": {
+                "200": {
+                    "description": "A list of genre.",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "array",
+                                "items": {"$ref": "#/components/schemas/genre"},
+                            }
+                        }
+                    },
+                }
+            },
+        }
 
+    def test_get_by_id_operation(self):
+        spec = read_spec("./resources/chinook_api.yaml")
+        schema_object = spec.get("components", {}).get("schemas", {})["genre"]
+        log.info(f"schema_object: {schema_object}")
+        rest_api_spec = APISpecEditor(
+            open_api_spec=spec,
+            function_name="test_function",
+            function=MockFunction("function_url_value"),
+        )
+        rest_api_spec.generate_get_by_id_operation("/genre", "genre", schema_object)
+        result = rest_api_spec.editor.get_spec_part(
+            ["paths", "/genre/{genre_id}", "get"]
+        )
 
-@pytest.mark.unit
-def test_gateway_spec_as_json(setup_model_factory):
-    function_name = "test_function"
-    function_invoke_arn = "arn:aws:lambda:us-east-1:000000000000:function:test_function"
-    gateway_spec = GatewaySpec(
-        function_name=function_name,
-        function_invoke_arn=function_invoke_arn,
-        enable_cors=True,
-    )
+        log.info(f"result: {result}")
 
-    api_spec_json = gateway_spec.as_json()
-    assert isinstance(api_spec_json, str)
-    assert "testschema" in api_spec_json
+        assert result == {
+            "summary": "Retrieve genre by genre_id",
+            "parameters": [
+                {
+                    "name": "id",
+                    "in": "path",
+                    "description": "ID of the genre to get",
+                    "required": True,
+                    "schema": {
+                        "type": {
+                            "type": "integer",
+                            "x-af-primary-key": "auto",
+                            "description": "Unique identifier for the genre.",
+                            "example": 1,
+                        }
+                    },
+                }
+            ],
+            "responses": {
+                "200": {
+                    "description": "A list of genre.",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "array",
+                                "items": {"$ref": "#/components/schemas/genre"},
+                            }
+                        }
+                    },
+                }
+            },
+        }
 
+    def test_update_by_id_operation_with_cc(self):
+        # check invalid concurrency control is present
+        spec = read_spec("./resources/chinook_api.yaml")
+        schema_object = spec.get("components", {}).get("schemas", {})["genre"]
+        log.info(f"schema_object: {schema_object}")
+        rest_api_spec = APISpecEditor(
+            open_api_spec=spec,
+            function_name="test_function",
+            function=MockFunction("function_url_value"),
+        )
+        rest_api_spec.generate_update_by_id_operation("/genre", "genre", schema_object)
+        result = rest_api_spec.editor.get_spec_part(
+            ["paths", "/genre/{genre_id}", "put"]
+        )
+        assert (
+            result is None
+        ), "update by id path operation is not valid for schema components with currency control properties"
 
-@pytest.mark.unit
-def test_gateway_spec_as_yaml(setup_model_factory):
-    function_name = "test_function"
-    function_invoke_arn = "arn:aws:lambda:us-east-1:000000000000:function:test_function"
-    gateway_spec = GatewaySpec(
-        function_name=function_name,
-        function_invoke_arn=function_invoke_arn,
-        enable_cors=True,
-    )
+    def test_update_by_id_operation(self):
+        spec = read_spec("./resources/chinook_api.yaml")
+        schema_object = spec.get("components", {}).get("schemas", {})["invoice_line"]
+        log.info(f"schema_object: {schema_object}")
+        rest_api_spec = APISpecEditor(
+            open_api_spec=spec,
+            function_name="test_function",
+            function=MockFunction("function_url_value"),
+        )
+        rest_api_spec.generate_update_by_id_operation(
+            "/invoice_line", "invoice_line", schema_object
+        )
+        result = rest_api_spec.editor.get_spec_part(
+            ["paths", "/invoice_line/{key_name}", "put"]
+        )
+        log.info(f"result: {result}")
+        assert result == {
+            "summary": "Update an existing invoice_line by invoice_line_id",
+            "parameters": [
+                {
+                    "name": "invoice_line_id",
+                    "in": "path",
+                    "description": "ID of the invoice_line to update",
+                    "required": True,
+                    "schema": {
+                        "type": "integer",
+                        "x-af-primary-key": "auto",
+                        "description": "Unique identifier for the invoice_line.",
+                        "example": 1,
+                    },
+                }
+            ],
+            "requestBody": {
+                "required": True,
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "invoice_id": {"type": "integer"},
+                                "track_id": {"type": "integer"},
+                                "unit_price": {"type": "number"},
+                                "quantity": {"type": "integer"},
+                            },
+                            "required": [],
+                        }
+                    }
+                },
+            },
+            "responses": {
+                "200": {
+                    "description": "invoice_line updated successfully",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "array",
+                                "items": {"$ref": "#/components/schemas/invoice_line"},
+                            }
+                        }
+                    },
+                }
+            },
+        }
 
-    api_spec_yaml = gateway_spec.as_yaml()
-    assert isinstance(api_spec_yaml, str)
-    assert "testschema" in api_spec_yaml
+    def test_update_with_cc_operation(self):
+        spec = read_spec("./resources/chinook_api.yaml")
+        schema_object = spec.get("components", {}).get("schemas", {})["genre"]
+        log.info(f"schema_object: {schema_object}")
+        rest_api_spec = APISpecEditor(
+            open_api_spec=spec,
+            function_name="test_function",
+            function=MockFunction("function_url_value"),
+        )
+        rest_api_spec.generate_update_with_cc_operation(
+            "/genre", "genre", schema_object
+        )
+        result = rest_api_spec.editor.get_spec_part(
+            ["paths", "/genre/{genre_id}/version/{version}", "put"]
+        )
+        log.info(f"result: {result}")
 
+        assert result == {
+            "summary": "Update an existing genre by ID",
+            "parameters": [
+                {
+                    "name": "genre_id",
+                    "in": "path",
+                    "description": "ID of the genre to update",
+                    "required": True,
+                    "schema": {
+                        "type": "integer",
+                        "x-af-primary-key": "auto",
+                        "description": "Unique identifier for the genre.",
+                        "example": 1,
+                    },
+                },
+                {
+                    "name": "version",
+                    "in": "path",
+                    "description": "version of the genre to update",
+                    "required": True,
+                    "schema": {"type": "integer"},
+                },
+            ],
+            "requestBody": {
+                "required": False,
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "name": {"type": "string", "maxLength": 120}
+                            },
+                            "required": [],
+                        }
+                    }
+                },
+            },
+            "responses": {
+                "200": {
+                    "description": "genre updated successfully",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "array",
+                                "items": {"$ref": "#/components/schemas/genre"},
+                            }
+                        }
+                    },
+                }
+            },
+        }
 
-@pytest.mark.unit
-def test_gateway_spec_operations(setup_model_factory):
-    function_name = "test_function"
-    function_invoke_arn = "arn:aws:lambda:us-east-1:000000000000:function:test_function"
-    gateway_spec = GatewaySpec(
-        function_name=function_name,
-        function_invoke_arn=function_invoke_arn,
-        enable_cors=True,
-    )
+    def test_update_many(self):
+        spec = read_spec("./resources/chinook_api.yaml")
+        schema_object = spec.get("components", {}).get("schemas", {})["invoice_line"]
+        log.info(f"schema_object: {schema_object}")
+        rest_api_spec = APISpecEditor(
+            open_api_spec=spec,
+            function_name="test_function",
+            function=MockFunction("function_url_value"),
+        )
+        rest_api_spec.generate_update_many_operation(
+            "/invoice_line", "invoice_line", schema_object
+        )
+        result = rest_api_spec.editor.get_spec_part(["paths", "/invoice_line", "put"])
+        log.info(f"result: {result}")
+        assert result == {
+            "summary": "Update an existing invoice_line by ID",
+            "parameters": [
+                {
+                    "in": "query",
+                    "name": "invoice_line_id",
+                    "required": False,
+                    "schema": {
+                        "type": "integer",
+                        "pattern": "^[\\-\\+]?\\d+$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\-\\+]?\\d+$|^between::[\\-\\+]?\\d+,[\\-\\+]?\\d+$|^not-between::[\\-\\+]?\\d+,[\\-\\+]?\\d+,|^in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$|^not-in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$",
+                    },
+                    "description": "Filter by invoice_line_id",
+                },
+                {
+                    "in": "query",
+                    "name": "invoice_id",
+                    "required": False,
+                    "schema": {
+                        "type": "integer",
+                        "pattern": "^[\\-\\+]?\\d+$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\-\\+]?\\d+$|^between::[\\-\\+]?\\d+,[\\-\\+]?\\d+$|^not-between::[\\-\\+]?\\d+,[\\-\\+]?\\d+,|^in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$|^not-in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$",
+                    },
+                    "description": "Filter by invoice_id",
+                },
+                {
+                    "in": "query",
+                    "name": "track_id",
+                    "required": False,
+                    "schema": {
+                        "type": "integer",
+                        "pattern": "^[\\-\\+]?\\d+$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\-\\+]?\\d+$|^between::[\\-\\+]?\\d+,[\\-\\+]?\\d+$|^not-between::[\\-\\+]?\\d+,[\\-\\+]?\\d+,|^in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$|^not-in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$",
+                    },
+                    "description": "Filter by track_id",
+                },
+                {
+                    "in": "query",
+                    "name": "unit_price",
+                    "required": False,
+                    "schema": {
+                        "type": "number",
+                        "pattern": "^[+-]?\\d+(\\.\\d+)?$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[+-]?\\d+(\\.\\d+)?$|^between::[+-]?\\d+(\\.\\d+)?,[+-]?\\d+(\\.\\d+)?$|^not-between::[+-]?\\d+(\\.\\d+)?,[+-]?\\d+(\\.\\d+)?,|^in::[+-]?\\d+(\\.\\d+)?(,[+-]?\\d+(\\.\\d+)?)*$|^not-in::[+-]?\\d+(\\.\\d+)?(,[+-]?\\d+(\\.\\d+)?)*$",
+                    },
+                    "description": "Filter by unit_price",
+                },
+                {
+                    "in": "query",
+                    "name": "quantity",
+                    "required": False,
+                    "schema": {
+                        "type": "integer",
+                        "pattern": "^[\\-\\+]?\\d+$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\-\\+]?\\d+$|^between::[\\-\\+]?\\d+,[\\-\\+]?\\d+$|^not-between::[\\-\\+]?\\d+,[\\-\\+]?\\d+,|^in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$|^not-in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$",
+                    },
+                    "description": "Filter by quantity",
+                },
+            ],
+            "requestBody": {
+                "required": False,
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "invoice_line_id": {
+                                    "type": "integer",
+                                    "x-af-primary-key": "auto",
+                                    "description": "Unique identifier for the invoice_line.",
+                                    "example": 1,
+                                },
+                                "invoice_id": {"type": "integer"},
+                                "invoice": {
+                                    "$ref": "#/components/schemas/invoice",
+                                    "x-af-parent-property": "invoice_id",
+                                    "description": "Invoice associated with the invoice_line.",
+                                },
+                                "track_id": {"type": "integer"},
+                                "track": {
+                                    "$ref": "#/components/schemas/track",
+                                    "x-af-parent-property": "track_id",
+                                    "description": "Track associated with the invoice_line.",
+                                },
+                                "unit_price": {"type": "number"},
+                                "quantity": {"type": "integer"},
+                            },
+                            "required": [],
+                        }
+                    }
+                },
+            },
+            "responses": {
+                "200": {
+                    "description": "invoice_line updated successfully",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "array",
+                                "items": {"$ref": "#/components/schemas/invoice_line"},
+                            }
+                        }
+                    },
+                }
+            },
+        }
 
-    schema_name = "TestSchema"
-    schema_object = ModelFactory.get_schema_object(schema_name)
-    gateway_spec.generate_crud_operations(schema_name, schema_object)
+    def test_update_many_with_cc(self):
+        spec = read_spec("./resources/chinook_api.yaml")
+        schema_object = spec.get("components", {}).get("schemas", {})["invoice"]
+        log.info(f"schema_object: {schema_object}")
+        rest_api_spec = APISpecEditor(
+            open_api_spec=spec,
+            function_name="test_function",
+            function=MockFunction("function_url_value"),
+        )
+        rest_api_spec.generate_update_many_operation(
+            "/invoice", "invoice", schema_object
+        )
+        result = rest_api_spec.editor.get_spec_part(["paths", "/invoice", "put"])
+        log.info(f"result: {result}")
+        assert result == None
 
-    assert f"/{schema_name.lower()}" in gateway_spec.api_spec["paths"]
-    assert "get" in gateway_spec.api_spec["paths"][f"/{schema_name.lower()}"]
-    assert "post" in gateway_spec.api_spec["paths"][f"/{schema_name.lower()}"]
+    def test_delete_by_id_operation_with_cc(self):
+        # check invalid concurrency control is present
+        spec = read_spec("./resources/chinook_api.yaml")
+        schema_object = spec.get("components", {}).get("schemas", {})["genre"]
+        log.info(f"schema_object: {schema_object}")
+        rest_api_spec = APISpecEditor(
+            open_api_spec=spec,
+            function_name="test_function",
+            function=MockFunction("function_url_value"),
+        )
+        rest_api_spec.generate_delete_by_id_operation("/genre", "genre", schema_object)
+        result = rest_api_spec.editor.get_spec_part(
+            ["paths", "/genre/{genre_id}", "put"]
+        )
+        assert (
+            result is None
+        ), "update by id path operation is not valid for schema components with currency control properties"
+
+    def test_delete_by_id_operation(self):
+        spec = read_spec("./resources/chinook_api.yaml")
+        schema_object = spec.get("components", {}).get("schemas", {})["invoice_line"]
+        log.info(f"schema_object: {schema_object}")
+        rest_api_spec = APISpecEditor(
+            open_api_spec=spec,
+            function_name="test_function",
+            function=MockFunction("function_url_value"),
+        )
+        rest_api_spec.generate_delete_by_id_operation(
+            "/invoice_line", "invoice_line", schema_object
+        )
+        result = rest_api_spec.editor.get_spec_part(
+            ["paths", "/invoice_line/{invoice_line_id}", "delete"]
+        )
+        log.info(f"result: {result}")
+        assert result == {
+            "summary": "Delete an existing invoice_line by invoice_line_id",
+            "parameters": [
+                {
+                    "name": "invoice_line_id",
+                    "in": "path",
+                    "description": "ID of the invoice_line to update",
+                    "required": True,
+                    "schema": {
+                        "type": {
+                            "type": "integer",
+                            "x-af-primary-key": "auto",
+                            "description": "Unique identifier for the invoice_line.",
+                            "example": 1,
+                        }
+                    },
+                }
+            ],
+            "responses": {
+                "204": {
+                    "description": "invoice_line deleted successfully",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "array",
+                                "items": {"$ref": "#/components/schemas/invoice_line"},
+                            }
+                        }
+                    },
+                }
+            },
+        }
+
+    def test_delete_with_cc_operation(self):
+        spec = read_spec("./resources/chinook_api.yaml")
+        schema_object = spec.get("components", {}).get("schemas", {})["genre"]
+        log.info(f"schema_object: {schema_object}")
+        rest_api_spec = APISpecEditor(
+            open_api_spec=spec,
+            function_name="test_function",
+            function=MockFunction("function_url_value"),
+        )
+        rest_api_spec.generate_delete_with_cc_operation(
+            "/genre", "genre", schema_object
+        )
+        result = rest_api_spec.editor.get_spec_part(
+            ["paths", "/genre/{genre_id}/version/{version}", "delete"]
+        )
+        log.info(f"result: {result}")
+
+        assert result == {
+            "summary": "Delete an existing genre by ID",
+            "parameters": [
+                {
+                    "name": "genre_id",
+                    "in": "path",
+                    "description": "ID of the genre to update",
+                    "required": True,
+                    "schema": {
+                        "type": {
+                            "type": "integer",
+                            "x-af-primary-key": "auto",
+                            "description": "Unique identifier for the genre.",
+                            "example": 1,
+                        }
+                    },
+                },
+                {
+                    "name": "version",
+                    "in": "path",
+                    "description": "version of the genre to update",
+                    "required": True,
+                    "schema": {"type": "integer"},
+                },
+            ],
+            "responses": {
+                "204": {
+                    "description": "genre deleted successfully",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "array",
+                                "items": {"$ref": "#/components/schemas/genre"},
+                            }
+                        }
+                    },
+                }
+            },
+        }
+
+    def test_delete_many(self):
+        spec = read_spec("./resources/chinook_api.yaml")
+        schema_object = spec.get("components", {}).get("schemas", {})["invoice_line"]
+        log.info(f"schema_object: {schema_object}")
+        rest_api_spec = APISpecEditor(
+            open_api_spec=spec,
+            function_name="test_function",
+            function=MockFunction("function_url_value"),
+        )
+        rest_api_spec.generate_delete_many_operation(
+            "/invoice_line", "invoice_line", schema_object
+        )
+        result = rest_api_spec.editor.get_spec_part(
+            ["paths", "/invoice_line", "delete"]
+        )
+        log.info(f"result: {result}")
+        assert result == {
+            "summary": "Delete many existing invoice_line using query",
+            "parameters": [
+                {
+                    "in": "query",
+                    "name": "invoice_line_id",
+                    "required": False,
+                    "schema": {
+                        "type": "integer",
+                        "pattern": "^[\\-\\+]?\\d+$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\-\\+]?\\d+$|^between::[\\-\\+]?\\d+,[\\-\\+]?\\d+$|^not-between::[\\-\\+]?\\d+,[\\-\\+]?\\d+,|^in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$|^not-in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$",
+                    },
+                    "description": "Filter by invoice_line_id",
+                },
+                {
+                    "in": "query",
+                    "name": "invoice_id",
+                    "required": False,
+                    "schema": {
+                        "type": "integer",
+                        "pattern": "^[\\-\\+]?\\d+$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\-\\+]?\\d+$|^between::[\\-\\+]?\\d+,[\\-\\+]?\\d+$|^not-between::[\\-\\+]?\\d+,[\\-\\+]?\\d+,|^in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$|^not-in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$",
+                    },
+                    "description": "Filter by invoice_id",
+                },
+                {
+                    "in": "query",
+                    "name": "track_id",
+                    "required": False,
+                    "schema": {
+                        "type": "integer",
+                        "pattern": "^[\\-\\+]?\\d+$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\-\\+]?\\d+$|^between::[\\-\\+]?\\d+,[\\-\\+]?\\d+$|^not-between::[\\-\\+]?\\d+,[\\-\\+]?\\d+,|^in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$|^not-in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$",
+                    },
+                    "description": "Filter by track_id",
+                },
+                {
+                    "in": "query",
+                    "name": "unit_price",
+                    "required": False,
+                    "schema": {
+                        "type": "number",
+                        "pattern": "^[+-]?\\d+(\\.\\d+)?$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[+-]?\\d+(\\.\\d+)?$|^between::[+-]?\\d+(\\.\\d+)?,[+-]?\\d+(\\.\\d+)?$|^not-between::[+-]?\\d+(\\.\\d+)?,[+-]?\\d+(\\.\\d+)?,|^in::[+-]?\\d+(\\.\\d+)?(,[+-]?\\d+(\\.\\d+)?)*$|^not-in::[+-]?\\d+(\\.\\d+)?(,[+-]?\\d+(\\.\\d+)?)*$",
+                    },
+                    "description": "Filter by unit_price",
+                },
+                {
+                    "in": "query",
+                    "name": "quantity",
+                    "required": False,
+                    "schema": {
+                        "type": "integer",
+                        "pattern": "^[\\-\\+]?\\d+$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\-\\+]?\\d+$|^between::[\\-\\+]?\\d+,[\\-\\+]?\\d+$|^not-between::[\\-\\+]?\\d+,[\\-\\+]?\\d+,|^in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$|^not-in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$",
+                    },
+                    "description": "Filter by quantity",
+                },
+            ],
+            "responses": {
+                "204": {
+                    "description": "invoice_line deleted successfully",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "array",
+                                "items": {"$ref": "#/components/schemas/invoice_line"},
+                            }
+                        }
+                    },
+                }
+            },
+        }
+
+    def test_delete_many_with_cc(self):
+        spec = read_spec("./resources/chinook_api.yaml")
+        schema_object = spec.get("components", {}).get("schemas", {})["invoice"]
+        log.info(f"schema_object: {schema_object}")
+        rest_api_spec = APISpecEditor(
+            open_api_spec=spec,
+            function_name="test_function",
+            function=MockFunction("function_url_value"),
+        )
+        rest_api_spec.generate_delete_many_operation(
+            "/invoice", "invoice", schema_object
+        )
+        result = rest_api_spec.editor.get_spec_part(["paths", "/invoice", "delete"])
+        log.info(f"result: {result}")
+        assert result is None

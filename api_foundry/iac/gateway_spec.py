@@ -1,267 +1,98 @@
 import copy
-import json
-import re
-import yaml
-from typing import Union
+from typing import Any, Optional
 
-from api_foundry.utils.model_factory import (
-    ModelFactory,
-    SchemaObject,
-    SchemaObjectProperty,
-)
+from cloud_foundry import Function
+from cloud_foundry.utils.aws_openapi_editor import AWSOpenAPISpecEditor
+
 from api_foundry.utils.logger import logger
 
 
 log = logger(__name__)
 
 
-class GatewaySpec:
+class APISpecEditor:
     api_spec: dict
-    function_name: str
-    function_invoke_arn: str
+    function: Function
+    integrations: list[dict]
 
     def __init__(
-        self, *, function_name: str, function_invoke_arn, enable_cors: bool = False
+        self, *, open_api_spec: dict[str, Any], function_name: str, function: Function
     ):
-        self.function_name = function_name
-        self.function_invoke_arn = function_invoke_arn
-        log.info(f"invoke_arn: {function_invoke_arn}")
-        document = ModelFactory.spec
+        self.function = function
+        self.integrations = []
+        self.editor = AWSOpenAPISpecEditor(copy.deepcopy(open_api_spec))
 
-        self.api_spec = dict(
-            self.remove_custom_attributes(
-                self.convert_component_schema_names(copy.deepcopy(document))
-            )
-        )
-        if enable_cors:
-            self.enable_cors()
+    def rest_api_spec(self) -> str:
+        self.editor.remove_attributes_by_pattern("^x-af-.*$")
 
-        for schema_name in ModelFactory.get_schema_names():
-            self.generate_crud_operations(
-                schema_name, ModelFactory.get_schema_object(schema_name)
-            )
+        schemas = self.editor.get_spec_part(["components", "schemas"], create=False)
+        for schema_name, schema_object in schemas.items():
+            self.generate_crud_operations(schema_name, schema_object)
 
-    def as_json(self):
-        return json.dumps(self.api_spec)
-
-    def as_yaml(self):
-        return yaml.dump(self.api_spec, default_flow_style=False)
-
-    def remove_custom_attributes(self, obj):
-        return self.remove_attributes(obj, "^x-af-.*$")
-
-    def remove_attributes(self, obj, pattern) -> Union[dict, list]:
-        """
-        Remove attributes from an object that match a regular expression pattern.
-
-        Args:
-            obj: The object from which attributes will be removed.
-            pattern: The regular expression pattern to match attributes.
-
-        Returns:
-            obj
-        """
-        if isinstance(obj, dict):
-            return {
-                key: self.remove_attributes(value, pattern)
-                for key, value in obj.items()
-                if not re.match(pattern, key)
-            }
-        elif isinstance(obj, list):
-            return [self.remove_attributes(item, pattern) for item in obj]
-        else:
-            return obj
-
-    def convert_component_schema_names(self, openapi_doc) -> dict:
-        """
-        Converts all component schema object names to lowercase in an OpenAPI document and updates any $ref references.
-
-        Args:
-            openapi_doc (dict): The OpenAPI document as a dictionary.
-
-        Returns:
-            dict: The modified OpenAPI document with lowercase component schema names.
-        """
-        # Step 1: Convert all schema names in the components section to lowercase
-        components = openapi_doc.get("components", {})
-        schemas = components.get("schemas", {})
-
-        new_schemas = {}
-        name_mapping = {}  # To map old names to new lowercase names
-
-        for schema_name, schema_content in schemas.items():
-            lowercase_name = schema_name.lower()
-            new_schemas[lowercase_name] = schema_content
-            name_mapping[
-                f"#/components/schemas/{schema_name}"
-            ] = f"#/components/schemas/{lowercase_name}"
-
-        components["schemas"] = new_schemas
-        openapi_doc["components"] = components
-
-        # Step 2: Fix $ref references throughout the document
-        def fix_refs(obj):
-            if isinstance(obj, dict):
-                for key, value in obj.items():
-                    if key == "$ref" and value in name_mapping:
-                        obj[key] = name_mapping[value]
-                    else:
-                        fix_refs(value)
-            elif isinstance(obj, list):
-                for item in obj:
-                    fix_refs(item)
-
-        fix_refs(openapi_doc)
-
-        return openapi_doc
-
-    def add_custom_authentication(self, authentication_invoke_arn: str):
-        components = self.api_spec.get("components", None)
-        if components:
-            components["securitySchemes"] = {
-                "auth0": {
-                    "type": "apiKey",
-                    "name": "Authorization",
-                    "in": "header",
-                    "x-amazon-apigateway-authtype": "custom",
-                    "x-amazon-apigateway-authorizer": {
-                        "type": "token",
-                        "authorizerUri": authentication_invoke_arn,
-                        "identityValidationExpression": "^Bearer [-0-9a-zA-Z._]*$",
-                        "identitySource": "method.request.header.Authorization",
-                        "authorizerResultTtlInSeconds": 60,
-                    },
-                }
-            }
+        self.editor.correct_schema_names()
+        return self.editor.to_yaml()
 
     def add_operation(self, path: str, method: str, operation: dict):
-        operation["x-function-name"] = self.function_name
-        operation["x-amazon-apigateway-integration"] = {
-            "type": "aws_proxy",
-            "uri": self.function_invoke_arn,
-            "httpMethod": "POST",
-        }
-
-        self.api_spec.setdefault("paths", {}).setdefault(path, {})[method] = operation
-
-    def enable_cors(self):
-        self.add_operation(
-            "/{proxy+}",
-            "options",
-            {
-                "consumes": ["application/json"],
-                "produces": ["application/json"],
-                "responses": {
-                    "200": {
-                        "description": "200 response",
-                        "schema": {
-                            "type": "object",
-                        },
-                        "headers": {
-                            "Access-Control-Allow-Origin": {
-                                "type": "string",
-                            },
-                            "Access-Control-Allow-Methods": {
-                                "type": "string",
-                            },
-                            "Access-Control-Allow-Headers": {
-                                "type": "string",
-                            },
-                        },
-                    },
-                },
-                "x-amazon-apigateway-integration": {
-                    "responses": {
-                        "default": {
-                            "statusCode": "200",
-                            "responseParameters": {
-                                "method.response.header.Access-Control-Allow-Methods": "'DELETE,GET,HEAD,OPTIONS,PATCH,POST,PUT'",  # noqa: E501
-                                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'",  # noqa: E501
-                                "method.response.header.Access-Control-Allow-Origin": "'*'",  # noqa: E501
-                            },
-                            "responseTemplates": {
-                                "application/json": "",
-                            },
-                        },
-                    },
-                    "requestTemplates": {
-                        "application/json": '{{"statusCode": 200}}',
-                    },
-                    "passthroughBehavior": "when_no_match",
-                    "type": "mock",
-                },
-            },
+        self.integrations.append(
+            {"path": path, "method": method, "function": self.function}
         )
+        self.editor.add_operation(path, method, operation)
 
-        self.api_spec["x-amazon-apigateway-cors"] = {
-            "allowOrigins": ["*"],
-            "allowCredentials": True,
-            "allowMethods": [
-                "GET",
-                "POST",
-                "OPTIONS",
-                "PUT",
-                "PATCH",
-                "DELETE",
-            ],
-            "allowHeaders": [
-                "Origin",
-                "X-Requested-With",
-                "Content-Type",
-                "Accept",
-                "Authorization",
-            ],
-        }
-
-    def generate_regex(self, property: SchemaObjectProperty):
+    def generate_regex(self, property: dict[str, Any]) -> str:
         regex_pattern = ""
 
-        if property.api_type == "string":
-            if property.max_length is not None:
-                regex_pattern += f"{{0,{property.max_length}}}"
-
-            if property.min_length is not None:
-                regex_pattern += f"{{{property.min_length},}}"
-
-            if property.pattern is not None:
-                regex_pattern += f"({property.pattern})"
-
-        if property.api_type == "date":
+        if property["type"] == "string" and property.get("format", None) == "date":
             # Assuming ISO 8601 date format (YYYY-MM-DD)
-            regex_pattern = r"\d{4}-\d{2}-\d{2}"
+            regex_pattern = r"\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])"  # Date part: YYYY-MM-DD
 
-        elif property.api_type == "date-time":
-            regex_pattern = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}"
+        elif (
+            property["type"] == "string" and property.get("format", None) == "date-time"
+        ):
+            regex_pattern = (
+                r"\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])"  # Date part: YYYY-MM-DD
+                r"T"  # Separator: T
+                r"([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])"  # Time part: HH:MM:SS
+                r"(?:\.\d+)?(?:Z|[+-](?:0[0-9]|1[0-4]):[0-5][0-9])?"  # Optional: fractional seconds and timezone
+            )
 
-        elif property.api_type == "integer":
-            regex_pattern = r"\d+"
+        elif property["type"] == "string":
+            max_length = property.get("max_lenght", 200)
+            min_length = property.get("min_length", 0)
+            regex_pattern = rf"[\w\s]{min_length},{max_length}"  # Allows letters, numbers, and underscores
+            if "pattern" in property:
+                regex_pattern = rf"(?={property.get("pattern")})" + regex_pattern
 
-        elif property.api_type == "number":
-            regex_pattern = r"\d+(\.\d+)"
+        elif property["type"] == "integer":
+            signed = property.get("signed", True)
+            regex_pattern = r"[\-\+]?\d+" if signed else r"\d+"
+
+        elif property["type"] == "number":
+            regex_pattern = r"[+-]?\d+(\.\d+)?"
 
         if len(regex_pattern) == 0:
             regex_pattern = ".*"
 
         return (
-            f"^(({regex_pattern})|lt::|le::|eq::|ne::|ge::|gt::"
-            + f"|between::({regex_pattern}),"
-            + f"|not-between::({regex_pattern}),"
-            + f"|in::(({regex_pattern}),)*)$"
-            + f"|not-in::(({regex_pattern}),)*)$"
+            rf"^{regex_pattern}$"
+            + rf"|^(?:lt::|le::|eq::|ne::|ge::|gt::)?{regex_pattern}$"
+            + rf"|^between::{regex_pattern},{regex_pattern}$"
+            + rf"|^not-between::{regex_pattern},{regex_pattern},"
+            + rf"|^in::{regex_pattern}(,{regex_pattern})*$"
+            + rf"|^not-in::{regex_pattern}(,{regex_pattern})*$"
         )
 
-    def generate_query_parameters(self, schema_object: SchemaObject):
+    def generate_query_parameters(self, schema_object: dict[str, Any]):
         parameters = []
         for (
             property_name,
             property_details,
-        ) in schema_object.properties.items():
+        ) in self.get_input_properties(schema_object, include_primary_key=True).items():
             parameter = {
                 "in": "query",
                 "name": property_name,
                 "required": False,
                 "schema": {
-                    "type": property_details.type,
+                    "type": property_details["type"],
                     "pattern": self.generate_regex(property_details),
                 },  # Assuming default type is string
                 "description": f"Filter by {property_name}",
@@ -279,7 +110,70 @@ class GatewaySpec:
             }
         }
 
-    def generate_crud_operations(self, schema_name, schema_object: SchemaObject):
+    def get_primary_key(
+        self, schema_object: dict[str, Any]
+    ) -> Optional[tuple[str, dict[str, Any]]]:
+        for name, property in schema_object["properties"].items():
+            if "x-af-primary-key" in property:
+                return (name, property)
+        return None
+
+    def get_concurrency_property(
+        self, schema_object: dict[str, Any]
+    ) -> Optional[tuple[str, dict[str, Any]]]:
+        concurrency_property = schema_object.get("x-af-concurrency-control", None)
+        if concurrency_property:
+            return (
+                concurrency_property,
+                schema_object["properties"][concurrency_property],
+            )
+        return None
+
+    def get_input_properties(
+        self,
+        schema_object: dict[str, Any],
+        include_primary_key: bool = False,
+        include_concurrency_property: bool = False,
+    ) -> dict[str, Any]:
+
+        # Retrieve primary key and concurrency property if they exist
+        primary_key = (
+            self.get_primary_key(schema_object) if not include_primary_key else None
+        )
+        concurrency_property = (
+            self.get_concurrency_property(schema_object)
+            if not include_concurrency_property
+            else None
+        )
+
+        return {
+            name: prop
+            for name, prop in schema_object["properties"].items()
+            if (
+                "x-af-parent-property" not in prop
+                and "x-af-child-property" not in prop
+                and (
+                    include_primary_key
+                    or name != (primary_key[0] if primary_key else None)
+                )
+                and (
+                    include_concurrency_property
+                    or name
+                    != (concurrency_property[0] if concurrency_property else None)
+                )
+            )
+        }
+
+    def get_required_input_properties(
+        self,
+        schema_object: dict[str, Any],
+        input_properties: dict[str, Any],
+    ) -> list[str]:
+        # Filter the required properties from input properties
+        required_properties = schema_object.get("required", [])
+        return [name for name in input_properties if name in required_properties]
+
+    def generate_crud_operations(self, schema_name, schema_object: dict):
         path = f"/{schema_name.lower()}"
         self.generate_create_operation(path, schema_name, schema_object)
         self.generate_get_by_id_operation(path, schema_name, schema_object)
@@ -292,10 +186,13 @@ class GatewaySpec:
         self.generate_delete_many_operation(path, schema_name, schema_object)
 
     def generate_create_operation(
-        self, path: str, schema_name: str, schema_object: SchemaObject
+        self, path: str, schema_name: str, schema_object: dict[str, Any]
     ):
-        log.debug(
-            f"schema_name: {schema_name}, schema_object: {schema_object.schema_object}"
+        log.debug(f"schema_name: {schema_name}, schema_object: {schema_object}")
+        primary_key = self.get_primary_key(schema_object)
+        include_primary_key = primary_key and primary_key[1].get("key_type") == "manual"
+        input_properties = self.get_input_properties(
+            schema_object, include_primary_key=include_primary_key
         )
         self.add_operation(
             path,
@@ -308,10 +205,10 @@ class GatewaySpec:
                         "application/json": {
                             "schema": {
                                 "type": "object",
-                                "properties": self.remove_custom_attributes(
-                                    schema_object.schema_object["properties"]
+                                "properties": input_properties,
+                                "required": self.get_required_input_properties(
+                                    schema_object, input_properties
                                 ),
-                                "required": schema_object.required,
                             }
                         }
                     },
@@ -326,7 +223,7 @@ class GatewaySpec:
         )
 
     def generate_get_many_operation(
-        self, path: str, schema_name: str, schema_object: SchemaObject
+        self, path: str, schema_name: str, schema_object: dict[str, Any]
     ):
         self.add_operation(
             path,
@@ -344,24 +241,27 @@ class GatewaySpec:
         )
 
     def generate_get_by_id_operation(
-        self, path: str, schema_name: str, schema_object: SchemaObject
+        self, path: str, schema_name: str, schema_object: dict[str, Any]
     ):
-        key = schema_object.primary_key
+        key = self.get_primary_key(schema_object)
         if not key:
             return
 
+        key_name = key[0]
+        key_properties = key[1]
+
         self.add_operation(
-            f"{path}/{{{key.name}}}",
+            f"{path}/{{{key_name}}}",
             "get",
             {
-                "summary": f"Retrieve {schema_name} by {key.name}",
+                "summary": f"Retrieve {schema_name} by {key_name}",
                 "parameters": [
                     {
                         "name": "id",
                         "in": "path",
                         "description": f"ID of the {schema_name} to get",
                         "required": True,
-                        "schema": {"type": key.api_type},
+                        "schema": {"type": key_properties},
                     }
                 ],
                 "responses": {
@@ -374,39 +274,41 @@ class GatewaySpec:
         )
 
     def generate_update_by_id_operation(
-        self, path: str, schema_name: str, schema_object: SchemaObject
+        self, path: str, schema_name: str, schema_object: dict[str, Any]
     ):
-        if schema_object.concurrency_property:
+        concurrency = self.get_concurrency_property(schema_object)
+        if concurrency:
             return
 
-        key = schema_object.primary_key
+        key = self.get_primary_key(schema_object)
         if not key:
             return
 
+        key_name = key[0]
+        key_properties = key[1]
+
         # Update operation
         self.add_operation(
-            f"{path}/{{{key.name}}}",
+            f"{path}/{{key_name}}",
             "put",
             {
-                "summary": f"Update an existing {schema_name} by {key.name}",
+                "summary": f"Update an existing {schema_name} by {key_name}",
                 "parameters": [
                     {
-                        "name": key.name,
+                        "name": key_name,
                         "in": "path",
                         "description": f"ID of the {schema_name} to update",
                         "required": True,
-                        "schema": {"type": key.api_type},
+                        "schema": key_properties,
                     }
                 ],
                 "requestBody": {
-                    "required": False,
+                    "required": True,
                     "content": {
                         "application/json": {
                             "schema": {
                                 "type": "object",
-                                "properties": self.remove_custom_attributes(
-                                    schema_object.schema_object["properties"]
-                                ),
+                                "properties": self.get_input_properties(schema_object),
                                 "required": [],  # No properties are marked as required
                             }
                         }
@@ -422,38 +324,44 @@ class GatewaySpec:
         )
 
     def generate_update_with_cc_operation(
-        self, path: str, schema_name: str, schema_object: SchemaObject
+        self, path: str, schema_name: str, schema_object: dict[str, Any]
     ):
         # Update operation
-        key = schema_object.primary_key
+        key = self.get_primary_key(schema_object)
         if not key:
             return
 
-        cc_property = schema_object.concurrency_property
-        if not cc_property:
+        key_name = key[0]
+        key_properties = key[1]
+
+        cc_tuple = self.get_concurrency_property(schema_object)
+        if not cc_tuple:
             return
 
+        cc_property_name = cc_tuple[0]
+        cc_property = cc_tuple[1]
+
         self.add_operation(
-            f"{path}/{{{key.name}}}/{cc_property.name}/{{{cc_property.name}}}",
+            f"{path}/{{{key_name}}}/{cc_property_name}/{{{cc_property_name}}}",
             "put",
             {
                 "summary": f"Update an existing {schema_name} by ID",
                 "parameters": [
                     {
-                        "name": key.name,
+                        "name": key_name,
                         "in": "path",
                         "description": f"ID of the {schema_name} to update",
                         "required": True,
-                        "schema": {"type": key.api_type},
+                        "schema": key_properties,
                     },
                     {
-                        "name": cc_property.name,
+                        "name": cc_property_name,
                         "in": "path",
                         "description": (
-                            cc_property.name + " of the " + schema_name + " to update"
+                            cc_property_name + " of the " + schema_name + " to update"
                         ),
                         "required": True,
-                        "schema": {"type": cc_property.api_type},
+                        "schema": cc_property,
                     },
                 ],
                 "requestBody": {
@@ -462,9 +370,7 @@ class GatewaySpec:
                         "application/json": {
                             "schema": {
                                 "type": "object",
-                                "properties": self.remove_custom_attributes(
-                                    schema_object.schema_object["properties"]
-                                ),
+                                "properties": self.get_input_properties(schema_object),
                                 "required": [],
                             }
                         }
@@ -480,9 +386,11 @@ class GatewaySpec:
         )
 
     def generate_update_many_operation(
-        self, path: str, schema_name: str, schema_object: SchemaObject
+        self, path: str, schema_name: str, schema_object: dict[str, Any]
     ):
-        if schema_object.concurrency_property:
+        cc_tuple = self.get_concurrency_property(schema_object)
+        log.info(f"cc_tuple: {cc_tuple}")
+        if cc_tuple:
             return
 
         # Update operation
@@ -498,9 +406,7 @@ class GatewaySpec:
                         "application/json": {
                             "schema": {
                                 "type": "object",
-                                "properties": self.remove_custom_attributes(
-                                    schema_object.schema_object["properties"]
-                                ),
+                                "properties": schema_object["properties"],
                                 "required": [],
                             }
                         }
@@ -518,37 +424,43 @@ class GatewaySpec:
         # Delete operation
 
     def generate_delete_with_cc_operation(
-        self, path: str, schema_name: str, schema_object: SchemaObject
+        self, path: str, schema_name: str, schema_object: dict[str, Any]
     ):
-        cc_property = schema_object.concurrency_property
-        if not cc_property:
+        cc_tuple = self.get_concurrency_property(schema_object)
+        if not cc_tuple:
             return
 
-        key = schema_object.primary_key
+        cc_property_name = cc_tuple[0]
+        cc_property = cc_tuple[1]
+
+        key = self.get_primary_key(schema_object)
         if not key:
             return
 
+        key_name = key[0]
+        key_properties = key[1]
+
         self.add_operation(
-            f"{path}/{{{key.name}}}/{cc_property.name}/{{{cc_property.name}}}",
+            f"{path}/{{{key_name}}}/{cc_property_name}/{{{cc_property_name}}}",
             "delete",
             {
                 "summary": f"Delete an existing {schema_name} by ID",
                 "parameters": [
                     {
-                        "name": key.name,
+                        "name": key_name,
                         "in": "path",
                         "description": f"ID of the {schema_name} to update",
                         "required": True,
-                        "schema": {"type": key.api_type},
+                        "schema": {"type": key_properties},
                     },
                     {
-                        "name": cc_property.name,
+                        "name": cc_property_name,
                         "in": "path",
                         "description": (
-                            f"{cc_property.name} of the {schema_name} to update"
+                            f"{cc_property_name} of the {schema_name} to update"
                         ),
                         "required": True,
-                        "schema": {"type": cc_property.api_type},
+                        "schema": cc_property,
                     },
                 ],
                 "responses": {
@@ -561,27 +473,30 @@ class GatewaySpec:
         )
 
     def generate_delete_by_id_operation(
-        self, path: str, schema_name: str, schema_object: SchemaObject
+        self, path: str, schema_name: str, schema_object: dict[str, Any]
     ):
-        if schema_object.concurrency_property:
+        if self.get_concurrency_property(schema_object):
             return
 
-        key = schema_object.primary_key
+        key = self.get_primary_key(schema_object)
         if not key:
             return
 
+        key_name = key[0]
+        key_properties = key[1]
+
         self.add_operation(
-            f"{path}/{{{key.name}}}",
+            f"{path}/{{{key_name}}}",
             "delete",
             {
-                "summary": f"Delete an existing {schema_name} by {key.name}",
+                "summary": f"Delete an existing {schema_name} by {key_name}",
                 "parameters": [
                     {
-                        "name": key.name,
+                        "name": key_name,
                         "in": "path",
                         "description": f"ID of the {schema_name} to update",
                         "required": True,
-                        "schema": {"type": key.api_type},
+                        "schema": {"type": key_properties},
                     }
                 ],
                 "responses": {
@@ -594,9 +509,9 @@ class GatewaySpec:
         )
 
     def generate_delete_many_operation(
-        self, path: str, schema_name: str, schema_object: SchemaObject
+        self, path: str, schema_name: str, schema_object: dict[str, Any]
     ):
-        if schema_object.concurrency_property:
+        if self.get_concurrency_property(schema_object):
             return
 
         self.add_operation(
@@ -624,9 +539,5 @@ class GatewaySpec:
             ]
             for attribute in attributes_to_remove:
                 component_data.pop(attribute)
-
-            # Add new custom attributes
-            component_data["x-new-attribute1"] = "value1"
-            component_data["x-new-attribute2"] = "value2"
 
         return spec_dict
