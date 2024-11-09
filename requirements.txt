@@ -9,3 +9,4 @@ pytest
 requests
 
 -e .
+-e ../cloud_foundry

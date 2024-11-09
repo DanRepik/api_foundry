@@ -6,7 +6,7 @@ from typing import Any
 from cloud_foundry import Function, logger
 
 from api_foundry.iac.gateway_spec import APISpecEditor
-from tests.test_fixtures import read_spec, write_spec
+from tests.test_fixtures import read_spec
 
 log = logger(__name__)
 

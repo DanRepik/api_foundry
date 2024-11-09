@@ -4,7 +4,7 @@ from typing import Any, Optional
 from cloud_foundry import Function
 from cloud_foundry.utils.aws_openapi_editor import AWSOpenAPISpecEditor
 
-from api_foundry.utils.logger import logger
+from api_foundry.utils.logger import logger, write_logging_file
 
 
 log = logger(__name__)
@@ -16,18 +16,18 @@ class APISpecEditor:
     integrations: list[dict]
 
     def __init__(
-        self, *, open_api_spec: dict[str, Any], function_name: str, function: Function
+        self, *, open_api_spec: dict, function_name: str, function: Function
     ):
         self.function = function
         self.integrations = []
         self.editor = AWSOpenAPISpecEditor(copy.deepcopy(open_api_spec))
 
     def rest_api_spec(self) -> str:
-        self.editor.remove_attributes_by_pattern("^x-af-.*$")
-
         schemas = self.editor.get_spec_part(["components", "schemas"], create=False)
         for schema_name, schema_object in schemas.items():
             self.generate_crud_operations(schema_name, schema_object)
+
+        self.editor.remove_attributes_by_pattern("^x-af-.*$")
 
         self.editor.correct_schema_names()
         return self.editor.to_yaml()
@@ -132,23 +132,24 @@ class APISpecEditor:
     def get_input_properties(
         self,
         schema_object: dict[str, Any],
-        include_primary_key: bool = False,
-        include_concurrency_property: bool = False,
+        include_primary_key: bool = False
     ) -> dict[str, Any]:
 
         # Retrieve primary key and concurrency property if they exist
         primary_key = (
             self.get_primary_key(schema_object) if not include_primary_key else None
         )
-        concurrency_property = (
-            self.get_concurrency_property(schema_object)
-            if not include_concurrency_property
-            else None
-        )
+        concurrency_property = self.get_concurrency_property(schema_object)
 
-        return {
-            name: prop
-            for name, prop in schema_object["properties"].items()
+        result = dict()
+        for name, prop in schema_object["properties"].items():
+            if "$ref" in prop:
+                ref_parts = prop["$ref"].lstrip("#/").split("/")
+                referenced_schema = self.editor.get_spec_part(ref_parts)
+                if referenced_schema:
+                    prop = {**prop, **referenced_schema}
+                    prop.pop("$ref")
+
             if (
                 "x-af-parent-property" not in prop
                 and "x-af-child-property" not in prop
@@ -156,13 +157,22 @@ class APISpecEditor:
                     include_primary_key
                     or name != (primary_key[0] if primary_key else None)
                 )
-                and (
-                    include_concurrency_property
-                    or name
-                    != (concurrency_property[0] if concurrency_property else None)
+                and name != (concurrency_property[0] if concurrency_property else None)
+            ):
+                result[name] = prop
+        return result
+
+    def resolve_reference(self, ref: str, base_spec: dict[str, Any]) -> Any:
+        """Resolve a single $ref reference."""
+        result = base_spec
+        for part in ref_parts:
+            result = result.get(part)
+            if result is None:
+                raise KeyError(
+                    f"Reference part '{part}' not found in the OpenAPI spec."
                 )
-            )
-        }
+        return result
+
 
     def get_required_input_properties(
         self,
@@ -188,7 +198,6 @@ class APISpecEditor:
     def generate_create_operation(
         self, path: str, schema_name: str, schema_object: dict[str, Any]
     ):
-        log.debug(f"schema_name: {schema_name}, schema_object: {schema_object}")
         primary_key = self.get_primary_key(schema_object)
         include_primary_key = primary_key and primary_key[1].get("key_type") == "manual"
         input_properties = self.get_input_properties(
@@ -289,7 +298,7 @@ class APISpecEditor:
 
         # Update operation
         self.add_operation(
-            f"{path}/{{key_name}}",
+            f"{path}/{{{key_name}}}",
             "put",
             {
                 "summary": f"Update an existing {schema_name} by {key_name}",
@@ -389,7 +398,6 @@ class APISpecEditor:
         self, path: str, schema_name: str, schema_object: dict[str, Any]
     ):
         cc_tuple = self.get_concurrency_property(schema_object)
-        log.info(f"cc_tuple: {cc_tuple}")
         if cc_tuple:
             return
 

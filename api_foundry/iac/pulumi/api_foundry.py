@@ -1,5 +1,6 @@
 import pkgutil
 import pulumi
+import os
 import json
 import yaml
 from pulumi import ComponentResource, Config
@@ -8,7 +9,7 @@ import cloud_foundry
 
 from api_foundry.iac.gateway_spec import APISpecEditor
 from api_foundry.utils.model_factory import ModelFactory
-from api_foundry.utils.logger import logger
+from api_foundry.utils.logger import logger, write_logging_file
 
 log = logger(__name__)
 
@@ -19,45 +20,22 @@ class APIFoundry(ComponentResource):
     def __init__(
         self,
         name,
-        api_spec,
+        *,
+        api_spec: str,
+        secrets: dict[str, str],
+        environment: dict[str, str] = None,
         opts=None,
     ):
         super().__init__("cloud_forge:apigw:RestAPI", name, None, opts)
         self.name = name
         self.api_spec = api_spec
+        self.secrets = secrets
+        self.environment = environment or {}
         self.function_name = f"{self.name}-api-foundry"
 
         model_factory = ModelFactory()
-        model_factory.set_spec(yaml.safe_load(api_spec))
+        model_factory.load_yaml(api_spec)
 
-        self.function = cloud_foundry.python_function(
-            name=self.function_name,
-            sources={
-                "api_spec.yaml": yaml.safe_dump(model_factory.get_config_output()),
-                "app.py": pkgutil.get_data("api_foundry_query_engine", "lambda_handler.py").decode("utf-8"),  # type: ignore
-            },
-            requirements=["psycopg2-binary", "pyyaml", "api_foundry_query_engine"],
-        )
-
-        rest_api_spec = APISpecEditor()
-        self.rest_api = cloud_foundry.rest_api(
-            f"{self.name}-rest-api",
-            body="./api_spec.yaml",
-            integrations=model_factory.get_integrations()
-            #            [{"path": "/greet", "method": "get", "function": greet_function}],
-        )
-
-        def build(function: cloud_foundry.Function):
-            self.api_spec_editor = APISpecEditor(
-                function_name=self.function_name, function=function
-            )
-            log.info("returning from build")
-            return pulumi.Output.from_input(None)
-
-        self.api_function.invoke_arn.apply(lambda invoke_arn: (build(self.function)))
-
-        """
-        environment = props.get("environment") if isinstance(props.get("environment"), dict) else {} 
         # Check if we are deploying to LocalStack
         if self.is_deploying_to_localstack():
             # Add LocalStack-specific environment variables
@@ -66,8 +44,43 @@ class APIFoundry(ComponentResource):
                 "AWS_SECRET_ACCESS_KEY": "test",
                 "AWS_ENDPOINT_URL": "http://localstack:4566",
             }
-            environment = {**localstack_env, **environment}
-        environment['secrets'] = props["secrets"]
+            self.environment = {**localstack_env, **self.environment}
+        self.environment["SECRETS"] = secrets
+
+        self.api_function = cloud_foundry.python_function(
+            name=self.function_name,
+            environment=self.environment,
+            sources={
+                "api_spec.yaml": yaml.safe_dump(model_factory.get_config_output()),
+                "app.py": pkgutil.get_data("api_foundry_query_engine", "lambda_handler.py").decode("utf-8"),  # type: ignore
+            },
+            requirements=["psycopg2-binary", "pyyaml", "api_foundry_query_engine"],
+        )
+
+        gateway_spec = APISpecEditor(
+            open_api_spec=api_spec,
+            function=self.api_function,
+            function_name=self.function_name,
+        )
+        #        log.info(f"integrations: {gateway_spec.integrations}")
+        self.rest_api = cloud_foundry.rest_api(
+            f"{self.name}-rest-api",
+            body=gateway_spec.rest_api_spec(),
+            integrations=gateway_spec.integrations,
+        )
+        """
+        def build(function: cloud_foundry.Function):
+            self.api_spec_editor = APISpecEditor(
+                open_api_spec=model_factory.spec,
+                function_name=self.function_name,
+                function=self.api_function,
+            )
+            log.info("returning from build")
+            return pulumi.Output.from_input(None)
+
+        self.api_function.invoke_arn.apply(
+            lambda invoke_arn: (build(self.api_function))
+        )
         """
 
     def integrations(self) -> list[dict]:
