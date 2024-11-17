@@ -164,7 +164,6 @@ class SchemaObject(OpenAPIElement):
     def _get_primary_key(self, schema_object: dict) -> Optional[str]:
         for property_name, properties in schema_object.get("properties", {}).items():
             if "x-af-primary-key" in properties:
-                log.info(f"primary_key: {property_name}")
                 property = self.properties[property_name]
                 property.key_type = properties.get("x-af-primary-key", "auto")
 
@@ -181,7 +180,6 @@ class SchemaObject(OpenAPIElement):
                             500,
                             f"Sequence-based primary keys must have a sequence name in schema object '{self.api_name}', property '{property_name}'",
                         )
-                log.info(f"primary property: {vars(property)}")
                 return property_name
         return None
 
@@ -258,19 +256,7 @@ class PathOperation(OpenAPIElement):
 class ModelFactory:
     """Factory class to load and process OpenAPI specifications into models."""
 
-    def __init__(self):
-        self.spec: Dict[str, Any] = {}
-        self.schema_objects: Dict[str, SchemaObject] = {}
-        self.path_operations: Dict[str, PathOperation] = {}
-
-    def load_yaml(self, api_spec_path: str):
-        """Loads a YAML file and sets the spec."""
-        with open(api_spec_path, "r") as yaml_file:
-            spec = yaml.safe_load(yaml_file)
-        self.set_spec(spec)
-
-    def set_spec(self, spec: dict):
-        """Sets the OpenAPI spec and resolves all references."""
+    def __init__(self, spec: dict):
         self.spec = self.resolve_all_refs(spec)
         self.schema_objects = self._load_schema_objects()
         self.path_operations = self._load_path_operations()

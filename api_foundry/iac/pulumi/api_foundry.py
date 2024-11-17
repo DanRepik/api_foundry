@@ -1,8 +1,8 @@
 import pkgutil
-import pulumi
 import os
 import json
 import yaml
+from typing import Union
 from pulumi import ComponentResource, Config
 
 import cloud_foundry
@@ -22,19 +22,24 @@ class APIFoundry(ComponentResource):
         name,
         *,
         api_spec: str,
-        secrets: dict[str, str],
-        environment: dict[str, str] = None,
+        secrets: str,
+        environment: dict[str, str] = {},
+        body: Union[str, list[str]] = [],
+        integrations: list[dict] = [],
+        token_validators: list[dict] = [],
         opts=None,
     ):
         super().__init__("cloud_forge:apigw:RestAPI", name, None, opts)
-        self.name = name
-        self.api_spec = api_spec
-        self.secrets = secrets
-        self.environment = environment or {}
-        self.function_name = f"{self.name}-api-foundry"
+        function_name = f"{name}-api-foundry"
 
-        model_factory = ModelFactory()
-        model_factory.load_yaml(api_spec)
+        if os.path.exists(api_spec):
+            with open(api_spec, "r") as yaml_file:
+                api_spec_dict = yaml.safe_load(yaml_file)
+        else:
+            api_spec_dict = yaml.safe_load(api_spec)
+
+        if isinstance(body, str):
+            body = [body]
 
         # Check if we are deploying to LocalStack
         if self.is_deploying_to_localstack():
@@ -44,44 +49,31 @@ class APIFoundry(ComponentResource):
                 "AWS_SECRET_ACCESS_KEY": "test",
                 "AWS_ENDPOINT_URL": "http://localstack:4566",
             }
-            self.environment = {**localstack_env, **self.environment}
-        self.environment["SECRETS"] = secrets
+            environment = {**localstack_env, **environment}
+        environment["SECRETS"] = secrets
 
         self.api_function = cloud_foundry.python_function(
-            name=self.function_name,
-            environment=self.environment,
+            name=function_name,
+            environment=environment,
             sources={
-                "api_spec.yaml": yaml.safe_dump(model_factory.get_config_output()),
+                "api_spec.yaml": yaml.safe_dump(ModelFactory(api_spec_dict).get_config_output()),
                 "app.py": pkgutil.get_data("api_foundry_query_engine", "lambda_handler.py").decode("utf-8"),  # type: ignore
             },
             requirements=["psycopg2-binary", "pyyaml", "api_foundry_query_engine"],
         )
 
         gateway_spec = APISpecEditor(
-            open_api_spec=api_spec,
+            open_api_spec=api_spec_dict,
             function=self.api_function,
-            function_name=self.function_name,
+            function_name=function_name,
         )
         #        log.info(f"integrations: {gateway_spec.integrations}")
         self.rest_api = cloud_foundry.rest_api(
-            f"{self.name}-rest-api",
-            body=gateway_spec.rest_api_spec(),
-            integrations=gateway_spec.integrations,
+            f"{name}-rest-api",
+            body=[*body, gateway_spec.rest_api_spec()],
+            integrations=[*integrations, *gateway_spec.integrations],
+            token_validators=token_validators
         )
-        """
-        def build(function: cloud_foundry.Function):
-            self.api_spec_editor = APISpecEditor(
-                open_api_spec=model_factory.spec,
-                function_name=self.function_name,
-                function=self.api_function,
-            )
-            log.info("returning from build")
-            return pulumi.Output.from_input(None)
-
-        self.api_function.invoke_arn.apply(
-            lambda invoke_arn: (build(self.api_function))
-        )
-        """
 
     def integrations(self) -> list[dict]:
         return self.api_spec_editor.integrations

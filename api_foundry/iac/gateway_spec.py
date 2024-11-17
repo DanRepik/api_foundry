@@ -1,3 +1,5 @@
+# gatway_spec.py
+
 import copy
 from typing import Any, Optional
 
@@ -32,11 +34,11 @@ class APISpecEditor:
         self.editor.correct_schema_names()
         return self.editor.to_yaml()
 
-    def add_operation(self, path: str, method: str, operation: dict):
+    def add_operation(self, path: str, method: str, operation: dict, schema_object: Optional[dict] = None):
         self.integrations.append(
             {"path": path, "method": method, "function": self.function}
         )
-        self.editor.add_operation(path, method, operation)
+        self.editor.add_operation(path, method, operation, schema_object)
 
     def generate_regex(self, property: dict[str, Any]) -> str:
         regex_pattern = ""
@@ -206,7 +208,7 @@ class APISpecEditor:
         self.add_operation(
             path,
             "post",
-            {
+            operation={
                 "summary": f"Create a new {schema_name}",
                 "requestBody": {
                     "required": True,
@@ -229,6 +231,7 @@ class APISpecEditor:
                     }
                 },
             },
+            schema_object=schema_object
         )
 
     def generate_get_many_operation(

@@ -19,7 +19,7 @@ The `api_foundry` project streamlines the process of deploying APIs on AWS that 
 
 ## Guide
 
-This guide provides a brief overview of key API-Foundry features, including:
+This guide provides a overview of key API-Foundry features, including:
 
 * **Building an API** - A quick introduction to implementing APIs with API-Foundry, featuring a concise example of deploying an API.
 * **Exploring the Deployment** - An overview of the infrastructure deployed to support the API.
@@ -27,6 +27,7 @@ This guide provides a brief overview of key API-Foundry features, including:
 * **Using Metadata Parameters** - How to use metadata parameters to customize the results returned by the services.
 * **Managing Concurrency** - An explanation of how API-Foundry handles concurrency among application clients.
 * **Object and List Properties** - Demonstrations of how API-Foundry can return objects with nested objects or lists as properties, and how to configure these properties.
+* **Authorization** - API foundry provides role based security allowing restrictions down to the property level.  
 
 The examples in this guide use data from the Chinook database. The examples presented here are a subset of a complete working example available in the examples directory.
 
@@ -552,7 +553,7 @@ customer:
   description: Customer associated with the invoice.
 ```
 
-Note how the `x-af-parent-property` identifies the `customer_id` property to use as the key value for selecting the customer.
+Note how the `x-af-parent-property` identifies the `customer_id` property to use as the key value for selecting the customer.  Since a the `x-af-child-property` was omitted API Foundry will match the `customer_id` to the primary key of the `customer` schema object.
 
 #### Array of Object Properties
 
@@ -824,8 +825,333 @@ paths:
                       description: The number of albums sold
 ```
 
+### Restricting Access Using Authorization
 
-Like any OpenAPI path operation the request parameters and response structure will need definition.  Additionally further
+Until now, API Foundry deployments have lacked built-in security. Although the AWS infrastructure provided is protected, the API itself has been publicly accessible, with unrestricted access to all path operations.
+
+In real-world applications, authorization is essential to ensure that requestors are permitted to perform specific operations. In API Foundry, these authorizations are defined in the API specification, allowing for fine-grained control over access to database resources.
+
+API-Foundry uses a token based schema to determine authorization. Authentication and authorization with the API follows the following sequence.
+
+![Authorization Sequence](./resources/uml/authorization-flow.png)
+
+<div hidden>
+@startuml
+title API Request Authentication and Authorization Flow
+
+actor Client as "Client Application"
+participant "Authorization Service" as AuthService
+participant "API Gateway" as Gateway
+participant "Validation Service" as ValidationService
+participant "API Foundry Query Engine" as Server
+
+== Token Request Flow ==
+
+Client -> AuthService : Request Bearer Token (credentials)
+note right of AuthService : Authorization Service validates\nclient credentials and grants access token
+AuthService --> Client : Response with Bearer Token (JWT)
+
+== Request Authentication and Authorization Flow ==
+
+Client -> Gateway : Request API Resource (/path/operation) with Bearer Token
+note right of Gateway : Client sends a request to the API Gateway\nincluding the Bearer token (JWT) in the Authorization header
+
+alt No Authorization header or token is missing
+    Gateway -> Client : 401 Unauthorized
+else Token provided
+    Gateway -> ValidationService : Verify JWT Token
+    note right of ValidationService : Validation Service verifies the token\nand decodes it to check claims
+
+    alt Token is invalid or expired
+        ValidationService --> Gateway : 401 Unauthorized
+        Gateway -> Client : 401 Unauthorized
+    else Token is valid
+        ValidationService --> Gateway : Valid Token (JWT claims)
+        note right of Gateway : Token is verified. Extract claims\nsuch as 'sub', 'scope', and 'permissions'
+
+        alt Scope and permissions not allowed
+            Gateway -> Client : 403 Forbidden
+        else Scope and permissions allowed
+            Gateway -> Server : Forward request to /path/operation
+            note right of Server : Server performs the operation\nbased on user permissions
+            Server --> Gateway : Operation Result (e.g., data, success)
+            Gateway --> Client : Respond with result
+        end
+    end
+end
+
+@enduml
+</div>
+
+**Explanation**
+
+* **Token Request Flow:**
+
+  * The Client requests a Bearer token from and external Authorization Service by providing credentials.
+  * The Authorization Service verifies the credentials and issues a JWT as a Bearer token if valid.
+  * The Client receives the Bearer token.
+
+* **Request Authentication and Authorization Flow:**
+  * Client uses the Bearer token to request an API resource from the API Gateway.
+  * API Gateway verifies the presence of the token and forwards it to the Validation Service for verification.
+  * Validation Service checks the token validity:
+  * If invalid or expired, 401 Unauthorized is returned.
+  * If valid, token claims (sub, scope, permissions) are extracted.
+
+* **Authorization Check:**
+  * If the required scope or permissions are missing, a 403 Forbidden response is sent to the Client.
+  * If permissions are adequate, the request is forwarded to the API Server.
+
+* **API-Foundy Query Server:** 
+  * Performs the operation, and the result is returned to the Client.
+  * Uses the token claims (sub, scope, permissions) to determine if the operation is permitted for the user and perform any redactions to the response data.
+
+Configuring authorization in API_Foundry consist of two parts.  First a token validator function must be configured in the foundry server.  And then authorization instructions can be added to the API specification.  These instructions allow configuring the operations an data a user can access.
+
+#### Setting Up an Token Validator
+
+With API-Foundry an token validator is a function that decodes the JWT bearer token.  From a valid token it returns  obtained from the request header, decodes the token and returns an Oauth token.  
+
+> An application can have more than one token validator if needed.
+
+#### Extending the API Specfication with Security Instructions
+
+API-Foundry enables fine-grained control over access to your API by allowing security instructions to be added to the OpenAPI specification. These security instructions can be applied globally across the API or specifically to individual table integrations or custom SQL path operations. This section explains how to configure security for your API and ensure that only authorized users can access specific resources or operations.
+
+##### Global Security Instructions
+
+To enforce security globally for all API operations, you can define security requirements at the root of the OpenAPI specification. This is done using the standard security attribute in the OpenAPI specification.
+
+For example:
+
+```yaml
+security:
+  - oauth:
+      - read
+      - write
+```
+
+In this example:
+
+* All operations in the API will require the oauth validator.
+* The user must have one or more of the read or write scopes.
+
+Global security requirements are automatically inherited by all operations in the API unless explicitly overridden by a specific operation or table integration.
+
+##### Security Instructions for Table Operations 
+
+For table integrations, API-Foundry provides an extended `x-af-security attribute` in the schema definition. This attribute specifies the validation rules for CRUD (Create, Read, Update, Delete) operations and is used to control access to the services generated for the table.
+
+The keys directly under `x-af-security` (e.g., `my-oauth`) are the names of the validators that were configured when adding token validators to the API.  Recall those validators are functions responsible for authenticating and authorizing requests.
+
+API-Foundy when building the API path operations associated with table integrations configures the security for the operations to use the validator referenced.  During runtime request processing the security instructions are applied providing fine grain access control of the data. 
+
+The 'my-oauth' element in this context maps the set of security instructions (roles and permissions) to the validator that processes the request.
+
+Example x-af-security Usage
+
+Here’s an example of the x-af-security attribute with an oauth validator:
+
+```yaml
+components:
+  schemas:
+    invoice:
+      type: object
+      x-af-database: chinook
+      x-af-security:
+        my-oauth:
+          sales_reader:
+            read: "^(customer_id|total)$"
+          sales_associate:
+            read: "*"
+            write: "^(customer_id|total|status)$"
+          sales_manager:
+            read: "*"
+            write: "*"
+            delete: "*"
+      properties:
+        invoice_id:
+          type: integer
+          x-af-primary-key: auto
+        customer_id:
+          type: integer
+        total:
+          type: number
+        status:
+          type: string
+```
+
+Validator Names and Their Role
+
+In the example above:
+
+`my-oauth`: Refers to a validator defined in the API Gateway or in the security/schemaSecurity section of the OpenAPI spec.
+
+* This validator will authenticate and authorize requests based on the roles (sales_reader, sales_associate, sales_manager) and their associated permissions.
+* The validator is expected to validate the bearer token, decode its claims.
+
+**Role of OAuth and Validators in Security Instructions**
+
+For table integrations, API-Foundry supports fine-grained access control through the `x-af-security` attribute, which defines how access to the table operations is validated. This attribute relies on the oauth element to specify the roles and their associated permissions.
+
+The `oauth` element maps roles (e.g., `sales_reader`, `sales_manager`) to permissions required to perform specific CRUD (Create, Read, Update, Delete) actions. These roles and permissions are evaluated by token validators at runtime. A token validator decodes the bearer token sent with the request, verifies its authenticity and expiration, and extracts claims such as:
+
+* sub (Subject): Represents the user or client making the request.
+* scope: Lists the scopes or permissions the user has been granted.
+* Custom Claims: These may include roles, groups, or other metadata specific to the application.
+
+When a request is received, API-Foundry ensures that the roles and scopes specified in the x-af-security attribute align with the claims extracted from the token. If a mismatch occurs, the request is denied, ensuring only authorized users can access the table operations.
+For table integrations, API-Foundry provides an extended `x-af-security` attribute in the schema definition. This attribute specifies the validation rules for CRUD (Create, Read, Update, Delete) operations and is used to control access to the services generated for the table.
+
+Here’s an example:
+
+```yaml
+components:
+  schemas:
+    invoice:
+      type: object
+      x-af-database: chinook
+      x-af-security:
+        oauth:
+          sales_reader:
+            read: "*"
+          sales_associate:
+            read: "*"
+            write: "*"
+          sales_manager:
+            read: "*"
+            write: "*"
+            delete: "*"
+      properties:
+        invoice_id:
+          type: integer
+          x-af-primary-key: auto
+        customer_id:
+          type: integer
+        total:
+          type: number
+```
+
+Explanation:
+
+* The `x-af-security` attribute is a dictionary where keys represent the validation mechanism (e.g., oauth).
+* For each role (e.g., sales_reader, sales_associate, sales_manager), you can define permissions for specific CRUD actions:
+  * read: Controls access to GET operations.
+  * write: Controls access to POST and PUT operations.
+  * delete: Controls access to DELETE operations.
+
+* "*" means unrestricted access for the action.
+
+
+
+
+##### Security Instructions for Custom SQL
+
+For custom SQL path operations, security is defined using the standard security attribute in OpenAPI specifications. The security attribute specifies which validators (e.g., oauth) and scopes (e.g., read, write) are required to access the operation.
+
+Here’s an example:
+
+```yaml
+paths:
+  /top_selling_albums:
+    get:
+      summary: Get top-selling albums
+      description: Returns the top-selling albums within a specified date range.
+      security:
+        - oauth:
+            - read
+      parameters:
+        - in: query
+          name: start
+          schema:
+            type: string
+            format: date-time
+          required: true
+        - in: query
+          name: end
+          schema:
+            type: string
+            format: date-time
+          required: true
+      x-af-database: chinook
+      x-af-sql: >
+        SELECT
+            a.album_id AS album_id,
+            a.title AS album_title,
+            COUNT(il.invoice_line_id) AS total_sold
+        FROM
+            album a
+        JOIN track t ON a.album_id = t.album_id
+        JOIN invoice_line il ON t.track_id = il.track_id
+        WHERE i.invoice_date BETWEEN :start AND :end
+        GROUP BY a.album_id
+        ORDER BY total_sold DESC
+        LIMIT 10
+      responses:
+        '200':
+          description: A list of top-selling albums
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    album_id:
+                      type: integer
+                      description: The ID of the album
+                    album_title:
+                      type: string
+                      description: The title of the album
+                    total_sold:
+                      type: integer
+                      description: The number of albums sold
+```
+Explanation:
+
+* The security attribute specifies that the oauth validator is required, and the user must have the read scope to access this operation.
+* The rest of the definition describes the operation, including request parameters, custom SQL, and response format.
+
+##### Combining Global and Local Security Instructions
+When both global and local security instructions are defined, local instructions take precedence over global settings for the specific operation. This allows flexibility in enforcing security at different levels.
+
+For example:
+
+* A global security attribute may enforce oauth validation for all operations.
+* A specific path operation or table integration can override this with more restrictive or permissive rules.
+
+#### Configuring Security Validators
+In API-Foundry, a security validator is a function that validates the bearer token and extracts claims from it. These claims are then used to determine if the request is authorized.
+
+Adding a Validator
+1. To add a validator, define a Lambda function that performs the following steps:
+Decode the bearer token.
+1. Validate the token’s signature and expiration.
+1. Extract claims such as sub (subject), scope, and permissions.
+1. Return the claims if valid or raise an error if invalid.
+
+For example:
+
+```python
+import jwt
+
+def validate_token(token):
+    try:
+        decoded = jwt.decode(token, key="your-secret-key", algorithms=["HS256"])
+        return decoded
+    except jwt.ExpiredSignatureError:
+        raise Exception("Token expired")
+    except jwt.InvalidTokenError:
+        raise Exception("Invalid token")
+
+```
+
+#### Best Practices
+
+* **Start with Global Security:** Apply global security instructions to enforce a base level of access control across the entire API.
+* **Use Specific Rules for Sensitive Operations:** Add local security instructions to enforce stricter controls on operations that handle sensitive data or require elevated privileges.
+* **Document Security Instructions:** Clearly document the roles, scopes, and permissions required for each path operation to make it easier for developers to understand and maintain the API.
+By combining these techniques, you can build secure and robust APIs with API-Foundry while maintaining flexibility and control over access permissions.
 
 # Configuration
 

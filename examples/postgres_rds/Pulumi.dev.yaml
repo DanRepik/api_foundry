@@ -1,9 +1,0 @@
-encryptionsalt: v1:l3/htzlKT9s=:v1:Ed+Fvy3/f7v8FDyh:ZfxI+vBXU0JcSf6cTOmgH4GhedfZgA==
-config:
-  aws:region: us-east-1
-  postgres_rds:dbAllocatedStorage: "20"
-  postgres_rds:dbBackupRetention: "7"
-  postgres_rds:dbInstanceClass: db.t3.micro
-  postgres_rds:dbPassword:
-    secure: v1:hMdsd0e9ABJ9LRe/:b3NmMnQukdOqTwJshXDbbMNXIe5/Sp+mgBmwG+U80ik=
-  postgres_rds:dbUsername: chinook_user
