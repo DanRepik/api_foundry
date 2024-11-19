@@ -9,7 +9,7 @@ import cloud_foundry
 
 from api_foundry.iac.gateway_spec import APISpecEditor
 from api_foundry.utils.model_factory import ModelFactory
-from api_foundry.utils.logger import logger, write_logging_file
+from api_foundry.utils.logger import logger
 
 log = logger(__name__)
 
@@ -27,10 +27,10 @@ class APIFoundry(ComponentResource):
         body: Union[str, list[str]] = [],
         integrations: list[dict] = [],
         token_validators: list[dict] = [],
+        policy_statements: list = [],
         opts=None,
     ):
-        super().__init__("cloud_forge:apigw:RestAPI", name, None, opts)
-        function_name = f"{name}-api-foundry"
+        super().__init__("cloud_foundry:apigw:APIFoundry", name, None, opts)
 
         if os.path.exists(api_spec):
             with open(api_spec, "r") as yaml_file:
@@ -53,26 +53,33 @@ class APIFoundry(ComponentResource):
         environment["SECRETS"] = secrets
 
         self.api_function = cloud_foundry.python_function(
-            name=function_name,
+            name=name,
             environment=environment,
             sources={
-                "api_spec.yaml": yaml.safe_dump(ModelFactory(api_spec_dict).get_config_output()),
-                "app.py": pkgutil.get_data("api_foundry_query_engine", "lambda_handler.py").decode("utf-8"),  # type: ignore
+                "api_spec.yaml": yaml.safe_dump(
+                    ModelFactory(api_spec_dict).get_config_output()
+                ),
+                "app.py": pkgutil.get_data(
+                    "api_foundry_query_engine", "lambda_handler.py"
+                ).decode(
+                    "utf-8"
+                ),  # type: ignore
             },
             requirements=["psycopg2-binary", "pyyaml", "api_foundry_query_engine"],
+            policy_statements=policy_statements,
         )
 
         gateway_spec = APISpecEditor(
             open_api_spec=api_spec_dict,
             function=self.api_function,
-            function_name=function_name,
+            function_name=name,
         )
         #        log.info(f"integrations: {gateway_spec.integrations}")
         self.rest_api = cloud_foundry.rest_api(
             f"{name}-rest-api",
             body=[*body, gateway_spec.rest_api_spec()],
             integrations=[*integrations, *gateway_spec.integrations],
-            token_validators=token_validators
+            token_validators=token_validators,
         )
 
     def integrations(self) -> list[dict]:

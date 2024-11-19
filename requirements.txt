@@ -7,4 +7,6 @@ pulumi-automation
 
 pytest
 requests
-cloud_foundry
+# cloud_foundry
+-e ../cloud_foundry
+api_foundry_query_engine

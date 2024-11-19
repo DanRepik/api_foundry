@@ -23,7 +23,8 @@ dependencies = [
     "boto3",
     "pulumi",
     "pulumi-aws",
-    "cloud-foundry"
+    "cloud-foundry",
+    "api_foundry_query_engine"
 ]
 
 [project.urls]
