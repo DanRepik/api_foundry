@@ -4,6 +4,7 @@ import json
 import yaml
 from typing import Union
 from pulumi import ComponentResource, Config
+from pulumi_aws import get_caller_identity, get_region
 
 import cloud_foundry
 
@@ -28,6 +29,7 @@ class APIFoundry(ComponentResource):
         integrations: list[dict] = [],
         token_validators: list[dict] = [],
         policy_statements: list = [],
+        vpc_config: dict = None,
         opts=None,
     ):
         super().__init__("cloud_foundry:apigw:APIFoundry", name, None, opts)
@@ -52,6 +54,18 @@ class APIFoundry(ComponentResource):
             environment = {**localstack_env, **environment}
         environment["SECRETS"] = secrets
 
+        account_id = get_caller_identity().account_id
+        region = get_region().name
+        for database, secret_name in json.loads(secrets).items():
+            policy_statements.append(
+                {
+                    "Effect": "Allow",
+                    "Actions": ["secretsmanager:GetSecretValue"],
+                    "Resources": ["*"],
+                    #                    "Resources": [f"arn:aws:secretsmanager:{region}:{account_id}:secret:{secret_name}"],
+                }
+            )
+
         self.api_function = cloud_foundry.python_function(
             name=name,
             environment=environment,
@@ -67,6 +81,7 @@ class APIFoundry(ComponentResource):
             },
             requirements=["psycopg2-binary", "pyyaml", "api_foundry_query_engine"],
             policy_statements=policy_statements,
+            vpc_config=vpc_config,
         )
 
         gateway_spec = APISpecEditor(
@@ -76,7 +91,7 @@ class APIFoundry(ComponentResource):
         )
         #        log.info(f"integrations: {gateway_spec.integrations}")
         self.rest_api = cloud_foundry.rest_api(
-            f"{name}-rest-api",
+            name,
             body=[*body, gateway_spec.rest_api_spec()],
             integrations=[*integrations, *gateway_spec.integrations],
             token_validators=token_validators,

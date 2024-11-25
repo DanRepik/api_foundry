@@ -27,7 +27,7 @@ This guide provides a overview of key API-Foundry features, including:
 * **Using Metadata Parameters** - How to use metadata parameters to customize the results returned by the services.
 * **Managing Concurrency** - An explanation of how API-Foundry handles concurrency among application clients.
 * **Object and List Properties** - Demonstrations of how API-Foundry can return objects with nested objects or lists as properties, and how to configure these properties.
-* **Authorization** - API foundry provides role based security allowing restrictions down to the property level.  
+* **Authorization** - API foundry provides role based security allowing restrictions down to the property level.
 
 The examples in this guide use data from the Chinook database. The examples presented here are a subset of a complete working example available in the examples directory.
 
@@ -902,7 +902,7 @@ end
   * If the required scope or permissions are missing, a 403 Forbidden response is sent to the Client.
   * If permissions are adequate, the request is forwarded to the API Server.
 
-* **API-Foundy Query Server:** 
+* **API-Foundy Query Server:**
   * Performs the operation, and the result is returned to the Client.
   * Uses the token claims (sub, scope, permissions) to determine if the operation is permitted for the user and perform any redactions to the response data.
 
@@ -910,7 +910,7 @@ Configuring authorization in API_Foundry consist of two parts.  First a token va
 
 #### Setting Up an Token Validator
 
-With API-Foundry an token validator is a function that decodes the JWT bearer token.  From a valid token it returns  obtained from the request header, decodes the token and returns an Oauth token.  
+With API-Foundry an token validator is a function that decodes the JWT bearer token.  From a valid token it returns  obtained from the request header, decodes the token and returns an Oauth token.
 
 > An application can have more than one token validator if needed.
 
@@ -926,9 +926,7 @@ For example:
 
 ```yaml
 security:
-  - oauth:
-      - read
-      - write
+  - oauth: []
 ```
 
 In this example:
@@ -938,19 +936,21 @@ In this example:
 
 Global security requirements are automatically inherited by all operations in the API unless explicitly overridden by a specific operation or table integration.
 
-##### Security Instructions for Table Operations 
+### Security Instructions for Table Operations
 
-For table integrations, API-Foundry provides an extended `x-af-security attribute` in the schema definition. This attribute specifies the validation rules for CRUD (Create, Read, Update, Delete) operations and is used to control access to the services generated for the table.
+For table integrations, **API-Foundry** provides the extended `x-af-security` attribute within the schema definition. This attribute defines validation rules for CRUD (Create, Read, Update, Delete) operations, allowing fine-grained access control for the API-generated services.
 
-The keys directly under `x-af-security` (e.g., `my-oauth`) are the names of the validators that were configured when adding token validators to the API.  Recall those validators are functions responsible for authenticating and authorizing requests.
+The keys under `x-af-security` (e.g., `my-oauth`) reference validators configured earlier. Validators authenticate and authorize requests by validating bearer tokens and extracting claims such as roles and permissions. During runtime, these security rules are applied to ensure that only authorized users can perform specific operations.
 
-API-Foundy when building the API path operations associated with table integrations configures the security for the operations to use the validator referenced.  During runtime request processing the security instructions are applied providing fine grain access control of the data. 
+---
 
-The 'my-oauth' element in this context maps the set of security instructions (roles and permissions) to the validator that processes the request.
+### Using `x-af-security` for Table Operations
 
-Example x-af-security Usage
+The `x-af-security` attribute specifies roles and their associated permissions for CRUD actions. Each role defines which properties of a table can be accessed or modified for specific operations.
 
-Here’s an example of the x-af-security attribute with an oauth validator:
+#### **Example**
+
+Below is an example of the `x-af-security` attribute applied to an `invoice` schema:
 
 ```yaml
 components:
@@ -981,69 +981,91 @@ components:
           type: string
 ```
 
-Validator Names and Their Role
+#### **Explanation**:
+- **`x-af-security`**:
+  - A dictionary where each key represents a security mechanism (e.g., `my-oauth`).
+  - Under `my-oauth`, roles such as `sales_reader`, `sales_associate`, and `sales_manager` are defined with their permissions.
+- **Permissions**:
+  - **`read`**: Specifies which fields can be read by a role.
+  - **`write`**: Specifies which fields can be modified using POST or PUT operations.
+  - **`delete`**: Grants permission to delete records.
+- **Regex-Based Field Access**:
+  - Fields can be matched using regular expressions. For example, `^(customer_id|total)$` allows access to only the `customer_id` and `total` fields.
 
-In the example above:
+#### **Key Highlights**:
+- `"*"` grants unrestricted access for an operation (e.g., `read: "*"` means the role can read all fields).
+- Operations with no matching rules will be denied by default.
 
-`my-oauth`: Refers to a validator defined in the API Gateway or in the security/schemaSecurity section of the OpenAPI spec.
+---
 
-* This validator will authenticate and authorize requests based on the roles (sales_reader, sales_associate, sales_manager) and their associated permissions.
-* The validator is expected to validate the bearer token, decode its claims.
+### Token Validation Workflow
 
-**Role of OAuth and Validators in Security Instructions**
+When a request is received, **API-Foundry** processes security rules as follows:
 
-For table integrations, API-Foundry supports fine-grained access control through the `x-af-security` attribute, which defines how access to the table operations is validated. This attribute relies on the oauth element to specify the roles and their associated permissions.
+1. **Token Validation**:
+   - The validator (e.g., `my-oauth`) validates the token provided in the request.
+   - The token is checked for authenticity, expiration, and claims (e.g., `sub`, `scope`, and custom claims).
 
-The `oauth` element maps roles (e.g., `sales_reader`, `sales_manager`) to permissions required to perform specific CRUD (Create, Read, Update, Delete) actions. These roles and permissions are evaluated by token validators at runtime. A token validator decodes the bearer token sent with the request, verifies its authenticity and expiration, and extracts claims such as:
+2. **Claim Matching**:
+   - Roles in `x-af-security` are matched against claims in the token.
+   - The validator verifies whether the user's roles and scopes permit the requested operation (e.g., `read`, `write`, `delete`).
 
-* sub (Subject): Represents the user or client making the request.
-* scope: Lists the scopes or permissions the user has been granted.
-* Custom Claims: These may include roles, groups, or other metadata specific to the application.
+3. **Permission Enforcement**:
+   - If the requested operation matches the permissions defined in `x-af-security`, the operation is allowed.
+   - Otherwise, the request is denied.
 
-When a request is received, API-Foundry ensures that the roles and scopes specified in the x-af-security attribute align with the claims extracted from the token. If a mismatch occurs, the request is denied, ensuring only authorized users can access the table operations.
-For table integrations, API-Foundry provides an extended `x-af-security` attribute in the schema definition. This attribute specifies the validation rules for CRUD (Create, Read, Update, Delete) operations and is used to control access to the services generated for the table.
+---
 
-Here’s an example:
+### Role-Based Access Control (RBAC)
 
-```yaml
-components:
-  schemas:
-    invoice:
-      type: object
-      x-af-database: chinook
-      x-af-security:
-        oauth:
-          sales_reader:
-            read: "*"
-          sales_associate:
-            read: "*"
-            write: "*"
-          sales_manager:
-            read: "*"
-            write: "*"
-            delete: "*"
-      properties:
-        invoice_id:
-          type: integer
-          x-af-primary-key: auto
-        customer_id:
-          type: integer
-        total:
-          type: number
-```
+The `x-af-security` attribute enables Role-Based Access Control (RBAC), where roles map directly to specific permissions:
 
-Explanation:
+- **Example Roles**:
+  - **`sales_reader`**:
+    - Can only read specific fields (e.g., `customer_id`, `total`).
+  - **`sales_associate`**:
+    - Can read all fields and modify limited fields (`customer_id`, `total`, `status`).
+  - **`sales_manager`**:
+    - Has full read, write, and delete access.
 
-* The `x-af-security` attribute is a dictionary where keys represent the validation mechanism (e.g., oauth).
-* For each role (e.g., sales_reader, sales_associate, sales_manager), you can define permissions for specific CRUD actions:
-  * read: Controls access to GET operations.
-  * write: Controls access to POST and PUT operations.
-  * delete: Controls access to DELETE operations.
+---
 
-* "*" means unrestricted access for the action.
+### Example Use Case: Invoice Management
 
+**Scenario**:
+- A `sales_reader` wants to view an invoice.
+- The API receives the request with a bearer token.
+- The token is validated, and the user's role (`sales_reader`) is extracted.
+- The role is checked against the `x-af-security` rules.
+- The user can only view `customer_id` and `total` fields as per the defined permissions.
 
+---
 
+### Debugging Tips
+
+1. **Ensure Token Contains Required Claims**:
+   - Verify that the token includes the expected roles or permissions.
+   - Use tools like `jwt.io` to decode and inspect the token.
+
+2. **Check `x-af-security` Configuration**:
+   - Validate that the `x-af-security` attribute is correctly defined in the OpenAPI specification.
+   - Ensure roles and permissions are aligned with business requirements.
+
+3. **Role and Scope Mismatch**:
+   - If a role in the token does not match a defined role in `x-af-security`, the request will be denied. Double-check the role configuration.
+
+4. **Logging**:
+   - Enable detailed logging in your validator to trace token validation and permission checks.
+
+---
+
+### Summary
+
+The `x-af-security` attribute allows fine-grained control over table operations by combining Role-Based Access Control with token validation. Using the attribute:
+- Permissions can be tailored for specific roles and operations.
+- Validators enforce security rules based on token claims.
+
+By leveraging this mechanism, you ensure robust access control while maintaining flexibility in your API's security configuration.
 
 ##### Security Instructions for Custom SQL
 
