@@ -1,17 +1,29 @@
 import re
-import yaml
 from typing import Any, Dict, Optional
 from api_foundry.utils.app_exception import ApplicationException
 from api_foundry.utils.logger import logger
+from api_foundry.utils.schema_validator import validate_permissions
 
 log = logger(__name__)
 
+
 # Mapping of HTTP methods to CRUD-like actions
-methods_to_actions = {
+METHODS_TO_ACTIONS = {
     "get": "read",
     "post": "create",
     "update": "update",
     "delete": "delete",
+}
+
+SUPPORTED_TYPES = {
+    "string",
+    "integer",
+    "number",
+    "boolean",
+    "date",
+    "date-time",
+    "array",
+    "object",
 }
 
 
@@ -33,10 +45,16 @@ class SchemaObjectProperty(OpenAPIElement):
     def __init__(self, schema_name: str, name: str, property: Dict[str, Any]):
         super().__init__()
         self.api_name = name
+        self.api_type = property.get("fomart") or property.get("type") or "string"
+        if self.api_type not in SUPPORTED_TYPES:
+            raise ApplicationException(
+                500,
+                f"Property: {name} in schema object: {schema_name} of type: {self.api_type} is not a valid type",
+            )
         self.column_name = property.get("x-af-column-name") or name
-        self.type = property.get("type") or "string"
-        self.api_type = property.get("format") or self.type
-        self.column_type = property.get("x-af-column-type") or self.api_type
+        self.column_type = (
+            property.get("x-af-column-type") or property.get("type") or "string"
+        )
         self.required = property.get("required", False)
         self.min_length = property.get("minLength", None)
         self.max_length = property.get("maxLength", None)
@@ -54,7 +72,11 @@ class SchemaObjectProperty(OpenAPIElement):
                 "uuid",
                 "timestamp",
                 "serial",
-            ], f"Invalid concurrency control type '{concurrency_control}' in schema object '{schema_name}', property '{self.api_name}'"
+            ], (
+                f"Invalid concurrency control type '{concurrency_control}' "
+                + f"in schema object '{schema_name}', "
+                + f"property '{self.api_name}'"
+            )
         return concurrency_control
 
 
@@ -68,7 +90,11 @@ class SchemaObjectKey(SchemaObjectProperty):
         if self.key_type not in ["manual", "uuid", "auto", "sequence"]:
             raise ApplicationException(
                 500,
-                f"Invalid primary key type '{self.key_type}' in schema object '{schema_name}', property '{self.api_name}'",
+                (
+                    f"Invalid primary key type '{self.key_type}' "
+                    + f"in schema object '{schema_name}', "
+                    + f"property '{self.api_name}'"
+                ),
             )
 
         self.sequence_name = (
@@ -79,7 +105,11 @@ class SchemaObjectKey(SchemaObjectProperty):
         if self.key_type == "sequence" and not self.sequence_name:
             raise ApplicationException(
                 500,
-                f"Sequence-based primary keys must have a sequence name in schema object '{schema_name}', property '{self.api_name}'",
+                (
+                    "Sequence-based primary keys must have a sequence name in "
+                    + f"schema object '{schema_name}', "
+                    + f"property '{self.api_name}'"
+                ),
             )
 
 
@@ -89,10 +119,10 @@ class SchemaObjectAssociation(OpenAPIElement):
     def __init__(self, name: str, property: Dict[str, Any], parent_key):
         super().__init__()
         self.api_name = name
-        self.type = property["type"]
+        self.api_type = property["type"]
 
         self.schema_name = (
-            property["items"]["$ref"] if self.type == "array" else property["$ref"]
+            property["items"]["$ref"] if self.api_type == "array" else property["$ref"]
         ).split("/")[-1]
 
         self.child_property = property.get("x-af-child-property", None)
@@ -111,6 +141,7 @@ class SchemaObject(OpenAPIElement):
         self.primary_key = self._get_primary_key(schema_object)
         self.relations = self._resolve_relations(schema_object)
         self.concurrency_property = self._get_concurrency_property(schema_object)
+        self.permissions = self._get_permissions(schema_object)
 
     def _get_table_name(self, schema_object: dict) -> str:
         schema = schema_object.get("x-af-schema")
@@ -170,7 +201,11 @@ class SchemaObject(OpenAPIElement):
                 if property.key_type not in ["manual", "uuid", "auto", "sequence"]:
                     raise ApplicationException(
                         500,
-                        f"Invalid primary key type '{property.key_type}' in schema object '{self.api_name}', property '{property_name}'",
+                        (
+                            f"Invalid primary key type '{property.key_type}' "
+                            + f"in schema object '{self.api_name}'"
+                            + f", property '{property_name}'"
+                        ),
                     )
 
                 if property.key_type == "sequence":
@@ -178,10 +213,19 @@ class SchemaObject(OpenAPIElement):
                     if not property.sequence_name:
                         raise ApplicationException(
                             500,
-                            f"Sequence-based primary keys must have a sequence name in schema object '{self.api_name}', property '{property_name}'",
+                            (
+                                "Sequence-based primary keys must have a sequence name "
+                                + f"in schema object '{self.api_name}', property '{property_name}'"
+                            ),
                         )
                 return property_name
         return None
+
+    def _get_permissions(self, schema_object: dict) -> dict:
+        permissions = schema_object.get("x-af-permissions", {})
+        if permissions:
+            validate_permissions(permissions)
+        return permissions
 
     def to_dict(self) -> Dict[str, Any]:
         """Recursively converts the schema object and its properties to a dictionary."""
@@ -199,11 +243,12 @@ class PathOperation(OpenAPIElement):
     def __init__(self, path: str, method: str, path_operation: Dict[str, Any]):
         super().__init__()
         self.entity = path.lower().rsplit("/", 1)[-1]
-        self.action = methods_to_actions[method]
+        self.action = METHODS_TO_ACTIONS[method]
         self.database = path_operation["x-af-database"]
         self.sql = path_operation["x-af-sql"]
         self.inputs = self.get_inputs(path_operation)
         self.outputs = self._extract_properties(path_operation, "responses")
+        self.permissions = self._get_permissions(path_operation)
 
     def get_inputs(
         self, path_operation: Dict[str, Any]
@@ -252,6 +297,12 @@ class PathOperation(OpenAPIElement):
                         )
         return properties
 
+    def _get_permissions(self, path_operation: dict) -> dict:
+        permissions = path_operation.get("x-af-permissions", {})
+        if permissions:
+            validate_permissions(permissions)
+        return permissions
+
 
 class ModelFactory:
     """Factory class to load and process OpenAPI specifications into models."""
@@ -289,7 +340,8 @@ class ModelFactory:
                 if "$ref" in obj:
                     # Resolve the reference
                     resolved_ref = self.resolve_reference(obj["$ref"], spec)
-                    # Merge the resolved reference with the original object (so we keep attributes like x-af-child-property)
+                    # Merge the resolved reference with the original object
+                    # (so we keep attributes like x-af-child-property)
                     return self.merge_dicts(resolved_ref, obj)
                 # Recursively resolve other properties
                 return {k: resolve(v) for k, v in obj.items()}

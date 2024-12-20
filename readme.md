@@ -12,6 +12,8 @@ The `api_foundry` project is a powerful tool designed to automate the deployment
 
 - **Custom SQL Integration**: `api_foundry` allows developers to define custom SQL queries and associate them with specific OpenAPI path operations. This feature provides flexibility to perform complex queries and operations beyond standard CRUD functionalities, tailored to specific application requirements.
 
+- **Role Based Permissions**: Within OpenAPI schema objects and path operations `api_foundry` permissions can be defined based on roles restricting whether a user may delete records and what properties a may be read or written.
+
 ### Summary:
 
 The `api_foundry` project streamlines the process of deploying APIs on AWS that interact with relational databases. By utilizing the OpenAPI specification, it not only ensures consistency and clarity in API design but also automates the creation of database-driven services and allows for custom SQL operations. This makes `api_foundry` an invaluable tool for developers looking to quickly deploy and manage data-centric APIs on the AWS platform.
@@ -24,7 +26,7 @@ This guide provides a overview of key API-Foundry features, including:
 * **Building an API** - A quick introduction to implementing APIs with API-Foundry, featuring a concise example of deploying an API.
 * **Exploring the Deployment** - An overview of the infrastructure deployed to support the API.
 * **Exploring the Services** - A deep dive into the API services built, including basic operations and enhanced record selection capabilities.
-* **Using Metadata Parameters** - How to use metadata parameters to customize the results returned by the services.
+* **Using Metadata Parameters** - How to use metadata parameters in requests to customize the results returned by the services.
 * **Managing Concurrency** - An explanation of how API-Foundry handles concurrency among application clients.
 * **Object and List Properties** - Demonstrations of how API-Foundry can return objects with nested objects or lists as properties, and how to configure these properties.
 * **Authorization** - API foundry provides role based security allowing restrictions down to the property level.
@@ -266,9 +268,9 @@ Requests can include metadata parameters in query strings to provide additional 
 
 **__properties**
 
-The `__properties` metadata parameter restricts the properties of objects returned by API-Foundry. By default, API-Foundry returns all properties of an object, excluding object and array properties. These properties must be explicitly selected using this parameter.
+The `__properties` metadata parameter restricts the properties of objects returned by API-Foundry. By default, API-Foundry returns all authorized properties of an object, excluding object and array properties. These properties must be explicitly selected using this parameter.
 
-The format of the parameter value is a space-delimited list of regular expressions. Only properties matching any of the expressions are included in the result set.
+The format of the parameter value is a space-delimited list of regular expressions. Only authorized properties matching any of the expressions are included in the result set.
 
 When this parameter is omitted, API-Foundry uses the expression `.*` to select all non-object or non-array properties. When included, API-Foundry does not include any properties by default, and all properties must be explicitly selected.
 
@@ -825,120 +827,101 @@ paths:
                       description: The number of albums sold
 ```
 
-### Restricting Access Using Authorization
+### Security
 
-Until now, API Foundry deployments have lacked built-in security. Although the AWS infrastructure provided is protected, the API itself has been publicly accessible, with unrestricted access to all path operations.
+Until now, the illustrated `api_foundry` deployments have omitted applying any authorization of requests. While the AWS infrastructure deployed has been protected using AWS security mechanisms, the API itself has been publicly accessible, with unrestricted access to all path operations.
 
-In real-world applications, authorization is essential to ensure that requestors are permitted to perform specific operations. In API Foundry, these authorizations are defined in the API specification, allowing for fine-grained control over access to database resources.
+In real-world applications it is essential to ensure that requestors are restricted to the operations they are allowed to perform and what data they may access. With `api_foundry`, these authorizations are defined in the API specification, allowing fine-grained control of access to data resources.
 
-API-Foundry uses a token based schema to determine authorization. Authentication and authorization with the API follows the following sequence.
+`api_foundry` utilizies the underlying token based authorization services provided by the AWS RestAPI.
 
-![Authorization Sequence](./resources/uml/authorization-flow.png)
+There are three parts to controlling access to the application API;
 
-<div hidden>
-@startuml
-title API Request Authentication and Authorization Flow
+* **Token Validation Functions** In this part the Lambda functions that validate the token presented with the request are registered with the application API.
 
-actor Client as "Client Application"
-participant "Authorization Service" as AuthService
-participant "API Gateway" as Gateway
-participant "Validation Service" as ValidationService
-participant "API Foundry Query Engine" as Server
 
-== Token Request Flow ==
+* **Setting Security In the API Specification** Here the token validation functions are associated with the schema objects and path operations in the application OpenAPI specification.
 
-Client -> AuthService : Request Bearer Token (credentials)
-note right of AuthService : Authorization Service validates\nclient credentials and grants access token
-AuthService --> Client : Response with Bearer Token (JWT)
+* **Setting Role Based Permissions** In this part restrictions can be set to what data can be read, written, or deleted based on role.
 
-== Request Authentication and Authorization Flow ==
+Services are publicly available until until security is set in the API specification, allowing the API to have both public and private services.  Once security for a component has been set access to it is available to all validated requests.  Permissions allow restricting access further based on the requests roles.
 
-Client -> Gateway : Request API Resource (/path/operation) with Bearer Token
-note right of Gateway : Client sends a request to the API Gateway\nincluding the Bearer token (JWT) in the Authorization header
+An API can utilize multiple validation functions.
 
-alt No Authorization header or token is missing
-    Gateway -> Client : 401 Unauthorized
-else Token provided
-    Gateway -> ValidationService : Verify JWT Token
-    note right of ValidationService : Validation Service verifies the token\nand decodes it to check claims
+##### Registering Validation Functions
 
-    alt Token is invalid or expired
-        ValidationService --> Gateway : 401 Unauthorized
-        Gateway -> Client : 401 Unauthorized
-    else Token is valid
-        ValidationService --> Gateway : Valid Token (JWT claims)
-        note right of Gateway : Token is verified. Extract claims\nsuch as 'sub', 'scope', and 'permissions'
+`api_foundry` uses the underlying Rest API token based validation to for restricting access to the API.  With this mechanism the token validator function decodes the JWT bearer token that was presented with the request in the `Authorization` header.  If the token validation function successfully validates the token it then returns the roles associated with the user, or subject as a Oauth object.
 
-        alt Scope and permissions not allowed
-            Gateway -> Client : 403 Forbidden
-        else Scope and permissions allowed
-            Gateway -> Server : Forward request to /path/operation
-            note right of Server : Server performs the operation\nbased on user permissions
-            Server --> Gateway : Operation Result (e.g., data, success)
-            Gateway --> Client : Respond with result
-        end
-    end
-end
+`api_foundry` does not provide the token validation functions and those be provided by the API implementor.
 
-@enduml
-</div>
+> Code samples here use the Simple Oauth Server project that includes a token validation function that can be found here.
 
-**Explanation**
+Token validation functions can be added to the application `API_Foundry` object using the `token_validators` parameter.  This parameter accepts a list of validation entries where each entry contains;
 
-* **Token Request Flow:**
+* `name` - this must be unique to the scope of the API and will be used when identifying validators for components in the API's specification.
+* `function` - this is a Cloud Foundry function.
 
-  * The Client requests a Bearer token from and external Authorization Service by providing credentials.
-  * The Authorization Service verifies the credentials and issues a JWT as a Bearer token if valid.
-  * The Client receives the Bearer token.
+> Cloud Foundry is a companion project that simplifies deployment of cloud centric applications.  Functions can be defined inline with Cloud Foundry handling the packaging and deployment.
 
-* **Request Authentication and Authorization Flow:**
-  * Client uses the Bearer token to request an API resource from the API Gateway.
-  * API Gateway verifies the presence of the token and forwards it to the Validation Service for verification.
-  * Validation Service checks the token validity:
-  * If invalid or expired, 401 Unauthorized is returned.
-  * If valid, token claims (sub, scope, permissions) are extracted.
+In the following example the Simple Oauth Server provides a validation Cloud Foundry function that will be used in the API specification.
 
-* **Authorization Check:**
-  * If the required scope or permissions are missing, a 403 Forbidden response is sent to the Client.
-  * If permissions are adequate, the request is forwarded to the API Server.
+```python
+api_foundry = APIFoundry(
+    "chinook",
+    api_spec= "./chinook_api_authorized.yaml",
+    secrets= json.dumps({"chinook": "chinook/postgres"}),
+    token_validators=[{
+        "name": "simple-auth",
+        "function": my_oauth.validator()
+    }]
+)
+```
 
-* **API-Foundy Query Server:**
-  * Performs the operation, and the result is returned to the Client.
-  * Uses the token claims (sub, scope, permissions) to determine if the operation is permitted for the user and perform any redactions to the response data.
+To use an existing token validation function Cloud foundry allows importing it.  Here is and example of using an existing token valudation function;
 
-Configuring authorization in API_Foundry consist of two parts.  First a token validator function must be configured in the foundry server.  And then authorization instructions can be added to the API specification.  These instructions allow configuring the operations an data a user can access.
+```python
 
-#### Setting Up an Token Validator
+from cloud_foundry import import_function
 
-With API-Foundry an token validator is a function that decodes the JWT bearer token.  From a valid token it returns  obtained from the request header, decodes the token and returns an Oauth token.
-
-> An application can have more than one token validator if needed.
+api_foundry = APIFoundry(
+    "chinook",
+    api_spec= "./chinook_api_authorized.yaml",
+    secrets= json.dumps({"chinook": "chinook/postgres"}),
+    body=oauth.authorizer_api_spec,
+    token_validators=[{
+        "name": "simple-auth",
+        "function": import_function("my-validator")
+    }]
+)
+```
 
 #### Extending the API Specfication with Security Instructions
 
-API-Foundry enables fine-grained control over access to your API by allowing security instructions to be added to the OpenAPI specification. These security instructions can be applied globally across the API or specifically to individual table integrations or custom SQL path operations. This section explains how to configure security for your API and ensure that only authorized users can access specific resources or operations.
+API components remain publically accessable until associated with a token validation function using OpenAPI security instructions.
+
+These security instructions can be applied globally across the API or specifically to individual schema objects (table integrations) or path operations (custom SQL). This section explains how to configure these security associations for your API.
 
 ##### Global Security Instructions
 
-To enforce security globally for all API operations, you can define security requirements at the root of the OpenAPI specification. This is done using the standard security attribute in the OpenAPI specification.
+To enforce security globally for all API operations, you can define security requirements at the top level of the OpenAPI specification. This is done using the standard security attribute in the OpenAPI specification.
 
 For example:
 
 ```yaml
 security:
-  - oauth: []
+  - my-oauth: []
 ```
 
 In this example:
 
-* All operations in the API will require the oauth validator.
+* All operations in the API will require the my-oauth token validation function.
 * The user must have one or more of the read or write scopes.
 
-Global security requirements are automatically inherited by all operations in the API unless explicitly overridden by a specific operation or table integration.
+Global security requirements are automatically inherited by all operations in the API unless explicitly overridden by a specific schema object or path operation.
 
-### Security Instructions for Table Operations
+### Security Instructions for Schema Object
 
-For table integrations, **API-Foundry** provides the extended `x-af-security` attribute within the schema definition. This attribute defines validation rules for CRUD (Create, Read, Update, Delete) operations, allowing fine-grained access control for the API-generated services.
+For schema objects or table integrations, **API-Foundry** provides the extended `x-af-security` attribute within the schema definition. This attribute defines validation rules for CRUD (Create, Read, Update, Delete) operations, allowing fine-grained access control for the API-generated services.
 
 The keys under `x-af-security` (e.g., `my-oauth`) reference validators configured earlier. Validators authenticate and authorize requests by validating bearer tokens and extracting claims such as roles and permissions. During runtime, these security rules are applied to ensure that only authorized users can perform specific operations.
 
@@ -1647,3 +1630,80 @@ Fundanmental relational expressions are supported when selecting records using a
 ## PUT - Record Modification
 
 ## DELETE - Record Deletion
+
+API-Foundry uses a token based schema to determine authorization. Authentication and authorization with the API follows the following sequence.
+
+![Authorization Sequence](./resources/uml/authorization-flow.png)
+
+<div hidden>
+@startuml
+title API Request Authentication and Authorization Flow
+
+actor Client as "Client Application"
+participant "Authorization Service" as AuthService
+participant "API Gateway" as Gateway
+participant "Validation Service" as ValidationService
+participant "API Foundry Query Engine" as Server
+
+== Token Request Flow ==
+
+Client -> AuthService : Request Bearer Token (credentials)
+note right of AuthService : Authorization Service validates\nclient credentials and grants access token
+AuthService --> Client : Response with Bearer Token (JWT)
+
+== Request Authentication and Authorization Flow ==
+
+Client -> Gateway : Request API Resource (/path/operation) with Bearer Token
+note right of Gateway : Client sends a request to the API Gateway\nincluding the Bearer token (JWT) in the Authorization header
+
+alt No Authorization header or token is missing
+    Gateway -> Client : 401 Unauthorized
+else Token provided
+    Gateway -> ValidationService : Verify JWT Token
+    note right of ValidationService : Validation Service verifies the token\nand decodes it to check claims
+
+    alt Token is invalid or expired
+        ValidationService --> Gateway : 401 Unauthorized
+        Gateway -> Client : 401 Unauthorized
+    else Token is valid
+        ValidationService --> Gateway : Valid Token (JWT claims)
+        note right of Gateway : Token is verified. Extract claims\nsuch as 'sub', 'scope', and 'permissions'
+
+        alt Scope and permissions not allowed
+            Gateway -> Client : 403 Forbidden
+        else Scope and permissions allowed
+            Gateway -> Server : Forward request to /path/operation
+            note right of Server : Server performs the operation\nbased on user permissions
+            Server --> Gateway : Operation Result (e.g., data, success)
+            Gateway --> Client : Respond with result
+        end
+    end
+end
+
+@enduml
+</div>
+
+**Explanation**
+
+* **Token Request Flow:**
+
+  * The Client requests a Bearer token from and external Authorization Service by providing credentials.
+  * The Authorization Service verifies the credentials and issues a JWT as a Bearer token if valid.
+  * The Client receives the Bearer token.
+
+* **Request Authentication and Authorization Flow:**
+  * Client uses the Bearer token to request an API resource from the API Gateway.
+  * API Gateway verifies the presence of the token and forwards it to the Validation Service for verification.
+  * Validation Service checks the token validity:
+  * If invalid or expired, 401 Unauthorized is returned.
+  * If valid, token claims (sub, scope, permissions) are extracted.
+
+* **Authorization Check:**
+  * If the required scope or permissions are missing, a 403 Forbidden response is sent to the Client.
+  * If permissions are adequate, the request is forwarded to the API Server.
+
+* **API-Foundy Query Server:**
+  * Performs the operation, and the result is returned to the Client.
+  * Uses the token claims (sub, scope, permissions) to determine if the operation is permitted for the user and perform any redactions to the response data.
+
+Configuring authorization in API_Foundry consist of two parts.  First a token validator function must be configured in the foundry server.  And then authorization instructions can be added to the API specification.  These instructions allow configuring the operations an data a user can access.

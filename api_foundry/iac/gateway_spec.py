@@ -6,7 +6,7 @@ from typing import Any, Optional
 from cloud_foundry import Function
 from cloud_foundry.utils.aws_openapi_editor import AWSOpenAPISpecEditor
 
-from api_foundry.utils.logger import logger, write_logging_file
+from api_foundry.utils.logger import logger
 
 
 log = logger(__name__)
@@ -17,24 +17,29 @@ class APISpecEditor:
     function: Function
     integrations: list[dict]
 
-    def __init__(
-        self, *, open_api_spec: dict, function_name: str, function: Function
-    ):
+    def __init__(self, *, open_api_spec: dict, function_name: str, function: Function):
         self.function = function
         self.integrations = []
         self.editor = AWSOpenAPISpecEditor(copy.deepcopy(open_api_spec))
 
     def rest_api_spec(self) -> str:
         schemas = self.editor.get_spec_part(["components", "schemas"], create=False)
-        for schema_name, schema_object in schemas.items():
-            self.generate_crud_operations(schema_name, schema_object)
+        if schemas:
+            for schema_name, schema_object in schemas.items():
+                self.generate_crud_operations(schema_name, schema_object)
 
         self.editor.remove_attributes_by_pattern("^x-af-.*$")
 
         self.editor.correct_schema_names()
         return self.editor.to_yaml()
 
-    def add_operation(self, path: str, method: str, operation: dict, schema_object: Optional[dict] = None):
+    def add_operation(
+        self,
+        path: str,
+        method: str,
+        operation: dict,
+        schema_object: Optional[dict] = None,
+    ):
         self.integrations.append(
             {"path": path, "method": method, "function": self.function}
         )
@@ -58,11 +63,12 @@ class APISpecEditor:
             )
 
         elif property["type"] == "string":
-            max_length = property.get("max_lenght", 200)
-            min_length = property.get("min_length", 0)
-            regex_pattern = rf"[\w\s]{min_length},{max_length}"  # Allows letters, numbers, and underscores
             if "pattern" in property:
-                regex_pattern = rf"(?={property.get("pattern")})" + regex_pattern
+                regex_pattern = f"{property.get('pattern')}" + regex_pattern
+            else:
+                max_length = property.get("max_length", 200)
+                min_length = property.get("min_length", 0)
+                regex_pattern = rf"[\w\s]{min_length},{max_length}"  # Allows letters, numbers, and underscores
 
         elif property["type"] == "integer":
             signed = property.get("signed", True)
@@ -132,11 +138,8 @@ class APISpecEditor:
         return None
 
     def get_input_properties(
-        self,
-        schema_object: dict[str, Any],
-        include_primary_key: bool = False
+        self, schema_object: dict[str, Any], include_primary_key: bool = False
     ) -> dict[str, Any]:
-
         # Retrieve primary key and concurrency property if they exist
         primary_key = (
             self.get_primary_key(schema_object) if not include_primary_key else None
@@ -163,18 +166,6 @@ class APISpecEditor:
             ):
                 result[name] = prop
         return result
-
-    def resolve_reference(self, ref: str, base_spec: dict[str, Any]) -> Any:
-        """Resolve a single $ref reference."""
-        result = base_spec
-        for part in ref_parts:
-            result = result.get(part)
-            if result is None:
-                raise KeyError(
-                    f"Reference part '{part}' not found in the OpenAPI spec."
-                )
-        return result
-
 
     def get_required_input_properties(
         self,
@@ -203,7 +194,7 @@ class APISpecEditor:
         primary_key = self.get_primary_key(schema_object)
         include_primary_key = primary_key and primary_key[1].get("key_type") == "manual"
         input_properties = self.get_input_properties(
-            schema_object, include_primary_key=include_primary_key
+            schema_object, include_primary_key=include_primary_key or False
         )
         self.add_operation(
             path,
@@ -231,7 +222,7 @@ class APISpecEditor:
                     }
                 },
             },
-            schema_object=schema_object
+            schema_object=schema_object,
         )
 
     def generate_get_many_operation(
@@ -544,9 +535,9 @@ class APISpecEditor:
         for component_name, component_data in (
             spec_dict.get("components", {}).get("schemas", {}).items()
         ):
-            # Remove attributes that start with 'x-am'
+            # Remove attributes that start with 'x-af'
             attributes_to_remove = [
-                key for key in component_data if key.startswith("x-am")
+                key for key in component_data if key.startswith("x-af")
             ]
             for attribute in attributes_to_remove:
                 component_data.pop(attribute)
