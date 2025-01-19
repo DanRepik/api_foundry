@@ -5,6 +5,7 @@ import yaml
 import pytest
 from api_foundry.utils.logger import logger
 from api_foundry.utils.model_factory import ModelFactory
+from api_foundry.utils.app_exception import ApplicationException
 
 log = logger(__name__)
 
@@ -12,8 +13,7 @@ log = logger(__name__)
 @pytest.mark.unit
 def test_set_spec():
     # Mock the file content of api_spec.yaml
-    model_factory = ModelFactory()
-    model_factory.set_spec(
+    model_factory = ModelFactory(
         {
             "openapi": "3.0.0",
             "components": {
@@ -43,7 +43,6 @@ def test_set_spec():
                     "id": {
                         "api_name": "id",
                         "column_name": "id",
-                        "type": "integer",
                         "api_type": "integer",
                         "column_type": "integer",
                         "required": False,
@@ -52,7 +51,6 @@ def test_set_spec():
                     "name": {
                         "api_name": "name",
                         "column_name": "name",
-                        "type": "string",
                         "api_type": "string",
                         "column_type": "string",
                         "required": False,
@@ -60,6 +58,7 @@ def test_set_spec():
                 },
                 "primary_key": "id",
                 "relations": {},
+                "permissions": {},
             }
         },
         "path_operations": {},
@@ -70,7 +69,10 @@ def test_invalidate_relation():
     # album has the relation of track_items but schema does not include tracks
     log.info("starting test")
 
-    test_spec = """
+    try:
+        ModelFactory(
+            yaml.safe_load(
+                """
 components:
   schemas:
     artist:
@@ -122,20 +124,59 @@ components:
       - artist_id
       x-af-database: chinook
 """
-    model_factory = ModelFactory()
-    try:
-        model_factory.set_spec(yaml.safe_load(test_spec))
+            )
+        )
         assert False
     except KeyError as ke:
         log.info(f"ke: {ke}")
         assert str(ke) == "\"Reference part 'track' not found in the OpenAPI spec.\""
 
 
+def test_invalid_type():
+    # check that property types is checked for valid types
+
+    try:
+        ModelFactory(
+            yaml.safe_load(
+                """
+components:
+  schemas:
+    artist:
+      type: object
+      properties:
+        artist_id:
+          type: float
+          x-af-primary-key: auto
+          description: Unique identifier for the artist.
+          example: 1
+        name:
+          type: string
+          maxLength: 120
+      required:
+      - artist_id
+      x-af-database: chinook
+"""
+            )
+        )
+
+    except ApplicationException as ae:
+        log.info(f"ae: {ae}")
+        assert (
+            ae.message
+            == "Property: artist_id in schema object: artist of type: float is not a valid type"
+        )
+        return
+    assert False, "Expected exception"
+
+
 def test_relation():
-    # album has the relation of track_items but schema does not include tracks
+    # tests object (artist of album) and array (album list of tracks) relations
     log.info("starting test")
 
-    test_spec = """
+    try:
+        model_factory = ModelFactory(
+            yaml.safe_load(
+                """
 components:
   schemas:
     artist:
@@ -181,10 +222,9 @@ components:
       - artist_id
       x-af-database: chinook
 """
+            )
+        )
 
-    model_factory = ModelFactory()
-    try:
-        model_factory.set_spec(yaml.safe_load(test_spec))
     except KeyError as ke:
         log.info(f"ke: {ke}")
         assert str(ke) == "\"Reference part 'track' not found in the OpenAPI spec.\""
@@ -200,7 +240,6 @@ components:
                     "artist_id": {
                         "api_name": "artist_id",
                         "column_name": "artist_id",
-                        "type": "integer",
                         "api_type": "integer",
                         "column_type": "integer",
                         "required": False,
@@ -209,7 +248,6 @@ components:
                     "name": {
                         "api_name": "name",
                         "column_name": "name",
-                        "type": "string",
                         "api_type": "string",
                         "column_type": "string",
                         "required": False,
@@ -220,11 +258,12 @@ components:
                 "relations": {
                     "album_items": {
                         "api_name": "album_items",
-                        "type": "array",
+                        "api_type": "array",
                         "schema_name": "album",
                         "parent_property": "artist_id",
                     }
                 },
+                "permissions": {},
             },
             "album": {
                 "api_name": "album",
@@ -234,7 +273,6 @@ components:
                     "album_id": {
                         "api_name": "album_id",
                         "column_name": "album_id",
-                        "type": "integer",
                         "api_type": "integer",
                         "column_type": "integer",
                         "required": False,
@@ -243,7 +281,6 @@ components:
                     "title": {
                         "api_name": "title",
                         "column_name": "title",
-                        "type": "string",
                         "api_type": "string",
                         "column_type": "string",
                         "required": False,
@@ -252,7 +289,6 @@ components:
                     "artist_id": {
                         "api_name": "artist_id",
                         "column_name": "artist_id",
-                        "type": "integer",
                         "api_type": "integer",
                         "column_type": "integer",
                         "required": False,
@@ -262,11 +298,12 @@ components:
                 "relations": {
                     "artist": {
                         "api_name": "artist",
-                        "type": "object",
+                        "api_type": "object",
                         "schema_name": "artist",
                         "parent_property": "artist_id",
                     }
                 },
+                "permissions": {},
             },
         },
         "path_operations": {},
@@ -277,15 +314,13 @@ def test_chinook_generation():
     # Define the path to the YAML test spec file
     spec_file_path = os.path.join(os.getcwd(), "resources/chinook_api.yaml")
 
-    model_factory = ModelFactory()
-
     try:
         # Load YAML from file
         with open(spec_file_path, "r") as file:
             test_spec = yaml.safe_load(file)
 
         # Set the specification in the model factory
-        model_factory.set_spec(test_spec)
+        model_factory = ModelFactory(test_spec)
 
         # Get the configuration output
         result = model_factory.get_config_output()

@@ -10,7 +10,6 @@ path_operations:
                 column_name: end
                 column_type: string
                 required: true
-                type: string
             limit:
                 api_name: limit
                 api_type: string
@@ -18,14 +17,12 @@ path_operations:
                 column_type: string
                 default: 10
                 required: false
-                type: string
             start:
                 api_name: start
                 api_type: string
                 column_name: start
                 column_type: string
                 required: true
-                type: string
         outputs:
             album_id:
                 api_name: album_id
@@ -33,21 +30,19 @@ path_operations:
                 column_name: album_id
                 column_type: integer
                 required: false
-                type: integer
             album_title:
                 api_name: album_title
                 api_type: string
                 column_name: album_title
                 column_type: string
                 required: false
-                type: string
             total_sold:
                 api_name: total_sold
                 api_type: integer
                 column_name: total_sold
                 column_type: integer
                 required: false
-                type: integer
+        permissions: {}
         sql: "SELECT\n    a.album_id as album_id,\n    a.title AS album_title,\n \
             \   COUNT(il.invoice_line_id) AS total_sold\nFROM\n    invoice_line il\n\
             JOIN invoice i ON\n    il.invoice_id = i.invoice_id\nJOIN\n    track t\
@@ -65,7 +60,6 @@ path_operations:
                 column_name: end
                 column_type: string
                 required: true
-                type: string
             limit:
                 api_name: limit
                 api_type: string
@@ -73,14 +67,12 @@ path_operations:
                 column_type: string
                 default: 10
                 required: false
-                type: string
             start:
                 api_name: start
                 api_type: string
                 column_name: start
                 column_type: string
                 required: true
-                type: string
         outputs:
             album_id:
                 api_name: album_id
@@ -88,21 +80,19 @@ path_operations:
                 column_name: a.album_id
                 column_type: integer
                 required: false
-                type: integer
             album_title:
                 api_name: album_title
                 api_type: string
                 column_name: a.title
                 column_type: string
                 required: false
-                type: string
             total_sold:
                 api_name: total_sold
                 api_type: integer
                 column_name: COUNT(il.invoice_line_id)
                 column_type: integer
                 required: false
-                type: integer
+        permissions: {}
         sql: "SELECT\n    a.album_id,\n    a.title,\n    COUNT(il.invoice_line_id)\n\
             FROM\n    invoice_line il\nJOIN invoice i ON\n    il.invoice_id = i.invoice_id\n\
             JOIN\n    track t ON il.track_id = t.track_id\nJOIN\n    album a ON t.album_id\
@@ -113,6 +103,7 @@ schema_objects:
     album:
         api_name: album
         database: chinook
+        permissions: {}
         primary_key: album_id
         properties:
             album_id:
@@ -122,14 +113,12 @@ schema_objects:
                 column_type: integer
                 key_type: auto
                 required: false
-                type: integer
             artist_id:
                 api_name: artist_id
                 api_type: integer
                 column_name: artist_id
                 column_type: integer
                 required: false
-                type: integer
             title:
                 api_name: title
                 api_type: string
@@ -137,23 +126,23 @@ schema_objects:
                 column_type: string
                 max_length: 160
                 required: false
-                type: string
         relations:
             artist:
                 api_name: artist
+                api_type: object
                 parent_property: artist_id
                 schema_name: artist
-                type: object
             track_items:
                 api_name: track_items
+                api_type: array
                 child_property: album_id
                 parent_property: album_id
                 schema_name: track
-                type: array
         table_name: album
     artist:
         api_name: artist
         database: chinook
+        permissions: {}
         primary_key: artist_id
         properties:
             artist_id:
@@ -163,7 +152,6 @@ schema_objects:
                 column_type: integer
                 key_type: auto
                 required: false
-                type: integer
             name:
                 api_name: name
                 api_type: string
@@ -171,19 +159,19 @@ schema_objects:
                 column_type: string
                 max_length: 120
                 required: false
-                type: string
         relations:
             album_items:
                 api_name: album_items
+                api_type: array
                 child_property: artist_id
                 parent_property: artist_id
                 schema_name: album
-                type: array
         table_name: artist
     customer:
         api_name: customer
         concurrency_property: version_stamp
         database: chinook
+        permissions: {}
         primary_key: customer_id
         properties:
             address:
@@ -193,7 +181,6 @@ schema_objects:
                 column_type: string
                 max_length: 70
                 required: false
-                type: string
             city:
                 api_name: city
                 api_type: string
@@ -201,7 +188,6 @@ schema_objects:
                 column_type: string
                 max_length: 40
                 required: false
-                type: string
             company:
                 api_name: company
                 api_type: string
@@ -209,7 +195,6 @@ schema_objects:
                 column_type: string
                 max_length: 80
                 required: false
-                type: string
             country:
                 api_name: country
                 api_type: string
@@ -217,7 +202,6 @@ schema_objects:
                 column_type: string
                 max_length: 40
                 required: false
-                type: string
             customer_id:
                 api_name: customer_id
                 api_type: integer
@@ -225,7 +209,6 @@ schema_objects:
                 column_type: integer
                 key_type: auto
                 required: false
-                type: integer
             email:
                 api_name: email
                 api_type: string
@@ -233,7 +216,6 @@ schema_objects:
                 column_type: string
                 max_length: 60
                 required: false
-                type: string
             fax:
                 api_name: fax
                 api_type: string
@@ -241,7 +223,6 @@ schema_objects:
                 column_type: string
                 max_length: 24
                 required: false
-                type: string
             first_name:
                 api_name: first_name
                 api_type: string
@@ -249,7 +230,6 @@ schema_objects:
                 column_type: string
                 max_length: 40
                 required: false
-                type: string
             last_name:
                 api_name: last_name
                 api_type: string
@@ -257,7 +237,6 @@ schema_objects:
                 column_type: string
                 max_length: 20
                 required: false
-                type: string
             phone:
                 api_name: phone
                 api_type: string
@@ -265,7 +244,6 @@ schema_objects:
                 column_type: string
                 max_length: 24
                 required: false
-                type: string
             postal_code:
                 api_name: postal_code
                 api_type: string
@@ -273,7 +251,6 @@ schema_objects:
                 column_type: string
                 max_length: 10
                 required: false
-                type: string
             state:
                 api_name: state
                 api_type: string
@@ -281,32 +258,30 @@ schema_objects:
                 column_type: string
                 max_length: 40
                 required: false
-                type: string
             support_rep_id:
                 api_name: support_rep_id
                 api_type: integer
                 column_name: support_rep_id
                 column_type: integer
                 required: false
-                type: integer
             version_stamp:
                 api_name: version_stamp
-                api_type: uuid
+                api_type: string
                 column_name: version_stamp
-                column_type: uuid
+                column_type: string
                 required: false
-                type: string
         relations:
             invoice_items:
                 api_name: invoice_items
+                api_type: array
                 child_property: customer_id
                 parent_property: customer_id
                 schema_name: invoice
-                type: array
         table_name: customer
     employee:
         api_name: employee
         database: chinook
+        permissions: {}
         primary_key: employee_id
         properties:
             address:
@@ -316,14 +291,12 @@ schema_objects:
                 column_type: string
                 max_length: 70
                 required: false
-                type: string
             birth_date:
                 api_name: birth_date
-                api_type: date-time
+                api_type: string
                 column_name: birth_date
-                column_type: date-time
+                column_type: string
                 required: false
-                type: string
             city:
                 api_name: city
                 api_type: string
@@ -331,7 +304,6 @@ schema_objects:
                 column_type: string
                 max_length: 40
                 required: false
-                type: string
             country:
                 api_name: country
                 api_type: string
@@ -339,7 +311,6 @@ schema_objects:
                 column_type: string
                 max_length: 40
                 required: false
-                type: string
             email:
                 api_name: email
                 api_type: string
@@ -347,7 +318,6 @@ schema_objects:
                 column_type: string
                 max_length: 60
                 required: false
-                type: string
             employee_id:
                 api_name: employee_id
                 api_type: integer
@@ -355,7 +325,6 @@ schema_objects:
                 column_type: integer
                 key_type: auto
                 required: false
-                type: integer
             fax:
                 api_name: fax
                 api_type: string
@@ -363,7 +332,6 @@ schema_objects:
                 column_type: string
                 max_length: 24
                 required: false
-                type: string
             first_name:
                 api_name: first_name
                 api_type: string
@@ -371,14 +339,12 @@ schema_objects:
                 column_type: string
                 max_length: 20
                 required: false
-                type: string
             hire_date:
                 api_name: hire_date
-                api_type: date-time
+                api_type: string
                 column_name: hire_date
-                column_type: date-time
+                column_type: string
                 required: false
-                type: string
             last_name:
                 api_name: last_name
                 api_type: string
@@ -386,7 +352,6 @@ schema_objects:
                 column_type: string
                 max_length: 20
                 required: false
-                type: string
             phone:
                 api_name: phone
                 api_type: string
@@ -394,7 +359,6 @@ schema_objects:
                 column_type: string
                 max_length: 24
                 required: false
-                type: string
             postal_code:
                 api_name: postal_code
                 api_type: string
@@ -402,14 +366,12 @@ schema_objects:
                 column_type: string
                 max_length: 10
                 required: false
-                type: string
             reports_to:
                 api_name: reports_to
                 api_type: integer
                 column_name: reports_to
                 column_type: integer
                 required: false
-                type: integer
             state:
                 api_name: state
                 api_type: string
@@ -417,7 +379,6 @@ schema_objects:
                 column_type: string
                 max_length: 40
                 required: false
-                type: string
             title:
                 api_name: title
                 api_type: string
@@ -425,24 +386,24 @@ schema_objects:
                 column_type: string
                 max_length: 30
                 required: false
-                type: string
         relations:
             employee:
                 api_name: employee
+                api_type: object
                 parent_property: employee_id
                 schema_name: employee
-                type: object
             employee_items:
                 api_name: employee_items
+                api_type: array
                 child_property: employee_id
                 parent_property: employee_id
                 schema_name: employee
-                type: array
         table_name: employee
     genre:
         api_name: genre
         concurrency_property: version
         database: chinook
+        permissions: {}
         primary_key: genre_id
         properties:
             genre_id:
@@ -452,7 +413,6 @@ schema_objects:
                 column_type: integer
                 key_type: auto
                 required: false
-                type: integer
             name:
                 api_name: name
                 api_type: string
@@ -460,26 +420,25 @@ schema_objects:
                 column_type: string
                 max_length: 120
                 required: false
-                type: string
             version:
                 api_name: version
                 api_type: integer
                 column_name: version
                 column_type: integer
                 required: false
-                type: integer
         relations:
             track_items:
                 api_name: track_items
+                api_type: array
                 child_property: genre_id
                 parent_property: genre_id
                 schema_name: track
-                type: array
         table_name: genre
     invoice:
         api_name: invoice
         concurrency_property: last_updated
         database: chinook
+        permissions: {}
         primary_key: invoice_id
         properties:
             billing_address:
@@ -489,7 +448,6 @@ schema_objects:
                 column_type: string
                 max_length: 70
                 required: false
-                type: string
             billing_city:
                 api_name: billing_city
                 api_type: string
@@ -497,7 +455,6 @@ schema_objects:
                 column_type: string
                 max_length: 40
                 required: false
-                type: string
             billing_country:
                 api_name: billing_country
                 api_type: string
@@ -505,7 +462,6 @@ schema_objects:
                 column_type: string
                 max_length: 40
                 required: false
-                type: string
             billing_postal_code:
                 api_name: billing_postal_code
                 api_type: string
@@ -513,7 +469,6 @@ schema_objects:
                 column_type: string
                 max_length: 10
                 required: false
-                type: string
             billing_state:
                 api_name: billing_state
                 api_type: string
@@ -521,21 +476,18 @@ schema_objects:
                 column_type: string
                 max_length: 40
                 required: false
-                type: string
             customer_id:
                 api_name: customer_id
                 api_type: integer
                 column_name: customer_id
                 column_type: integer
                 required: false
-                type: integer
             invoice_date:
                 api_name: invoice_date
-                api_type: date-time
+                api_type: string
                 column_name: invoice_date
-                column_type: date-time
+                column_type: string
                 required: false
-                type: string
             invoice_id:
                 api_name: invoice_id
                 api_type: integer
@@ -543,37 +495,35 @@ schema_objects:
                 column_type: integer
                 key_type: auto
                 required: false
-                type: integer
             last_updated:
                 api_name: last_updated
-                api_type: date-time
+                api_type: string
                 column_name: last_updated
-                column_type: date-time
+                column_type: string
                 required: false
-                type: string
             total:
                 api_name: total
                 api_type: number
                 column_name: total
                 column_type: number
                 required: false
-                type: number
         relations:
             customer:
                 api_name: customer
+                api_type: object
                 parent_property: customer_id
                 schema_name: customer
-                type: object
             invoice_line_items:
                 api_name: invoice_line_items
+                api_type: array
                 child_property: invoice_id
                 parent_property: invoice_id
                 schema_name: invoice_line
-                type: array
         table_name: invoice
     invoice_line:
         api_name: invoice_line
         database: chinook
+        permissions: {}
         primary_key: invoice_line_id
         properties:
             invoice_id:
@@ -582,7 +532,6 @@ schema_objects:
                 column_name: invoice_id
                 column_type: integer
                 required: false
-                type: integer
             invoice_line_id:
                 api_name: invoice_line_id
                 api_type: integer
@@ -590,43 +539,40 @@ schema_objects:
                 column_type: integer
                 key_type: auto
                 required: false
-                type: integer
             quantity:
                 api_name: quantity
                 api_type: integer
                 column_name: quantity
                 column_type: integer
                 required: false
-                type: integer
             track_id:
                 api_name: track_id
                 api_type: integer
                 column_name: track_id
                 column_type: integer
                 required: false
-                type: integer
             unit_price:
                 api_name: unit_price
                 api_type: number
                 column_name: unit_price
                 column_type: number
                 required: false
-                type: number
         relations:
             invoice:
                 api_name: invoice
+                api_type: object
                 parent_property: invoice_id
                 schema_name: invoice
-                type: object
             track:
                 api_name: track
+                api_type: object
                 parent_property: track_id
                 schema_name: track
-                type: object
         table_name: invoice_line
     media_type:
         api_name: media_type
         database: chinook
+        permissions: {}
         primary_key: media_type_id
         properties:
             media_type_id:
@@ -636,7 +582,6 @@ schema_objects:
                 column_type: integer
                 key_type: auto
                 required: false
-                type: integer
             name:
                 api_name: name
                 api_type: string
@@ -644,18 +589,18 @@ schema_objects:
                 column_type: string
                 max_length: 120
                 required: false
-                type: string
         relations:
             track_items:
                 api_name: track_items
+                api_type: array
                 child_property: media_type_id
                 parent_property: media_type_id
                 schema_name: track
-                type: array
         table_name: media_type
     playlist:
         api_name: playlist
         database: chinook
+        permissions: {}
         primary_key: playlist_id
         properties:
             name:
@@ -665,7 +610,6 @@ schema_objects:
                 column_type: string
                 max_length: 120
                 required: false
-                type: string
             playlist_id:
                 api_name: playlist_id
                 api_type: integer
@@ -673,18 +617,18 @@ schema_objects:
                 column_type: integer
                 key_type: auto
                 required: false
-                type: integer
         relations:
             playlist_track_items:
                 api_name: playlist_track_items
+                api_type: array
                 child_property: playlist_id
                 parent_property: playlist_id
                 schema_name: playlist_track
-                type: array
         table_name: playlist
     playlist_track:
         api_name: playlist_track
         database: chinook
+        permissions: {}
         primary_key: playlist_id
         properties:
             playlist_id:
@@ -694,29 +638,28 @@ schema_objects:
                 column_type: integer
                 key_type: manual
                 required: false
-                type: integer
             track_id:
                 api_name: track_id
                 api_type: integer
                 column_name: track_id
                 column_type: integer
                 required: false
-                type: integer
         relations:
             playlist:
                 api_name: playlist
+                api_type: object
                 parent_property: playlist_id
                 schema_name: playlist
-                type: object
             track:
                 api_name: track
+                api_type: object
                 parent_property: track_id
                 schema_name: track
-                type: object
         table_name: playlist_track
     track:
         api_name: track
         database: chinook
+        permissions: {}
         primary_key: track_id
         properties:
             album_id:
@@ -725,14 +668,12 @@ schema_objects:
                 column_name: album_id
                 column_type: integer
                 required: false
-                type: integer
             bytes:
                 api_name: bytes
                 api_type: integer
                 column_name: bytes
                 column_type: integer
                 required: false
-                type: integer
             composer:
                 api_name: composer
                 api_type: string
@@ -740,28 +681,24 @@ schema_objects:
                 column_type: string
                 max_length: 220
                 required: false
-                type: string
             genre_id:
                 api_name: genre_id
                 api_type: integer
                 column_name: genre_id
                 column_type: integer
                 required: false
-                type: integer
             media_type_id:
                 api_name: media_type_id
                 api_type: integer
                 column_name: media_type_id
                 column_type: integer
                 required: false
-                type: integer
             milliseconds:
                 api_name: milliseconds
                 api_type: integer
                 column_name: milliseconds
                 column_type: integer
                 required: false
-                type: integer
             name:
                 api_name: name
                 api_type: string
@@ -769,7 +706,6 @@ schema_objects:
                 column_type: string
                 max_length: 200
                 required: false
-                type: string
             track_id:
                 api_name: track_id
                 api_type: integer
@@ -777,40 +713,38 @@ schema_objects:
                 column_type: integer
                 key_type: auto
                 required: false
-                type: integer
             unit_price:
                 api_name: unit_price
                 api_type: number
                 column_name: unit_price
                 column_type: number
                 required: false
-                type: number
         relations:
             album:
                 api_name: album
+                api_type: object
                 parent_property: album_id
                 schema_name: album
-                type: object
             genre:
                 api_name: genre
+                api_type: object
                 parent_property: genre_id
                 schema_name: genre
-                type: object
             invoice_line_items:
                 api_name: invoice_line_items
+                api_type: array
                 child_property: track_id
                 parent_property: track_id
                 schema_name: invoice_line
-                type: array
             media_type:
                 api_name: media_type
+                api_type: object
                 parent_property: media_type_id
                 schema_name: media_type
-                type: object
             playlist_track_items:
                 api_name: playlist_track_items
+                api_type: array
                 child_property: track_id
                 parent_property: track_id
                 schema_name: playlist_track
-                type: array
         table_name: track

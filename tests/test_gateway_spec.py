@@ -22,6 +22,7 @@ class MockFunction(Function):
 date_property = {"type": "string", "format": "date"}
 date_time_property = {"type": "string", "format": "date-time"}
 integer_property = {"type": "integer", "minimum": 5}
+pattern_property = {"type": "string", "pattern": "this|that"}
 
 
 class TestGatewaySpec:
@@ -91,6 +92,31 @@ class TestGatewaySpec:
             (
                 date_property,
                 "123",
+                False,
+            ),
+            (
+                date_time_property,
+                "1997-05-01T12:34:56",
+                True,
+            ),
+            (
+                date_time_property,
+                "1997-13-01T12:34:56",
+                False,
+            ),
+            (
+                date_time_property,
+                "lt::2000-01-01T12:34:56",
+                True,
+            ),
+            (
+                pattern_property,
+                "this",
+                True,
+            ),
+            (
+                pattern_property,
+                "not that",
                 False,
             ),
         ],
@@ -178,7 +204,7 @@ class TestGatewaySpec:
                     "required": False,
                     "schema": {
                         "type": "integer",
-                        "pattern": "^[\\-\\+]?\\d+$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\-\\+]?\\d+$|^between::[\\-\\+]?\\d+,[\\-\\+]?\\d+$|^not-between::[\\-\\+]?\\d+,[\\-\\+]?\\d+,|^in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$|^not-in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$",
+                        "pattern": "^[\\-\\+]?\\d+$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\-\\+]?\\d+$|^between::[\\-\\+]?\\d+,[\\-\\+]?\\d+$|^not-between::[\\-\\+]?\\d+,[\\-\\+]?\\d+,|^in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$|^not-in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$",  # noqa E501
                     },
                     "description": "Filter by genre_id",
                 },
@@ -188,7 +214,7 @@ class TestGatewaySpec:
                     "required": False,
                     "schema": {
                         "type": "string",
-                        "pattern": "^[\\w\\s]{min_length,max_length}$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\w\\s]{min_length,max_length}$|^between::[\\w\\s]{min_length,max_length},[\\w\\s]{min_length,max_length}$|^not-between::[\\w\\s]{min_length,max_length},[\\w\\s]{min_length,max_length},|^in::[\\w\\s]{min_length,max_length}(,[\\w\\s]{min_length,max_length})*$|^not-in::[\\w\\s]{min_length,max_length}(,[\\w\\s]{min_length,max_length})*$",
+                        "pattern": "^[\\w\\s]0,200$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\w\\s]0,200$|^between::[\\w\\s]0,200,[\\w\\s]0,200$|^not-between::[\\w\\s]0,200,[\\w\\s]0,200,|^in::[\\w\\s]0,200(,[\\w\\s]0,200)*$|^not-in::[\\w\\s]0,200(,[\\w\\s]0,200)*$",  # noqa E501
                     },
                     "description": "Filter by name",
                 },
@@ -288,7 +314,7 @@ class TestGatewaySpec:
             "/invoice_line", "invoice_line", schema_object
         )
         result = rest_api_spec.editor.get_spec_part(
-            ["paths", "/invoice_line/{key_name}", "put"]
+            ["paths", "/invoice_line/{invoice_line_id}", "put"]
         )
         log.info(f"result: {result}")
         assert result == {
@@ -431,7 +457,7 @@ class TestGatewaySpec:
                     "required": False,
                     "schema": {
                         "type": "integer",
-                        "pattern": "^[\\-\\+]?\\d+$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\-\\+]?\\d+$|^between::[\\-\\+]?\\d+,[\\-\\+]?\\d+$|^not-between::[\\-\\+]?\\d+,[\\-\\+]?\\d+,|^in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$|^not-in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$",
+                        "pattern": "^[\\-\\+]?\\d+$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\-\\+]?\\d+$|^between::[\\-\\+]?\\d+,[\\-\\+]?\\d+$|^not-between::[\\-\\+]?\\d+,[\\-\\+]?\\d+,|^in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$|^not-in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$",  # noqa E501
                     },
                     "description": "Filter by invoice_line_id",
                 },
@@ -441,7 +467,7 @@ class TestGatewaySpec:
                     "required": False,
                     "schema": {
                         "type": "integer",
-                        "pattern": "^[\\-\\+]?\\d+$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\-\\+]?\\d+$|^between::[\\-\\+]?\\d+,[\\-\\+]?\\d+$|^not-between::[\\-\\+]?\\d+,[\\-\\+]?\\d+,|^in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$|^not-in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$",
+                        "pattern": "^[\\-\\+]?\\d+$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\-\\+]?\\d+$|^between::[\\-\\+]?\\d+,[\\-\\+]?\\d+$|^not-between::[\\-\\+]?\\d+,[\\-\\+]?\\d+,|^in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$|^not-in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$",  # noqa E501
                     },
                     "description": "Filter by invoice_id",
                 },
@@ -451,7 +477,7 @@ class TestGatewaySpec:
                     "required": False,
                     "schema": {
                         "type": "integer",
-                        "pattern": "^[\\-\\+]?\\d+$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\-\\+]?\\d+$|^between::[\\-\\+]?\\d+,[\\-\\+]?\\d+$|^not-between::[\\-\\+]?\\d+,[\\-\\+]?\\d+,|^in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$|^not-in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$",
+                        "pattern": "^[\\-\\+]?\\d+$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\-\\+]?\\d+$|^between::[\\-\\+]?\\d+,[\\-\\+]?\\d+$|^not-between::[\\-\\+]?\\d+,[\\-\\+]?\\d+,|^in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$|^not-in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$",  # noqa E501
                     },
                     "description": "Filter by track_id",
                 },
@@ -461,7 +487,7 @@ class TestGatewaySpec:
                     "required": False,
                     "schema": {
                         "type": "number",
-                        "pattern": "^[+-]?\\d+(\\.\\d+)?$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[+-]?\\d+(\\.\\d+)?$|^between::[+-]?\\d+(\\.\\d+)?,[+-]?\\d+(\\.\\d+)?$|^not-between::[+-]?\\d+(\\.\\d+)?,[+-]?\\d+(\\.\\d+)?,|^in::[+-]?\\d+(\\.\\d+)?(,[+-]?\\d+(\\.\\d+)?)*$|^not-in::[+-]?\\d+(\\.\\d+)?(,[+-]?\\d+(\\.\\d+)?)*$",
+                        "pattern": "^[+-]?\\d+(\\.\\d+)?$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[+-]?\\d+(\\.\\d+)?$|^between::[+-]?\\d+(\\.\\d+)?,[+-]?\\d+(\\.\\d+)?$|^not-between::[+-]?\\d+(\\.\\d+)?,[+-]?\\d+(\\.\\d+)?,|^in::[+-]?\\d+(\\.\\d+)?(,[+-]?\\d+(\\.\\d+)?)*$|^not-in::[+-]?\\d+(\\.\\d+)?(,[+-]?\\d+(\\.\\d+)?)*$",  # noqa E501
                     },
                     "description": "Filter by unit_price",
                 },
@@ -471,7 +497,7 @@ class TestGatewaySpec:
                     "required": False,
                     "schema": {
                         "type": "integer",
-                        "pattern": "^[\\-\\+]?\\d+$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\-\\+]?\\d+$|^between::[\\-\\+]?\\d+,[\\-\\+]?\\d+$|^not-between::[\\-\\+]?\\d+,[\\-\\+]?\\d+,|^in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$|^not-in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$",
+                        "pattern": "^[\\-\\+]?\\d+$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\-\\+]?\\d+$|^between::[\\-\\+]?\\d+,[\\-\\+]?\\d+$|^not-between::[\\-\\+]?\\d+,[\\-\\+]?\\d+,|^in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$|^not-in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$",  # noqa E501
                     },
                     "description": "Filter by quantity",
                 },
@@ -538,7 +564,7 @@ class TestGatewaySpec:
         )
         result = rest_api_spec.editor.get_spec_part(["paths", "/invoice", "put"])
         log.info(f"result: {result}")
-        assert result == None
+        assert result is None
 
     def test_delete_by_id_operation_with_cc(self):
         # check invalid concurrency control is present
@@ -689,7 +715,7 @@ class TestGatewaySpec:
                     "required": False,
                     "schema": {
                         "type": "integer",
-                        "pattern": "^[\\-\\+]?\\d+$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\-\\+]?\\d+$|^between::[\\-\\+]?\\d+,[\\-\\+]?\\d+$|^not-between::[\\-\\+]?\\d+,[\\-\\+]?\\d+,|^in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$|^not-in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$",
+                        "pattern": "^[\\-\\+]?\\d+$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\-\\+]?\\d+$|^between::[\\-\\+]?\\d+,[\\-\\+]?\\d+$|^not-between::[\\-\\+]?\\d+,[\\-\\+]?\\d+,|^in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$|^not-in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$",  # noqa E501
                     },
                     "description": "Filter by invoice_line_id",
                 },
@@ -699,7 +725,7 @@ class TestGatewaySpec:
                     "required": False,
                     "schema": {
                         "type": "integer",
-                        "pattern": "^[\\-\\+]?\\d+$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\-\\+]?\\d+$|^between::[\\-\\+]?\\d+,[\\-\\+]?\\d+$|^not-between::[\\-\\+]?\\d+,[\\-\\+]?\\d+,|^in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$|^not-in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$",
+                        "pattern": "^[\\-\\+]?\\d+$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\-\\+]?\\d+$|^between::[\\-\\+]?\\d+,[\\-\\+]?\\d+$|^not-between::[\\-\\+]?\\d+,[\\-\\+]?\\d+,|^in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$|^not-in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$",  # noqa E501
                     },
                     "description": "Filter by invoice_id",
                 },
@@ -709,7 +735,7 @@ class TestGatewaySpec:
                     "required": False,
                     "schema": {
                         "type": "integer",
-                        "pattern": "^[\\-\\+]?\\d+$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\-\\+]?\\d+$|^between::[\\-\\+]?\\d+,[\\-\\+]?\\d+$|^not-between::[\\-\\+]?\\d+,[\\-\\+]?\\d+,|^in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$|^not-in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$",
+                        "pattern": "^[\\-\\+]?\\d+$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\-\\+]?\\d+$|^between::[\\-\\+]?\\d+,[\\-\\+]?\\d+$|^not-between::[\\-\\+]?\\d+,[\\-\\+]?\\d+,|^in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$|^not-in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$",  # noqa E501
                     },
                     "description": "Filter by track_id",
                 },
@@ -719,7 +745,7 @@ class TestGatewaySpec:
                     "required": False,
                     "schema": {
                         "type": "number",
-                        "pattern": "^[+-]?\\d+(\\.\\d+)?$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[+-]?\\d+(\\.\\d+)?$|^between::[+-]?\\d+(\\.\\d+)?,[+-]?\\d+(\\.\\d+)?$|^not-between::[+-]?\\d+(\\.\\d+)?,[+-]?\\d+(\\.\\d+)?,|^in::[+-]?\\d+(\\.\\d+)?(,[+-]?\\d+(\\.\\d+)?)*$|^not-in::[+-]?\\d+(\\.\\d+)?(,[+-]?\\d+(\\.\\d+)?)*$",
+                        "pattern": "^[+-]?\\d+(\\.\\d+)?$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[+-]?\\d+(\\.\\d+)?$|^between::[+-]?\\d+(\\.\\d+)?,[+-]?\\d+(\\.\\d+)?$|^not-between::[+-]?\\d+(\\.\\d+)?,[+-]?\\d+(\\.\\d+)?,|^in::[+-]?\\d+(\\.\\d+)?(,[+-]?\\d+(\\.\\d+)?)*$|^not-in::[+-]?\\d+(\\.\\d+)?(,[+-]?\\d+(\\.\\d+)?)*$",  # noqa E501
                     },
                     "description": "Filter by unit_price",
                 },
@@ -729,7 +755,7 @@ class TestGatewaySpec:
                     "required": False,
                     "schema": {
                         "type": "integer",
-                        "pattern": "^[\\-\\+]?\\d+$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\-\\+]?\\d+$|^between::[\\-\\+]?\\d+,[\\-\\+]?\\d+$|^not-between::[\\-\\+]?\\d+,[\\-\\+]?\\d+,|^in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$|^not-in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$",
+                        "pattern": "^[\\-\\+]?\\d+$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\-\\+]?\\d+$|^between::[\\-\\+]?\\d+,[\\-\\+]?\\d+$|^not-between::[\\-\\+]?\\d+,[\\-\\+]?\\d+,|^in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$|^not-in::[\\-\\+]?\\d+(,[\\-\\+]?\\d+)*$",  # noqa E501
                     },
                     "description": "Filter by quantity",
                 },

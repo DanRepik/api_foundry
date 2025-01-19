@@ -7,28 +7,6 @@ paths:
     get:
       summary: Get top-selling albums
       description: Returns the top 10 selling albums within a specified datetime range.
-      x-af-database: chinook
-      x-af-sql: >
-        SELECT
-            a.album_id as album_id,
-            a.title AS album_title,
-            COUNT(il.invoice_line_id) AS total_sold
-        FROM
-            invoice_line il
-        JOIN invoice i ON
-            il.invoice_id = i.invoice_id
-        JOIN
-            track t ON il.track_id = t.track_id
-        JOIN
-            album a ON t.album_id = a.album_id
-        WHERE
-            i.invoice_date >= :start
-            AND i.invoice_date <= :end
-        GROUP BY
-            a.album_id
-        ORDER BY
-            total_sold DESC
-        LIMIT :limit
       parameters:
         - in: query
           name: start
@@ -75,6 +53,39 @@ paths:
           description: Invalid input
         '500':
           description: Internal server error
+      x-af-database: chinook
+      x-af-sql: >
+        SELECT
+            a.album_id as album_id,
+            a.title AS album_title,
+            COUNT(il.invoice_line_id) AS total_sold
+        FROM
+            invoice_line il
+        JOIN invoice i ON
+            il.invoice_id = i.invoice_id
+        JOIN
+            track t ON il.track_id = t.track_id
+        JOIN
+            album a ON t.album_id = a.album_id
+        WHERE
+            i.invoice_date >= :start
+            AND i.invoice_date <= :end
+        GROUP BY
+            a.album_id
+        ORDER BY
+            total_sold DESC
+        LIMIT :limit
+      x-af-security:
+        sales_reader:
+            read: .*
+        sales_associate:
+          read: .*
+          write: .*
+        sales_manager:
+          read: .*
+          write: .*
+          delete: true
+
   /top_selling_albums_rename:
     get:
       summary: Get top-selling albums
@@ -171,6 +182,16 @@ components:
       required:
       - artist_id
       x-af-database: chinook
+      x-af-security:
+        sales_reader:
+            read: .*
+        sales_associate:
+          read: .*
+          write: .*
+        sales_manager:
+          read: .*
+          write: .*
+          delete: true
     album:
       type: object
       properties:
@@ -199,6 +220,16 @@ components:
       - title
       - artist_id
       x-af-database: chinook
+      x-af-security:
+        sales_reader:
+            read: .*
+        sales_associate:
+          read: .*
+          write: .*
+        sales_manager:
+          read: .*
+          write: .*
+          delete: true
     employee:
       type: object
       properties:
