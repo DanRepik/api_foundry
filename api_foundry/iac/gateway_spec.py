@@ -6,7 +6,7 @@ from typing import Any, Optional
 from cloud_foundry import Function
 from cloud_foundry.utils.aws_openapi_editor import AWSOpenAPISpecEditor
 
-from api_foundry.utils.logger import logger
+from cloud_foundry import logger
 
 
 log = logger(__name__)

@@ -11,7 +11,7 @@ import cloud_foundry
 
 from api_foundry.iac.gateway_spec import APISpecEditor
 from api_foundry.utils.model_factory import ModelFactory
-from api_foundry.utils.logger import logger
+from cloud_foundry import logger
 
 log = logger(__name__)
 

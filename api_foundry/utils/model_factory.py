@@ -1,8 +1,8 @@
 import re
 from typing import Any, Dict, Optional
 from api_foundry.utils.app_exception import ApplicationException
-from api_foundry.utils.logger import logger
 from api_foundry.utils.schema_validator import validate_permissions
+from cloud_foundry import logger
 
 log = logger(__name__)
 
