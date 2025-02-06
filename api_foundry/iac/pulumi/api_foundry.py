@@ -2,6 +2,7 @@ import pkgutil
 import os
 import json
 import yaml
+import boto3
 from typing import Union
 from pulumi import ComponentResource, Config
 
@@ -16,6 +17,75 @@ from cloud_foundry import logger
 log = logger(__name__)
 
 
+def is_valid_openapi_spec(spec_dict: dict) -> bool:
+    return (
+        isinstance(spec_dict, dict)
+        and "openapi" in spec_dict
+        and isinstance(spec_dict["openapi"], str)
+    )
+
+
+def load_api_spec(api_spec: Union[str, list[str]]) -> dict:
+    api_spec_dict = {}
+    specs = [api_spec] if isinstance(api_spec, str) else api_spec
+
+    all_specs = []
+    for spec in specs:
+        if os.path.isfile(spec):
+            all_specs.append(spec)
+        elif os.path.isdir(spec):
+            all_specs.extend(
+                sorted(
+                    [
+                        os.path.join(spec, f)
+                        for f in os.listdir(spec)
+                        if f.endswith(".yaml")
+                    ]
+                )
+            )
+        elif spec.startswith("s3://"):
+            s3 = boto3.client("s3")
+            bucket, key = spec[5:].split("/", 1)
+            if key.endswith("/"):
+                response = s3.list_objects_v2(Bucket=bucket, Prefix=key)
+                all_specs.extend(
+                    sorted(
+                        [
+                            f"s3://{bucket}/{obj['Key']}"
+                            for obj in response.get("Contents", [])
+                            if obj["Key"].endswith(".yaml")
+                        ]
+                    )
+                )
+            else:
+                all_specs.append(spec)
+        else:
+            try:
+                spec_dict = yaml.safe_load(spec)
+                if is_valid_openapi_spec(spec_dict):
+                    api_spec_dict.update(spec_dict)
+                    return api_spec_dict
+            except yaml.YAMLError:
+                raise ValueError(f"Invalid OpenAPI spec provided: {spec}")
+
+    for spec in all_specs:
+        if spec.startswith("s3://"):
+            bucket, key = spec[5:].split("/", 1)
+            s3 = boto3.client("s3")
+            obj = s3.get_object(Bucket=bucket, Key=key)
+            spec_dict = yaml.safe_load(obj["Body"].read().decode("utf-8"))
+        else:
+            with open(spec, "r") as yaml_file:
+                spec_dict = yaml.safe_load(yaml_file)
+
+        if not is_valid_openapi_spec(spec_dict):
+            raise ValueError(f"Invalid OpenAPI spec found in: {spec}")
+
+        api_spec_dict.update(spec_dict)
+
+    return api_spec_dict
+
+
 class APIFoundry(ComponentResource):
     api_spec_editor: APISpecEditor
 
@@ -23,7 +93,7 @@ class APIFoundry(ComponentResource):
         self,
         name,
         *,
-        api_spec: str,
+        api_spec: Union[str, list[str]],
         secrets: str,
         environment: dict[str, str] = {},
         body: Union[str, list[str]] = [],
@@ -35,11 +105,7 @@ class APIFoundry(ComponentResource):
     ):
         super().__init__("cloud_foundry:apigw:APIFoundry", name, None, opts)
 
-        if os.path.exists(api_spec):
-            with open(api_spec, "r") as yaml_file:
-                api_spec_dict = yaml.safe_load(yaml_file)
-        else:
-            api_spec_dict = yaml.safe_load(api_spec)
+        api_spec_dict = load_api_spec(api_spec)
 
         if isinstance(body, str):
             body = [body]
