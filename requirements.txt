@@ -6,6 +6,8 @@ pulumi-aws
 pulumi-automation
 
 pytest
+psycopg2-binary
+docker
 requests
 # cloud_foundry
 -e ../cloud_foundry

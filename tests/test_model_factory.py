@@ -310,6 +310,182 @@ components:
     }
 
 
+@pytest.mark.unit
+def test_path_operation_parsing():
+  spec = {
+    "openapi": "3.0.0",
+    "paths": {
+      "/active_ads": {
+        "get": {
+          "x-af-database": "farm_market",
+          "x-af-sql": "SELECT * FROM active_ads",
+          "parameters": [
+            {"in": "query", "name": "limit", "schema": {"type": "integer"}},
+            {"in": "query", "name": "q", "schema": {"type": "string"}},
+          ],
+          "responses": {
+            "200": {
+              "description": "ok",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {"type": "string"},
+                        "name": {"type": "string"},
+                      },
+                    },
+                  }
+                }
+              },
+            }
+          },
+        }
+      }
+    },
+  }
+
+  mf = ModelFactory(spec)
+  out = mf.get_config_output()
+  ops = out["path_operations"]
+  assert "active_ads_read" in ops
+  op = ops["active_ads_read"]
+  # entity/action
+  assert op["entity"] == "active_ads"
+  assert op["action"] == "read"
+  # inputs
+  assert set(op["inputs"].keys()) == {"limit", "q"}
+  # ModelFactory currently treats parameter types as string unless top-level 'type' is present
+  assert op["inputs"]["limit"]["api_type"] == "string"
+  # outputs
+  assert set(op["outputs"].keys()) == {"id", "name"}
+  assert op["outputs"]["id"]["api_type"] == "string"
+
+
+@pytest.mark.unit
+def test_concurrency_property_valid_and_invalid():
+  # valid: schema-level concurrency property points to an existing property
+  spec_valid = {
+    "openapi": "3.0.0",
+    "components": {
+      "schemas": {
+        "Thing": {
+          "type": "object",
+          "x-af-database": "db",
+          "x-af-concurrency-control": "version",
+          "properties": {
+            "id": {"type": "integer", "x-af-primary-key": "auto"},
+            "version": {"type": "integer"},
+          },
+        }
+      }
+    },
+  }
+  out_valid = ModelFactory(spec_valid).get_config_output()
+  assert out_valid["schema_objects"]["Thing"]["concurrency_property"] == "version"
+
+  # invalid: references a property that doesn't exist
+  spec_invalid = {
+    "openapi": "3.0.0",
+    "components": {
+      "schemas": {
+        "BadThing": {
+          "type": "object",
+          "x-af-database": "db",
+          "x-af-concurrency-control": "etag",
+          "properties": {
+            "id": {"type": "integer", "x-af-primary-key": "auto"},
+            # no 'etag' property here
+          },
+        }
+      }
+    },
+  }
+  with pytest.raises(ApplicationException) as exc:
+    ModelFactory(spec_invalid).get_config_output()
+  assert "Invalid concurrency property: etag not found in properties." in str(exc.value)
+
+
+@pytest.mark.unit
+def test_sequence_primary_key_requires_sequence_name():
+  spec = {
+    "openapi": "3.0.0",
+    "components": {
+      "schemas": {
+        "Seq": {
+          "type": "object",
+          "x-af-database": "db",
+          "properties": {
+            "id": {"type": "integer", "x-af-primary-key": "sequence"},
+          },
+        }
+      }
+    },
+  }
+  with pytest.raises(ApplicationException) as exc:
+    ModelFactory(spec)
+  assert "Sequence-based primary keys must have a sequence name" in str(exc.value)
+
+
+@pytest.mark.unit
+def test_child_property_in_relations():
+    spec = yaml.safe_load(
+        """
+components:
+  schemas:
+    parent:
+      type: object
+      properties:
+        id:
+          type: integer
+          x-af-primary-key: auto
+        children:
+          type: array
+          x-af-child-property: parent_id
+          items:
+            $ref: '#/components/schemas/child'
+      x-af-database: demo
+    child:
+      type: object
+      properties:
+        id:
+          type: integer
+          x-af-primary-key: auto
+        parent_id:
+          type: integer
+      x-af-database: demo
+"""
+    )
+
+    out = ModelFactory(spec).get_config_output()
+    rel = out["schema_objects"]["parent"]["relations"]["children"]
+    assert rel["parent_property"] == "id"  # defaults to parent's PK
+    assert rel["child_property"] == "parent_id"
+
+
+@pytest.mark.unit
+def test_table_name_with_xaf_table():
+  spec = {
+    "openapi": "3.0.0",
+    "components": {
+      "schemas": {
+        "Profile": {
+          "type": "object",
+          "x-af-database": "db",
+          "x-af-table": "user_profiles",
+          "properties": {
+            "id": {"type": "integer", "x-af-primary-key": "auto"},
+          },
+        }
+      }
+    },
+  }
+  out = ModelFactory(spec).get_config_output()
+  assert out["schema_objects"]["Profile"]["table_name"] == "user_profiles"
+
+
 def test_chinook_generation():
     # Define the path to the YAML test spec file
     spec_file_path = os.path.join(os.getcwd(), "resources/chinook_api.yaml")

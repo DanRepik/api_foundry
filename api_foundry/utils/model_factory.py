@@ -174,7 +174,7 @@ class SchemaObject(OpenAPIElement):
     ) -> Dict[str, SchemaObjectAssociation]:
         relations = {}
         for property_name, prop in schema_object.get("properties", {}).items():
-            if prop.get("type") == "object" or prop.get("type") == "array":
+            if prop.get("type") in ["object", "array"] and ("items" in prop or "$ref" in prop):
                 relations[property_name.lower()] = SchemaObjectAssociation(
                     property_name, prop, self.primary_key
                 )

@@ -14,13 +14,13 @@ log = logger(__name__)
 
 class APISpecEditor:
     api_spec: dict
-    function: Function
+    function: Optional[Function]
     integrations: list[dict]
 
-    def __init__(self, *, open_api_spec: dict, function_name: str, function: Function):
+    def __init__(self, *, open_api_spec: Optional[dict], function_name: Optional[str], function: Optional[Function]):
         self.function = function
         self.integrations = []
-        self.editor = AWSOpenAPISpecEditor(copy.deepcopy(open_api_spec))
+        self.editor = AWSOpenAPISpecEditor(copy.deepcopy(open_api_spec) if open_api_spec else None)
 
     def rest_api_spec(self) -> str:
         schemas = self.editor.get_spec_part(["components", "schemas"], create=False)
@@ -39,6 +39,7 @@ class APISpecEditor:
         method: str,
         operation: dict,
         schema_object: Optional[dict] = None,
+        function: Optional[Function] = None
     ):
         self.integrations.append(
             {"path": path, "method": method, "function": self.function}

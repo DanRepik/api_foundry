@@ -131,9 +131,9 @@ The final step is to deploy the API.  In the example the deployment is made usin
 
 ```python
 #filename: __main.py__
-from api_foundry.iac.pulumi.api_foundry import APIMaker
+from api_foundry import APIFoundry
 
-api_foundry = APIMaker(
+api_foundry = APIFoundry(
     "chinook-postgres",
     props={
         # this references the OpenAPI file created
