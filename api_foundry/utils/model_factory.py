@@ -63,6 +63,9 @@ class SchemaObjectProperty(OpenAPIElement):
         self.key_type = None
         self.sequence_name = None
         self.concurrency_control = self._concurrency_control(schema_name, property)
+        # For embedded objects/arrays
+        self.sub_properties: Optional[Dict[str, SchemaObjectProperty]] = None
+        self.items_sub_properties: Optional[Dict[str, SchemaObjectProperty]] = None
 
     def _concurrency_control(self, schema_name: str, property: dict) -> Optional[str]:
         concurrency_control = property.get("x-af-concurrency-control", None)
@@ -161,12 +164,45 @@ class SchemaObject(OpenAPIElement):
                 properties[property_name] = object_property
         return properties
 
+
     def _resolve_property(
         self, property_name: str, prop: Dict[str, Any]
     ) -> Optional[SchemaObjectProperty]:
-        prop_type = prop.get("type")
-        if prop_type == "object" or prop_type == "array":
+        # If $ref is present, treat as relation
+        if "$ref" in prop:
             return None
+        prop_type = prop.get("type")
+        # Embedded object
+        if prop_type == "object":
+            if "properties" in prop:
+                # Recursively resolve sub-properties
+                sub_properties = {}
+                for sub_name, sub_prop in prop["properties"].items():
+                    sub_properties[sub_name] = self._resolve_property(sub_name, sub_prop)
+                # Store as a SchemaObjectProperty with nested sub_properties
+                obj = SchemaObjectProperty(self.api_name, property_name, prop)
+                obj.sub_properties = sub_properties
+                return obj
+            else:
+                # Generic object property
+                return SchemaObjectProperty(self.api_name, property_name, prop)
+        # Array
+        if prop_type == "array":
+            items = prop.get("items", {})
+            if "$ref" in items:
+                return None  # relation
+            if items.get("type") == "object" and "properties" in items:
+                # Array of embedded objects
+                sub_properties = {}
+                for sub_name, sub_prop in items["properties"].items():
+                    sub_properties[sub_name] = self._resolve_property(sub_name, sub_prop)
+                obj = SchemaObjectProperty(self.api_name, property_name, prop)
+                obj.items_sub_properties = sub_properties
+                return obj
+            else:
+                # Array of primitives
+                return SchemaObjectProperty(self.api_name, property_name, prop)
+        # Primitive property
         return SchemaObjectProperty(self.api_name, property_name, prop)
 
     def _resolve_relations(
@@ -174,7 +210,13 @@ class SchemaObject(OpenAPIElement):
     ) -> Dict[str, SchemaObjectAssociation]:
         relations = {}
         for property_name, prop in schema_object.get("properties", {}).items():
-            if prop.get("type") in ["object", "array"] and ("items" in prop or "$ref" in prop):
+            # Direct $ref (object relation)
+            if "$ref" in prop:
+                relations[property_name.lower()] = SchemaObjectAssociation(
+                    property_name, prop, self.primary_key
+                )
+            # Array of $ref (array relation)
+            elif prop.get("type") == "array" and "$ref" in prop.get("items", {}):
                 relations[property_name.lower()] = SchemaObjectAssociation(
                     property_name, prop, self.primary_key
                 )

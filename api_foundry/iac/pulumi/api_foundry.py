@@ -3,11 +3,10 @@ import os
 import json
 import yaml
 import boto3
-from typing import Union
+from typing import Optional, Union
 from pulumi import ComponentResource, Config
 
-# from pulumi_aws import get_caller_identity, get_region
-
+import pulumi
 import cloud_foundry
 
 from api_foundry.iac.gateway_spec import APISpecEditor
@@ -71,12 +70,13 @@ class APIFoundry(ComponentResource):
         name,
         *,
         api_spec: Union[str, list[str]],
-        secrets: str = None,
-        environment: dict[str, str] = None,
-        integrations: list[dict] = None,
-        token_validators: list[dict] = None,
-        policy_statements: list = None,
-        vpc_config: dict = None,
+        secrets: Optional[str] = None,
+        environment: Optional[dict[str, str]] = None,
+        integrations: Optional[list[dict]] = None,
+        token_validators: Optional[list[dict]] = None,
+        policy_statements: Optional[list] = None,
+        vpc_config: Optional[dict] = None,
+        export_api: Optional[str] = None,
         opts=None,
     ):
         super().__init__("cloud_foundry:apigw:APIFoundry", name, None, opts)
@@ -132,12 +132,19 @@ class APIFoundry(ComponentResource):
             function=self.api_function,
             function_name=name,
         )
+
         self.rest_api = cloud_foundry.rest_api(
             name,
-            body=[gateway_spec.rest_api_spec()],
+            specification=[gateway_spec.rest_api_spec()],
             integrations=[*integrations, *gateway_spec.integrations],
             token_validators=token_validators,
+            export_api=export_api,
+            opts=pulumi.ResourceOptions(parent=self)
         )
+
+        self.domain = self.rest_api.domain
+
+        pulumi.export(f"{name}_domain", self.domain)
 
     def integrations(self) -> list[dict]:
         return self.api_spec_editor.integrations

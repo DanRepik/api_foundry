@@ -261,11 +261,11 @@ class APISpecEditor:
                 "summary": f"Retrieve {schema_name} by {key_name}",
                 "parameters": [
                     {
-                        "name": "id",
+                        "name": key_name,
                         "in": "path",
                         "description": f"ID of the {schema_name} to get",
                         "required": True,
-                        "schema": {"type": key_properties},
+                        "schema": {"type": "string"},
                     }
                 ],
                 "responses": {
@@ -303,7 +303,7 @@ class APISpecEditor:
                         "in": "path",
                         "description": f"ID of the {schema_name} to update",
                         "required": True,
-                        "schema": key_properties,
+                        "schema": {"type": "string"},
                     }
                 ],
                 "requestBody": {
@@ -356,7 +356,7 @@ class APISpecEditor:
                         "in": "path",
                         "description": f"ID of the {schema_name} to update",
                         "required": True,
-                        "schema": key_properties,
+                        "schema": {"type": "string"},
                     },
                     {
                         "name": cc_property_name,
@@ -365,7 +365,7 @@ class APISpecEditor:
                             cc_property_name + " of the " + schema_name + " to update"
                         ),
                         "required": True,
-                        "schema": cc_property,
+                        "schema": {"type": "string"},
                     },
                 ],
                 "requestBody": {
@@ -454,7 +454,7 @@ class APISpecEditor:
                         "in": "path",
                         "description": f"ID of the {schema_name} to update",
                         "required": True,
-                        "schema": {"type": key_properties},
+                        "schema": {"type": "string"},
                     },
                     {
                         "name": cc_property_name,
@@ -463,7 +463,7 @@ class APISpecEditor:
                             f"{cc_property_name} of the {schema_name} to update"
                         ),
                         "required": True,
-                        "schema": cc_property,
+                        "schema": {"type": "string"},
                     },
                 ],
                 "responses": {
@@ -499,7 +499,7 @@ class APISpecEditor:
                         "in": "path",
                         "description": f"ID of the {schema_name} to update",
                         "required": True,
-                        "schema": {"type": key_properties},
+                        "schema": {"type": "string"},
                     }
                 ],
                 "responses": {
