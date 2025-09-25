@@ -17,34 +17,49 @@ class APISpecEditor:
     function: Optional[Function]
     integrations: list[dict]
 
-    def __init__(self, *, open_api_spec: Optional[dict], function_name: Optional[str], function: Optional[Function]):
+    def __init__(self, *, open_api_spec: Optional[dict], function: Optional[Function]):
         self.function = function
         self.integrations = []
-        self.editor = AWSOpenAPISpecEditor(copy.deepcopy(open_api_spec) if open_api_spec else None)
+        self.editor = AWSOpenAPISpecEditor(
+            copy.deepcopy(open_api_spec) if open_api_spec else None
+        )
 
     def rest_api_spec(self) -> str:
         schemas = self.editor.get_spec_part(["components", "schemas"], create=False)
         if schemas:
-            for schema_name, schema_object in schemas.items():
-                self.generate_crud_operations(schema_name, schema_object)
+            if isinstance(schemas, dict):
+                for schema_name, schema_object in schemas.items():
+                    self.generate_crud_operations(schema_name, schema_object)
+            elif isinstance(schemas, list):
+                for schema_object in schemas:
+                    schema_name = schema_object.get("name", None)
+                    if schema_name:
+                        self.generate_crud_operations(schema_name, schema_object)
 
-        self.editor.remove_attributes_by_pattern("^x-af-.*$")
+        #        self.editor.remove_attributes_with_pattern("^x-af-.*$")
 
         self.editor.correct_schema_names()
-        return self.editor.to_yaml()
+        return self.editor.yaml
 
     def add_operation(
         self,
         path: str,
         method: str,
         operation: dict,
-        schema_object: Optional[dict] = None,
-        function: Optional[Function] = None
+        schema_name: str,
+        schema_object: dict,
+        function: Optional[Function] = None,
     ):
         self.integrations.append(
-            {"path": path, "method": method, "function": self.function}
+            {"path": path, "method": method, "function": function or self.function}
         )
-        self.editor.add_operation(path, method, operation, schema_object)
+        self.editor.add_operation(
+            path=path,
+            method=method,
+            operation=operation,
+            schema_name=schema_name,
+            schema_object=schema_object,
+        )
 
     def generate_regex(self, property: dict[str, Any]) -> str:
         regex_pattern = ""
@@ -152,7 +167,7 @@ class APISpecEditor:
             if "$ref" in prop:
                 ref_parts = prop["$ref"].lstrip("#/").split("/")
                 referenced_schema = self.editor.get_spec_part(ref_parts)
-                if referenced_schema:
+                if isinstance(referenced_schema, dict):
                     prop = {**prop, **referenced_schema}
                     prop.pop("$ref")
 
@@ -177,7 +192,7 @@ class APISpecEditor:
         required_properties = schema_object.get("required", [])
         return [name for name in input_properties if name in required_properties]
 
-    def generate_crud_operations(self, schema_name, schema_object: dict):
+    def generate_crud_operations(self, schema_name: str, schema_object: dict):
         path = f"/{schema_name.lower()}"
         self.generate_create_operation(path, schema_name, schema_object)
         self.generate_get_by_id_operation(path, schema_name, schema_object)
@@ -198,8 +213,8 @@ class APISpecEditor:
             schema_object, include_primary_key=include_primary_key or False
         )
         self.add_operation(
-            path,
-            "post",
+            path=path,
+            method="post",
             operation={
                 "summary": f"Create a new {schema_name}",
                 "requestBody": {
@@ -223,6 +238,7 @@ class APISpecEditor:
                     }
                 },
             },
+            schema_name=schema_name,
             schema_object=schema_object,
         )
 
@@ -230,9 +246,9 @@ class APISpecEditor:
         self, path: str, schema_name: str, schema_object: dict[str, Any]
     ):
         self.add_operation(
-            path,
-            "get",
-            {
+            path=path,
+            method="get",
+            operation={
                 "summary": f"Retrieve all {schema_name}",
                 "parameters": self.generate_query_parameters(schema_object),
                 "responses": {
@@ -242,6 +258,8 @@ class APISpecEditor:
                     }
                 },
             },
+            schema_name=schema_name,
+            schema_object=schema_object,
         )
 
     def generate_get_by_id_operation(
@@ -252,12 +270,10 @@ class APISpecEditor:
             return
 
         key_name = key[0]
-        key_properties = key[1]
-
         self.add_operation(
-            f"{path}/{{{key_name}}}",
-            "get",
-            {
+            path=f"{path}/{{{key_name}}}",
+            method="get",
+            operation={
                 "summary": f"Retrieve {schema_name} by {key_name}",
                 "parameters": [
                     {
@@ -275,6 +291,8 @@ class APISpecEditor:
                     }
                 },
             },
+            schema_name=schema_name,
+            schema_object=schema_object,
         )
 
     def generate_update_by_id_operation(
@@ -289,13 +307,10 @@ class APISpecEditor:
             return
 
         key_name = key[0]
-        key_properties = key[1]
-
-        # Update operation
         self.add_operation(
-            f"{path}/{{{key_name}}}",
-            "put",
-            {
+            path=f"{path}/{{{key_name}}}",
+            method="put",
+            operation={
                 "summary": f"Update an existing {schema_name} by {key_name}",
                 "parameters": [
                     {
@@ -325,6 +340,8 @@ class APISpecEditor:
                     }
                 },
             },
+            schema_name=schema_name,
+            schema_object=schema_object,
         )
 
     def generate_update_with_cc_operation(
@@ -336,19 +353,15 @@ class APISpecEditor:
             return
 
         key_name = key[0]
-        key_properties = key[1]
-
         cc_tuple = self.get_concurrency_property(schema_object)
         if not cc_tuple:
             return
 
         cc_property_name = cc_tuple[0]
-        cc_property = cc_tuple[1]
-
         self.add_operation(
-            f"{path}/{{{key_name}}}/{cc_property_name}/{{{cc_property_name}}}",
-            "put",
-            {
+            path=f"{path}/{{{key_name}}}/{cc_property_name}/{{{cc_property_name}}}",
+            method="put",
+            operation={
                 "summary": f"Update an existing {schema_name} by ID",
                 "parameters": [
                     {
@@ -387,6 +400,8 @@ class APISpecEditor:
                     }
                 },
             },
+            schema_name=schema_name,
+            schema_object=schema_object,
         )
 
     def generate_update_many_operation(
@@ -398,9 +413,9 @@ class APISpecEditor:
 
         # Update operation
         self.add_operation(
-            path,
-            "put",
-            {
+            path=path,
+            method="put",
+            operation={
                 "summary": f"Update an existing {schema_name} by ID",
                 "parameters": self.generate_query_parameters(schema_object),
                 "requestBody": {
@@ -422,6 +437,8 @@ class APISpecEditor:
                     }
                 },
             },
+            schema_name=schema_name,
+            schema_object=schema_object,
         )
 
         # Delete operation
@@ -434,19 +451,17 @@ class APISpecEditor:
             return
 
         cc_property_name = cc_tuple[0]
-        cc_property = cc_tuple[1]
 
         key = self.get_primary_key(schema_object)
         if not key:
             return
 
         key_name = key[0]
-        key_properties = key[1]
 
         self.add_operation(
-            f"{path}/{{{key_name}}}/{cc_property_name}/{{{cc_property_name}}}",
-            "delete",
-            {
+            path=f"{path}/{{{key_name}}}/{cc_property_name}/{{{cc_property_name}}}",
+            method="delete",
+            operation={
                 "summary": f"Delete an existing {schema_name} by ID",
                 "parameters": [
                     {
@@ -473,6 +488,8 @@ class APISpecEditor:
                     }
                 },
             },
+            schema_name=schema_name,
+            schema_object=schema_object,
         )
 
     def generate_delete_by_id_operation(
@@ -486,12 +503,11 @@ class APISpecEditor:
             return
 
         key_name = key[0]
-        key_properties = key[1]
 
         self.add_operation(
-            f"{path}/{{{key_name}}}",
-            "delete",
-            {
+            path=f"{path}/{{{key_name}}}",
+            method="delete",
+            operation={
                 "summary": f"Delete an existing {schema_name} by {key_name}",
                 "parameters": [
                     {
@@ -509,6 +525,8 @@ class APISpecEditor:
                     }
                 },
             },
+            schema_name=schema_name,
+            schema_object=schema_object,
         )
 
     def generate_delete_many_operation(
@@ -518,9 +536,9 @@ class APISpecEditor:
             return
 
         self.add_operation(
-            path,
-            "delete",
-            {
+            path=path,
+            method="delete",
+            operation={
                 "summary": f"Delete many existing {schema_name} using query",
                 "parameters": self.generate_query_parameters(schema_object),
                 "responses": {
@@ -530,6 +548,8 @@ class APISpecEditor:
                     }
                 },
             },
+            schema_name=schema_name,
+            schema_object=schema_object,
         )
 
     def transform_schemas(self, spec_dict):

@@ -1,18 +1,92 @@
 import os
 import time
+import json
+import logging
+from contextlib import contextmanager
 from typing import Dict, Generator, Optional
 from pathlib import Path
 
 import docker
-import psycopg2
 import pytest
 import requests
+from pulumi import automation as auto  # Pulumi Automation API
 
 from docker.errors import DockerException
 from docker.types import Mount
 
-os.environ["PULUMI_BACKEND_URL"] = "file://~"
-DEFAULT_REGION = os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "us-east-1"))
+log = logging.getLogger(__name__)
+DEFAULT_REGION = os.environ.get(
+    "AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
+)
+
+
+@contextmanager
+def deploy(
+    project_name: str,
+    stack_name: str,
+    pulumi_program,
+    config: Dict[str, auto.ConfigValue] | None = None,
+    localstack: dict | None = None,
+    teardown: bool = True,
+) -> Generator[Dict[str, str], None, None]:
+    """
+    Deploy a Pulumi program optionally targeting LocalStack and yield ONLY the
+    stack outputs (plain dict). Cleans up on exit if teardown=True.
+    """
+    stack = auto.create_or_select_stack(
+        stack_name=stack_name, project_name=project_name, program=pulumi_program
+    )
+
+    try:
+        # Best effort pre-clean
+        try:
+            stack.destroy(on_output=lambda _: None)
+        except Exception:
+            pass
+
+        if config is None and localstack:
+            services_map = [
+                {
+                    svc: localstack["endpoint_url"]
+                    for svc in localstack["services"].split(",")
+                }
+            ]
+            config = {
+                "aws:region": auto.ConfigValue(localstack["region"]),
+                "aws:accessKey": auto.ConfigValue("test"),
+                "aws:secretKey": auto.ConfigValue("test"),
+                "aws:endpoints": auto.ConfigValue(json.dumps(services_map)),
+                "aws:skipCredentialsValidation": auto.ConfigValue("true"),
+                "aws:skipRegionValidation": auto.ConfigValue("true"),
+                "aws:skipRequestingAccountId": auto.ConfigValue("true"),
+                "aws:skipMetadataApiCheck": auto.ConfigValue("true"),
+                "aws:insecure": auto.ConfigValue("true"),
+                "aws:s3UsePathStyle": auto.ConfigValue("true"),
+            }
+
+        if config:
+            stack.set_all_config(config)
+
+        try:
+            stack.refresh(on_output=lambda _: None)
+        except Exception:
+            pass
+
+        up_result = stack.up(on_output=lambda _: None)
+        outputs = {k: v.value for k, v in up_result.outputs.items()}
+
+        yield outputs
+    finally:
+        if teardown:
+            try:
+                stack.destroy(on_output=lambda _: None)
+            except Exception:
+                pass
+            try:
+                stack.workspace.remove_stack(stack_name)
+            except Exception:
+                pass
+
 
 @pytest.fixture(scope="session")
 def test_network(request: pytest.FixtureRequest) -> Generator[str, None, None]:
@@ -21,6 +95,7 @@ def test_network(request: pytest.FixtureRequest) -> Generator[str, None, None]:
     (e.g., LocalStack Lambdas <-> Postgres). Yields the network name.
     Respects DOCKER_TEST_NETWORK env var; defaults to 'ls-dev'.
     """
+
     network_name = os.environ.get("DOCKER_TEST_NETWORK", "ls-dev")
     client = docker.from_env()
 
@@ -39,14 +114,30 @@ def test_network(request: pytest.FixtureRequest) -> Generator[str, None, None]:
         yield network_name
     finally:
         # Remove only if we created it and teardown is enabled
-        teardown_opt = getattr(request.config.option, "teardown", "true")
-        teardown = str(teardown_opt).lower() in ("1", "true", "yes", "y")
+        teardown = _get_bool_option(request, "teardown", default=True)
         if created and teardown:
             try:
                 net.remove()
             except Exception:
                 pass
 
+
+# Helper for boolean CLI options
+def _get_bool_option(
+    request: pytest.FixtureRequest, name: str, default: bool = True
+) -> bool:
+    """
+    Return a boolean for a --<name> CLI option added via pytest_addoption.
+    Accepts true/false/yes/no/1/0 (case-insensitive). Falls back to default if unset.
+    """
+    opt = f"--{name}"
+    try:
+        raw = request.config.getoption(opt)
+    except (AttributeError, ValueError):
+        return default
+    if raw is None:
+        return default
+    return str(raw).lower() in ("1", "true", "yes", "y")
 
 
 def exec_sql_file(conn, sql_path: Path):
@@ -55,91 +146,92 @@ def exec_sql_file(conn, sql_path: Path):
     with conn.cursor() as cur:
         cur.execute(sql_text)
 
+
 @pytest.fixture(scope="session")
-def postgres_container(request: pytest.FixtureRequest, test_network) -> Generator[dict, None, None]:
+def postgres(
+    request: pytest.FixtureRequest, test_network
+) -> Generator[dict, None, None]:
     """
     Starts a PostgreSQL container and yields connection info.
     Uses a random host port mapped to 5432.
     """
-    teardown: bool = request.config.getoption("--teardown").lower() == "true"
+    import psycopg2
+
     try:
         client = docker.from_env()
         client.ping()
     except Exception as e:
         assert False, f"Docker not available: {e}"
 
-    user = "test_user"
+    username = "test_user"
     password = "test_password"
-    database = "chinook"
-    image = "postgis/postgis:16-3.4"
-    host_name = "postgres"
-    # Let Docker assign a free host port; we’ll resolve it after start
-    # Use None to let Docker assign a random host port
-    host_port = None
+    database = request.config.getoption("--database")
+    image = request.config.getoption("--database-image")
 
     container = client.containers.run(
         image,
-        name=f"query-engine-test-{int(time.time())}",
-        hostname=host_name,
         environment={
-            "POSTGRES_USER": user,
+            "POSTGRES_USER": username,
             "POSTGRES_PASSWORD": password,
             "POSTGRES_DB": database,
         },
-        ports={"5432/tcp": host_port},  # bind to all interfaces; pick free host port
-        network=test_network,
+        ports={"5432/tcp": 0},  # random host port
         detach=True,
+        network=test_network,
     )
 
     try:
-        # Resolve mapped host port with retries
+        # Resolve mapped port
+        host = container.name
         host_port = None
-        for _ in range(20):
+        deadline = time.time() + 60
+        while time.time() < deadline:
             container.reload()
-            try:
-                port_info = container.attrs["NetworkSettings"]["Ports"]["5432/tcp"]
-                if port_info and port_info[0] and port_info[0].get("HostPort"):
-                    host_port = int(port_info[0]["HostPort"])
-                    break
-            except Exception:
-                pass
-            time.sleep(0.5)
-        assert host_port, "Failed to discover mapped Postgres host port"
+            ports = container.attrs.get("NetworkSettings", {}).get("Ports", {})
+            mapping = ports.get("5432/tcp")
+            if mapping and mapping[0].get("HostPort"):
+                host_port = int(mapping[0]["HostPort"])
+                break
+            time.sleep(0.25)
 
-        # Wait for readiness from the HOST perspective (127.0.0.1:<host_port>)
-        deadline = time.time() + 90
+        if not host_port:
+            raise RuntimeError("Failed to map Postgres port")
+
+        # Wait for readiness
+        deadline = time.time() + 60
         while time.time() < deadline:
             try:
                 conn = psycopg2.connect(
-                    dbname=database, user=user, password=password, host="127.0.0.1", port=host_port
+                    dbname=database,
+                    user=username,
+                    password=password,
+                    host=host,
+                    port=host_port,
                 )
                 conn.close()
                 break
             except Exception:
                 time.sleep(0.5)
-        else:
-            raise RuntimeError("Postgres did not become ready in time")
 
         yield {
-            # For Lambda/containers on the same Docker network:
-            "host": host_name,
-            "port": 5432,
-            "user": user,
+            "container_name": host,
+            "container_port": 5432,
+            "username": username,
             "password": password,
             "database": database,
-            # For host/macOS access:
-            "dsn": f"postgresql://{user}:{password}@127.0.0.1:{host_port}/{database}",
+            "host_port": host_port,
+            "dsn": f"postgresql://{username}:{password}@localhost:{host_port}/{database}",
         }
     finally:
-        if teardown:
-            try:
-                container.stop(timeout=5)
-            except Exception:
-                pass
-            try:
-                container.remove(v=True, force=True)
-            except Exception:
-                pass
+        try:
+            container.stop(timeout=5)
+        except Exception:
+            pass
+        try:
+            container.remove(v=True, force=True)
+        except Exception:
+            pass
+
 
 def _wait_for_localstack(endpoint: str, timeout: int = 90) -> None:
     """Wait until LocalStack health endpoint reports ready or timeout expires."""
@@ -173,10 +265,15 @@ def _wait_for_localstack(endpoint: str, timeout: int = 90) -> None:
                 time.sleep(0.5)
                 continue
         time.sleep(0.5)
-    raise RuntimeError(f"Timed out waiting for LocalStack at {endpoint} (last_err={last_err})")
+    raise RuntimeError(
+        f"Timed out waiting for LocalStack at {endpoint} (last_err={last_err})"
+    )
+
 
 @pytest.fixture(scope="session")
-def localstack(request: pytest.FixtureRequest, test_network) -> Generator[Dict[str, str], None, None]:
+def localstack(
+    request: pytest.FixtureRequest, test_network
+) -> Generator[Dict[str, str], None, None]:
     """
     Session-scoped fixture that runs a LocalStack container.
 
@@ -186,7 +283,7 @@ def localstack(request: pytest.FixtureRequest, test_network) -> Generator[Dict[s
       - container_id: Docker container id
       - services: comma list of services configured
     """
-    teardown: bool = request.config.getoption("--teardown").lower() == "true"
+    teardown: bool = _get_bool_option(request, "--teardown", default=True)
     port: int = int(request.config.getoption("--localstack-port"))
     image: str = request.config.getoption("--localstack-image")
     services: str = request.config.getoption("--localstack-services")
@@ -220,6 +317,7 @@ def localstack(request: pytest.FixtureRequest, test_network) -> Generator[Dict[s
     }
     # Mount Docker socket for LocalStack to access Docker if needed
     volume_dir = os.environ.get("LOCALSTACK_VOLUME_DIR", "./volume")
+    Path(volume_dir).mkdir(parents=True, exist_ok=True)
     mounts = [
         Mount(
             target="/var/run/docker.sock",
@@ -241,7 +339,6 @@ def localstack(request: pytest.FixtureRequest, test_network) -> Generator[Dict[s
         ports=ports,
         name=None,
         tty=False,
-        auto_remove=True,
         mounts=mounts,
         network=test_network,
     )
@@ -265,17 +362,23 @@ def localstack(request: pytest.FixtureRequest, test_network) -> Generator[Dict[s
             try:
                 container.stop(timeout=5)
             finally:
-                raise RuntimeError("Failed to determine LocalStack edge port after retries")
+                raise RuntimeError(
+                    "Failed to determine LocalStack edge port after retries"
+                )
     else:
         host_port = port
 
-    endpoint = f"http://127.0.0.1:{host_port}"
+    endpoint = f"http://localhost:{host_port}"
 
     # Set common AWS envs for child code that relies on defaults
     os.environ.setdefault("AWS_REGION", DEFAULT_REGION)
     os.environ.setdefault("AWS_DEFAULT_REGION", DEFAULT_REGION)
-    os.environ.setdefault("AWS_ACCESS_KEY_ID", os.environ.get("AWS_ACCESS_KEY_ID", "test"))
-    os.environ.setdefault("AWS_SECRET_ACCESS_KEY", os.environ.get("AWS_SECRET_ACCESS_KEY", "test"))
+    os.environ.setdefault(
+        "AWS_ACCESS_KEY_ID", os.environ.get("AWS_ACCESS_KEY_ID", "test")
+    )
+    os.environ.setdefault(
+        "AWS_SECRET_ACCESS_KEY", os.environ.get("AWS_SECRET_ACCESS_KEY", "test")
+    )
 
     # Wait for the health endpoint to be ready
     _wait_for_localstack(endpoint, timeout=timeout)
@@ -286,6 +389,7 @@ def localstack(request: pytest.FixtureRequest, test_network) -> Generator[Dict[s
             "region": DEFAULT_REGION,
             "container_id": str(container.id),
             "services": services,
+            "port": str(host_port),
         }
     finally:
         if teardown:
@@ -294,3 +398,84 @@ def localstack(request: pytest.FixtureRequest, test_network) -> Generator[Dict[s
                 container.stop(timeout=5)
             except Exception:
                 pass
+            try:
+                container.remove(v=True, force=True)
+            except Exception:
+                pass
+
+
+def to_localstack_url(api_url: str, edge_port: int = 4566, scheme: str = "http") -> str:
+    """
+    Convert a real API Gateway invoke URL (or the exported domain/path) into the
+    equivalent LocalStack invoke URL.
+
+    Accepts forms like:
+      https://a1b2c3d4.execute-api.us-east-1.amazonaws.com/dev
+      https://a1b2c3d4.execute-api.us-east-1.amazonaws.com/dev/hello?name=Bob
+      a1b2c3d4.execute-api.us-east-1.amazonaws.com/dev
+      a1b2c3d4.execute-api.us-east-1.amazonaws.com/dev/hello
+    Already-converted LocalStack URLs are returned unchanged:
+      http://a1b2c3d4.execute-api.localhost.localstack.cloud:4566/dev/hello
+
+    Parameters:
+      api_url   : Original AWS API Gateway invoke URL or domain + path.
+      edge_port : LocalStack edge port (default 4566 or whatever container mapped).
+      scheme    : Scheme to use for returned URL (default http).
+
+    Returns:
+      LocalStack URL pointing at the same stage/path.
+
+    Raises:
+      ValueError if input is not a recognizable API Gateway invoke URL.
+    """
+    import re
+    from urllib.parse import urlparse, urlunparse
+
+    if not re.match(r"^[a-z]+://", api_url):
+        # prepend dummy scheme so urlparse works uniformly
+        api_url = f"https://{api_url}"
+
+    parsed = urlparse(api_url)
+
+    # If already a LocalStack style host, normalize (ensure port & scheme) and return
+    ls_host_re = re.compile(
+        r"^[a-z0-9]+\.execute-api\.localhost\.localstack\.cloud(?::\d+)?$",
+        re.IGNORECASE,
+    )
+    if ls_host_re.match(parsed.netloc):
+        # Inject / adjust port if different
+        host_no_port = parsed.netloc.split(":")[0]
+        netloc = f"{host_no_port}:{edge_port}"
+        return urlunparse(
+            (
+                scheme,
+                netloc,
+                parsed.path or "/",
+                parsed.params,
+                parsed.query,
+                parsed.fragment,
+            )
+        )
+
+    # Match standard AWS execute-api host
+    aws_host_re = re.compile(
+        r"^(?P<api_id>[a-z0-9]+)\.execute-api\.(?P<region>[-a-z0-9]+)\.amazonaws\.com$",
+        re.IGNORECASE,
+    )
+    m = aws_host_re.match(parsed.netloc)
+    if not m:
+        raise ValueError(f"Unrecognized API Gateway hostname: {parsed.netloc}")
+
+    api_id = m.group("api_id")
+    path = parsed.path or "/"
+
+    # Require a stage as first path segment
+    segments = [s for s in path.split("/") if s]
+    if not segments:
+        raise ValueError("Missing stage segment in API Gateway path")
+    # Reconstruct path exactly as given (we don't strip or re-add trailing slash)
+    new_host = f"{api_id}.execute-api.localhost.localstack.cloud:{edge_port}"
+
+    return urlunparse(
+        (scheme, new_host, path, parsed.params, parsed.query, parsed.fragment)
+    )

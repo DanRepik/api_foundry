@@ -148,11 +148,8 @@ class SchemaObject(OpenAPIElement):
 
     def _get_table_name(self, schema_object: dict) -> str:
         schema = schema_object.get("x-af-schema")
-        return (
-            f"{schema}."
-            if schema
-            else "" + schema_object.get("x-af-table", self.api_name)
-        )
+        table_name = schema_object.get("x-af-table", self.api_name)
+        return f"{schema}.{table_name}" if schema else table_name
 
     def _resolve_properties(
         self, schema_object: dict
@@ -163,7 +160,6 @@ class SchemaObject(OpenAPIElement):
             if object_property:
                 properties[property_name] = object_property
         return properties
-
 
     def _resolve_property(
         self, property_name: str, prop: Dict[str, Any]
@@ -178,7 +174,9 @@ class SchemaObject(OpenAPIElement):
                 # Recursively resolve sub-properties
                 sub_properties = {}
                 for sub_name, sub_prop in prop["properties"].items():
-                    sub_properties[sub_name] = self._resolve_property(sub_name, sub_prop)
+                    sub_properties[sub_name] = self._resolve_property(
+                        sub_name, sub_prop
+                    )
                 # Store as a SchemaObjectProperty with nested sub_properties
                 obj = SchemaObjectProperty(self.api_name, property_name, prop)
                 obj.sub_properties = sub_properties
@@ -195,7 +193,9 @@ class SchemaObject(OpenAPIElement):
                 # Array of embedded objects
                 sub_properties = {}
                 for sub_name, sub_prop in items["properties"].items():
-                    sub_properties[sub_name] = self._resolve_property(sub_name, sub_prop)
+                    sub_properties[sub_name] = self._resolve_property(
+                        sub_name, sub_prop
+                    )
                 obj = SchemaObjectProperty(self.api_name, property_name, prop)
                 obj.items_sub_properties = sub_properties
                 return obj

@@ -169,4 +169,3 @@ paths:
 ---
 
 By following these steps, you can create a robust OpenAPI specification for your project, enabling API-Foundry to generate and deploy a fully functional API seamlessly. Let me know if you would like more details or examples!
-

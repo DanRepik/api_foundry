@@ -4,16 +4,22 @@ import pytest
 import psycopg2
 import pulumi
 import pulumi_aws as aws
-from pulumi import automation as auto
+import yaml
 
 from pathlib import Path
-from .automation_fixtures import deploy_stack, deploy_localstack
-from .infrastructure_fixtures import exec_sql_file, postgres_container, localstack, test_network
+from api_foundry_query_engine.utils.api_model import APIModel
+from .infrastructure_fixtures import to_localstack_url
+from .infrastructure_fixtures import deploy  # noqa F401
+from .infrastructure_fixtures import exec_sql_file
+from .infrastructure_fixtures import postgres  # noqa F401
+from .infrastructure_fixtures import localstack  # noqa F401
+from .infrastructure_fixtures import test_network  # noqa F401
 
 os.environ["PULUMI_BACKEND_URL"] = "file://~"
 
 DEFAULT_IMAGE = "localstack/localstack:latest"
 DEFAULT_SERVICES = "logs,iam,lambda,secretsmanager,apigateway,cloudwatch"
+
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     group = parser.getgroup("localstack")
@@ -22,6 +28,12 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         action="store",
         default="true",
         help="Whether to tear down the LocalStack/Postgres containers after tests (default: true)",
+    )
+    group.addoption(
+        "--use-localstack",
+        action="store",
+        default="true",
+        help="Whether to use LocalStack for tests (default: true)",
     )
     group.addoption(
         "--localstack-image",
@@ -46,12 +58,27 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         "--localstack-port",
         action="store",
         type=int,
-        default=4566,
-        help="Port for LocalStack edge service (default: 4566)",
+        default=0,
+        help="Port for LocalStack edge service (default: 0 = random available port)",
+    )
+    group.addoption(
+        "--database",
+        action="store",
+        type=str,
+        default="chinook",
+        help="Name of the database to use (default: chinook)",
+    )
+    group.addoption(
+        "--database-image",
+        action="store",
+        type=str,
+        default="postgis/postgis:16-3.4",
+        help="Docker image to use for the database (default: chinook)",
     )
 
+
 @pytest.fixture(scope="session")
-def chinook_db(postgres_container):
+def chinook_db(postgres):  # noqa F811
     # Locate DDL files (project root is one parent up from this test file: backend/tests/ -> farm_market/)
     project_root = Path(__file__).resolve().parents[1]
     chinook_sql = project_root / "tests" / "Chinook_Postgres.sql"
@@ -59,12 +86,14 @@ def chinook_db(postgres_container):
     assert chinook_sql.exists(), f"Missing {chinook_sql}"
 
     # Connect and load schemas
-    conn = psycopg2.connect(postgres_container["dsn"])
+    dsn = f"postgresql://{postgres['username']}:{postgres['password']}@localhost:{postgres['host_port']}/{postgres['database']}"  # noqa E501
+
+    conn = psycopg2.connect(dsn)
     try:
         conn.autocommit = True  # allow full scripts to run without transaction issues
         exec_sql_file(conn, chinook_sql)
 
-        yield postgres_container
+        yield postgres
 
     finally:
         conn.close()
@@ -77,43 +106,63 @@ def chinook_api(chinook_db):
         # Extract connection info from freemium_model
         conn_info = {
             "engine": "postgres",
-            "host": chinook_db["host"],
-            "port": chinook_db["port"],
-            "username": chinook_db["user"],
+            "host": chinook_db["container_name"],
+            "port": chinook_db["container_port"],
+            "username": chinook_db["username"],
             "password": chinook_db["password"],
-            "dbname": chinook_db["database"],
+            "database": chinook_db["database"],
             "dsn": chinook_db["dsn"],
         }
 
         secret = aws.secretsmanager.Secret("test-secret", name="test/secret")
-        secret_value = aws.secretsmanager.SecretVersion(
+        aws.secretsmanager.SecretVersion(
             "test-secret-value",
             secret_id=secret.id,
             secret_string=json.dumps(conn_info),
         )
 
         # Create the FarmMarket component
-        chinook_api = secret.arn.apply(lambda arn:
-            APIFoundry(
+        chinook_api = secret.arn.apply(
+            lambda arn: APIFoundry(
                 "chinook-api",
                 api_spec="resources/chinook_api.yaml",
-                secrets=json.dumps({"chinook": arn})
+                secrets=json.dumps({"chinook": arn}),
             )
         )
         pulumi.export("domain", chinook_api.domain)
 
     return pulumi_program
 
+
 @pytest.fixture(scope="module")
-def chinook_api_stack(chinook_db, localstack):
-    stack, outputs, teardown = deploy_localstack(
-        "chinook",
-        "test",
-        localstack,
+def chinook_api_stack(request, chinook_db, localstack):  # noqa F811
+    teardown = request.config.getoption("--teardown").lower() == "true"
+    with deploy(
+        "api-foundry",
+        "test-api",
         chinook_api(chinook_db),
-        teardown=localstack.get("teardown", True),
-    )
-    yield outputs
-    if teardown:
-        stack.destroy(on_output=lambda _: None)
-        stack.workspace.remove_stack("test")
+        localstack=localstack,
+        teardown=teardown,
+    ) as outputs:
+        yield outputs
+
+
+@pytest.fixture(scope="module")
+def chinook_api_endpoint(chinook_api_stack, localstack):  # noqa F811
+    domain = chinook_api_stack["domain"]
+    port = localstack["port"]
+    yield to_localstack_url(f"https://{domain}", port)
+
+
+@pytest.fixture(scope="module")
+def load_api_model():
+    filename = os.path.join(os.getcwd(), "resources/api_spec.yaml")
+    with open(filename, "r") as file:
+        yield APIModel(yaml.safe_load(file))
+
+
+@pytest.fixture(scope="module")
+def chinook_api_model():
+    filename = os.path.join(os.getcwd(), "resources/chinook_api.yaml")
+    with open(filename, "r") as file:
+        yield yaml.safe_load(file)
