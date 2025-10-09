@@ -8,12 +8,12 @@ import yaml
 
 from pathlib import Path
 from api_foundry_query_engine.utils.api_model import APIModel
-from .infrastructure_fixtures import to_localstack_url
-from .infrastructure_fixtures import deploy  # noqa F401
-from .infrastructure_fixtures import exec_sql_file
-from .infrastructure_fixtures import postgres  # noqa F401
-from .infrastructure_fixtures import localstack  # noqa F401
-from .infrastructure_fixtures import test_network  # noqa F401
+from fixture_foundry import to_localstack_url
+from fixture_foundry import deploy  # noqa F401
+from fixture_foundry import exec_sql_file
+from fixture_foundry import postgres  # noqa F401
+from fixture_foundry import localstack  # noqa F401
+from fixture_foundry import container_network  # noqa F401
 
 os.environ["PULUMI_BACKEND_URL"] = "file://~"
 
@@ -28,12 +28,6 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         action="store",
         default="true",
         help="Whether to tear down the LocalStack/Postgres containers after tests (default: true)",
-    )
-    group.addoption(
-        "--use-localstack",
-        action="store",
-        default="true",
-        help="Whether to use LocalStack for tests (default: true)",
     )
     group.addoption(
         "--localstack-image",
@@ -132,19 +126,6 @@ def chinook_api(chinook_db):
         pulumi.export("domain", chinook_api.domain)
 
     return pulumi_program
-
-
-@pytest.fixture(scope="module")
-def chinook_api_stack(request, chinook_db, localstack):  # noqa F811
-    teardown = request.config.getoption("--teardown").lower() == "true"
-    with deploy(
-        "api-foundry",
-        "test-api",
-        chinook_api(chinook_db),
-        localstack=localstack,
-        teardown=teardown,
-    ) as outputs:
-        yield outputs
 
 
 @pytest.fixture(scope="module")

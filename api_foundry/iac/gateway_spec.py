@@ -50,6 +50,11 @@ class APISpecEditor:
         schema_object: dict,
         function: Optional[Function] = None,
     ):
+        # Ensure any schema-level permissions are carried onto the operation if not set.
+        if "x-af-permissions" not in operation and isinstance(schema_object, dict):
+            permissions = schema_object.get("x-af-permissions")
+            if permissions:
+                operation["x-af-permissions"] = permissions
         self.integrations.append(
             {"path": path, "method": method, "function": function or self.function}
         )
@@ -64,7 +69,20 @@ class APISpecEditor:
     def generate_regex(self, property: dict[str, Any]) -> str:
         regex_pattern = ""
 
-        if property["type"] == "string" and property.get("format", None) == "date":
+        # UUID (either explicit type 'uuid' or string with format 'uuid')
+        if property.get("type") == "uuid" or (
+            property.get("type") == "string" and property.get("format", None) == "uuid"
+        ):
+            hex_pat = r"[0-9a-fA-F]"
+            regex_pattern = (
+                rf"{hex_pat}{{8}}-"
+                rf"{hex_pat}{{4}}-"
+                rf"[1-5]{hex_pat}{{3}}-"
+                rf"[89abAB]{hex_pat}{{3}}-"
+                rf"{hex_pat}{{12}}"
+            )
+
+        elif property["type"] == "string" and property.get("format", None) == "date":
             # Assuming ISO 8601 date format (YYYY-MM-DD)
             regex_pattern = r"\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])"  # Date part: YYYY-MM-DD
 

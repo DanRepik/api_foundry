@@ -75,7 +75,7 @@ paths:
         ORDER BY
             total_sold DESC
         LIMIT :limit
-      x-af-security:
+      x-af-permissions:
         sales_reader:
             read: .*
         sales_associate:
@@ -182,7 +182,7 @@ components:
       required:
       - artist_id
       x-af-database: chinook
-      x-af-security:
+      x-af-permissions:
         sales_reader:
             read: .*
         sales_associate:
@@ -220,7 +220,7 @@ components:
       - title
       - artist_id
       x-af-database: chinook
-      x-af-security:
+      x-af-permissions:
         sales_reader:
             read: .*
         sales_associate:

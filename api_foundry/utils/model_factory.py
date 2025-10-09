@@ -1,8 +1,10 @@
 import re
 from typing import Any, Dict, Optional
+
+from cloud_foundry import logger
+
 from api_foundry.utils.app_exception import ApplicationException
 from api_foundry.utils.schema_validator import validate_permissions
-from cloud_foundry import logger
 
 log = logger(__name__)
 
@@ -11,7 +13,8 @@ log = logger(__name__)
 METHODS_TO_ACTIONS = {
     "get": "read",
     "post": "create",
-    "update": "update",
+    "put": "update",
+    "patch": "update",
     "delete": "delete",
 }
 
@@ -22,6 +25,10 @@ SUPPORTED_TYPES = {
     "boolean",
     "date",
     "date-time",
+    "time",
+    "float",
+    "double",
+    "uuid",
     "array",
     "object",
 }
@@ -42,33 +49,32 @@ class OpenAPIElement:
 class SchemaObjectProperty(OpenAPIElement):
     """Represents a property of a schema object in the OpenAPI specification."""
 
-    def __init__(self, schema_name: str, name: str, property: Dict[str, Any]):
+    def __init__(self, schema_name: str, name: str, prop: Dict[str, Any]):
         super().__init__()
         self.api_name = name
-        self.api_type = property.get("fomart") or property.get("type") or "string"
+        # Prefer explicit OpenAPI format when present, else fall back to type.
+        self.api_type = prop.get("format") or prop.get("type") or "string"
         if self.api_type not in SUPPORTED_TYPES:
             raise ApplicationException(
                 500,
                 f"Property: {name} in schema object: {schema_name} of type: {self.api_type} is not a valid type",
             )
-        self.column_name = property.get("x-af-column-name") or name
-        self.column_type = (
-            property.get("x-af-column-type") or property.get("type") or "string"
-        )
-        self.required = property.get("required", False)
-        self.min_length = property.get("minLength", None)
-        self.max_length = property.get("maxLength", None)
-        self.pattern = property.get("pattern", None)
-        self.default = property.get("default", None)
+        self.column_name = prop.get("x-af-column-name") or name
+        self.column_type = prop.get("x-af-column-type") or prop.get("type") or "string"
+        self.required = prop.get("required", False)
+        self.min_length = prop.get("minLength", None)
+        self.max_length = prop.get("maxLength", None)
+        self.pattern = prop.get("pattern", None)
+        self.default = prop.get("default", None)
         self.key_type = None
         self.sequence_name = None
-        self.concurrency_control = self._concurrency_control(schema_name, property)
+        self.concurrency_control = self._concurrency_control(schema_name, prop)
         # For embedded objects/arrays
         self.sub_properties: Optional[Dict[str, SchemaObjectProperty]] = None
         self.items_sub_properties: Optional[Dict[str, SchemaObjectProperty]] = None
 
-    def _concurrency_control(self, schema_name: str, property: dict) -> Optional[str]:
-        concurrency_control = property.get("x-af-concurrency-control", None)
+    def _concurrency_control(self, schema_name: str, prop_dict: dict) -> Optional[str]:
+        concurrency_control = prop_dict.get("x-af-concurrency-control", None)
         if concurrency_control:
             concurrency_control = concurrency_control.lower()
             assert concurrency_control in [
@@ -119,17 +125,17 @@ class SchemaObjectKey(SchemaObjectProperty):
 class SchemaObjectAssociation(OpenAPIElement):
     """Represents an association (relationship) between schema objects."""
 
-    def __init__(self, name: str, property: Dict[str, Any], parent_key):
+    def __init__(self, name: str, prop: Dict[str, Any], parent_key):
         super().__init__()
         self.api_name = name
-        self.api_type = property["type"]
+        self.api_type = prop["type"]
 
         self.schema_name = (
-            property["items"]["$ref"] if self.api_type == "array" else property["$ref"]
+            prop["items"]["$ref"] if self.api_type == "array" else prop["$ref"]
         ).split("/")[-1]
 
-        self.child_property = property.get("x-af-child-property", None)
-        self.parent_property = property.get("x-af-parent-property", parent_key)
+        self.child_property = prop.get("x-af-child-property", None)
+        self.parent_property = prop.get("x-af-parent-property", parent_key)
 
 
 class SchemaObject(OpenAPIElement):
@@ -264,10 +270,34 @@ class SchemaObject(OpenAPIElement):
         return None
 
     def _get_permissions(self, schema_object: dict) -> dict:
-        permissions = schema_object.get("x-af-permissions", {})
+        """Extract permissions from schema using x-af-permissions only.
+
+        Also normalizes action names so 'create'/'update' map to 'write'.
+        """
+        permissions = schema_object.get("x-af-permissions") or {}
+        # Normalize action synonyms for nested structure:
+        # { handler: { role: { action: rule }}}
+        if isinstance(permissions, dict):
+            normalized: Dict[str, Any] = {}
+            for handler, roles in permissions.items():
+                if not isinstance(roles, dict):
+                    normalized[handler] = roles
+                    continue
+                new_roles: Dict[str, Any] = {}
+                for role, actions in roles.items():
+                    if not isinstance(actions, dict):
+                        new_roles[role] = actions
+                        continue
+                    new_actions: Dict[str, Any] = {}
+                    for action, value in actions.items():
+                        key = "write" if action in ("create", "update") else action
+                        new_actions[key] = value
+                    new_roles[role] = new_actions
+                normalized[handler] = new_roles
+            permissions = normalized
         if permissions:
             validate_permissions(permissions)
-        return permissions
+        return permissions or {}
 
     def to_dict(self) -> Dict[str, Any]:
         """Recursively converts the schema object and its properties to a dictionary."""
@@ -340,10 +370,32 @@ class PathOperation(OpenAPIElement):
         return properties
 
     def _get_permissions(self, path_operation: dict) -> dict:
-        permissions = path_operation.get("x-af-permissions", {})
+        """Extract permissions from a path operation using x-af-permissions only.
+
+        Also normalizes action names so 'create'/'update' map to 'write'.
+        """
+        permissions = path_operation.get("x-af-permissions") or {}
+        if isinstance(permissions, dict):
+            normalized: Dict[str, Any] = {}
+            for handler, roles in permissions.items():
+                if not isinstance(roles, dict):
+                    normalized[handler] = roles
+                    continue
+                new_roles: Dict[str, Any] = {}
+                for role, actions in roles.items():
+                    if not isinstance(actions, dict):
+                        new_roles[role] = actions
+                        continue
+                    new_actions: Dict[str, Any] = {}
+                    for action, value in actions.items():
+                        key = "write" if action in ("create", "update") else action
+                        new_actions[key] = value
+                    new_roles[role] = new_actions
+                normalized[handler] = new_roles
+            permissions = normalized
         if permissions:
             validate_permissions(permissions)
-        return permissions
+        return permissions or {}
 
 
 class ModelFactory:
