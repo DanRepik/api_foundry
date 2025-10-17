@@ -26,8 +26,10 @@ SUPPORTED_TYPES = {
     "date",
     "date-time",
     "time",
-    "float",
-    "double",
+    # Note: OpenAPI uses base type 'number' with optional
+    # format 'float'/'double'. These formats are accepted and
+    # normalized to api_type='number' while preserving the
+    # original format in a separate attribute for mapping.
     "uuid",
     "array",
     "object",
@@ -35,10 +37,16 @@ SUPPORTED_TYPES = {
 
 
 class OpenAPIElement:
-    """Base class for OpenAPI elements like schema properties and associations."""
+    """
+    Base class for OpenAPI elements like schema properties and
+    associations.
+    """
 
     def to_dict(self) -> Dict[str, Any]:
-        """Converts the OpenAPI element to a dictionary, including nested properties."""
+        """
+        Convert the OpenAPI element to a dictionary, including nested
+        properties.
+        """
         return {
             k: (v.to_dict() if isinstance(v, OpenAPIElement) else v)
             for k, v in self.__dict__.items()
@@ -47,20 +55,67 @@ class OpenAPIElement:
 
 
 class SchemaObjectProperty(OpenAPIElement):
-    """Represents a property of a schema object in the OpenAPI specification."""
+    """
+    Represents a property of a schema object in the OpenAPI
+    specification.
+    """
 
     def __init__(self, schema_name: str, name: str, prop: Dict[str, Any]):
         super().__init__()
         self.api_name = name
-        # Prefer explicit OpenAPI format when present, else fall back to type.
-        self.api_type = prop.get("format") or prop.get("type") or "string"
+        # Base OpenAPI type and format
+        base_type = prop.get("type") or "string"
+        api_format = prop.get("format")
+        # Preserve numeric formats (float/double) but normalize api_type
+        # to 'number'
+        if base_type == "number" and api_format in {"float", "double"}:
+            self.api_type = "number"
+            self.numeric_format = api_format
+        else:
+            # Maintain prior behavior for date/date-time/time/uuid by
+            # allowing format as type
+            self.api_type = api_format or base_type
+            self.numeric_format = None
+        # Validate the raw OpenAPI 'type' first to catch invalid base types
+        raw_type = prop.get("type")
+        if raw_type is not None and raw_type not in {
+            "string",
+            "integer",
+            "number",
+            "boolean",
+            "array",
+            "object",
+        }:
+            raise ApplicationException(
+                500,
+                (
+                    f"Property: {name} in schema object: {schema_name} "
+                    f"of type: {raw_type} is not a valid type"
+                ),
+            )
         if self.api_type not in SUPPORTED_TYPES:
             raise ApplicationException(
                 500,
-                f"Property: {name} in schema object: {schema_name} of type: {self.api_type} is not a valid type",
+                (
+                    f"Property: {name} in schema object: {schema_name} "
+                    f"of type: {self.api_type} is not a valid type"
+                ),
             )
         self.column_name = prop.get("x-af-column-name") or name
-        self.column_type = prop.get("x-af-column-type") or prop.get("type") or "string"
+        # Choose column type. If user didn't specify x-af-column-type and this
+        # is a numeric with a float/double format, apply a sensible default
+        # (Postgres: float -> real, double -> double precision).
+        if prop.get("x-af-column-type"):
+            self.column_type = prop.get("x-af-column-type")
+        elif base_type == "number" and self.numeric_format in {
+            "float",
+            "double",
+        }:
+            self.column_type = (
+                "real" if self.numeric_format == "float" else "double precision"
+            )
+        else:
+            self.column_type = prop.get("type") or "string"
         self.required = prop.get("required", False)
         self.min_length = prop.get("minLength", None)
         self.max_length = prop.get("maxLength", None)
@@ -170,6 +225,24 @@ class SchemaObject(OpenAPIElement):
     def _resolve_property(
         self, property_name: str, prop: Dict[str, Any]
     ) -> Optional[SchemaObjectProperty]:
+        # Validate raw OpenAPI base type early to catch invalid types
+        # like 'float'
+        raw_type = prop.get("type")
+        if raw_type is not None and raw_type not in {
+            "string",
+            "integer",
+            "number",
+            "boolean",
+            "array",
+            "object",
+        }:
+            raise ApplicationException(
+                500,
+                (
+                    f"Property: {property_name} in schema object: "
+                    f"{self.api_name} of type: {raw_type} is not a valid type"
+                ),
+            )
         # If $ref is present, treat as relation
         if "$ref" in prop:
             return None
@@ -236,34 +309,44 @@ class SchemaObject(OpenAPIElement):
         ):
             raise ApplicationException(
                 500,
-                f"Invalid concurrency property: {concurrency_property_name} not found in properties.",
+                (
+                    "Invalid concurrency property: "
+                    f"{concurrency_property_name} not found in properties."
+                ),
             )
         return concurrency_property_name
 
     def _get_primary_key(self, schema_object: dict) -> Optional[str]:
         for property_name, properties in schema_object.get("properties", {}).items():
             if "x-af-primary-key" in properties:
-                property = self.properties[property_name]
-                property.key_type = properties.get("x-af-primary-key", "auto")
+                prop_obj = self.properties[property_name]
+                prop_obj.key_type = properties.get("x-af-primary-key", "auto")
 
-                if property.key_type not in ["manual", "uuid", "auto", "sequence"]:
+                if prop_obj.key_type not in [
+                    "manual",
+                    "uuid",
+                    "auto",
+                    "sequence",
+                ]:
                     raise ApplicationException(
                         500,
                         (
-                            f"Invalid primary key type '{property.key_type}' "
+                            f"Invalid primary key type '{prop_obj.key_type}' "
                             + f"in schema object '{self.api_name}'"
                             + f", property '{property_name}'"
                         ),
                     )
 
-                if property.key_type == "sequence":
-                    property.sequence_name = properties.get("x-af-sequence-name", None)
-                    if not property.sequence_name:
+                if prop_obj.key_type == "sequence":
+                    prop_obj.sequence_name = properties.get("x-af-sequence-name", None)
+                    if not prop_obj.sequence_name:
                         raise ApplicationException(
                             500,
                             (
-                                "Sequence-based primary keys must have a sequence name "
-                                + f"in schema object '{self.api_name}', property '{property_name}'"
+                                "Sequence-based primary keys must have a "
+                                "sequence name "
+                                + f"in schema object '{self.api_name}', "
+                                + f"property '{property_name}'"
                             ),
                         )
                 return property_name
@@ -274,33 +357,58 @@ class SchemaObject(OpenAPIElement):
 
         Also normalizes action names so 'create'/'update' map to 'write'.
         """
-        permissions = schema_object.get("x-af-permissions") or {}
-        # Normalize action synonyms for nested structure:
-        # { handler: { role: { action: rule }}}
-        if isinstance(permissions, dict):
-            normalized: Dict[str, Any] = {}
-            for handler, roles in permissions.items():
-                if not isinstance(roles, dict):
-                    normalized[handler] = roles
-                    continue
-                new_roles: Dict[str, Any] = {}
-                for role, actions in roles.items():
-                    if not isinstance(actions, dict):
-                        new_roles[role] = actions
-                        continue
-                    new_actions: Dict[str, Any] = {}
-                    for action, value in actions.items():
-                        key = "write" if action in ("create", "update") else action
-                        new_actions[key] = value
-                    new_roles[role] = new_actions
-                normalized[handler] = new_roles
-            permissions = normalized
-        if permissions:
-            validate_permissions(permissions)
-        return permissions or {}
+        raw_permissions = schema_object.get("x-af-permissions") or {}
+
+        def normalize_actions(actions: Dict[str, Any]) -> Dict[str, Any]:
+            result: Dict[str, Any] = {}
+            for action, value in actions.items():
+                key = "write" if action in ("create", "update") else action
+                result[key] = value
+            return result
+
+        def is_legacy_role_form(obj: Dict[str, Any]) -> bool:
+            # Legacy: role -> { action: rule }
+            if not isinstance(obj, dict):
+                return False
+            for v in obj.values():
+                if isinstance(v, dict):
+                    # Any dict that looks like action->rule (value not dict)
+                    for k2, v2 in v.items():
+                        if k2 in {
+                            "read",
+                            "write",
+                            "delete",
+                            "create",
+                            "update",
+                        } and not isinstance(v2, dict):
+                            return True
+            return False
+
+        normalized: Dict[str, Any] = {}
+        if isinstance(raw_permissions, dict):
+            if is_legacy_role_form(raw_permissions):
+                # Keep legacy shape, just normalize action names
+                for role, actions in raw_permissions.items():
+                    if isinstance(actions, dict):
+                        normalized[role] = normalize_actions(actions)
+                    else:
+                        normalized[role] = actions
+            else:
+                # New form: provider -> action -> role
+                for provider, actions in raw_permissions.items():
+                    if isinstance(actions, dict):
+                        normalized[provider] = normalize_actions(actions)
+                    else:
+                        normalized[provider] = actions
+        else:
+            normalized = {}
+
+        if normalized:
+            validate_permissions(normalized)
+        return normalized or {}
 
     def to_dict(self) -> Dict[str, Any]:
-        """Recursively converts the schema object and its properties to a dictionary."""
+        """Recursively convert this schema object and its properties."""
         data = super().to_dict()
         data["properties"] = {k: v.to_dict() for k, v in self.properties.items()}
         data["relations"] = {k: v.to_dict() for k, v in self.relations.items()}
@@ -310,7 +418,10 @@ class SchemaObject(OpenAPIElement):
 
 
 class PathOperation(OpenAPIElement):
-    """Represents a single operation (method) on a path in the OpenAPI specification."""
+    """
+    Represents a single operation (method) on a path in the OpenAPI
+    specification.
+    """
 
     def __init__(self, path: str, method: str, path_operation: Dict[str, Any]):
         super().__init__()
@@ -331,7 +442,7 @@ class PathOperation(OpenAPIElement):
         return result
 
     def to_dict(self) -> Dict[str, Any]:
-        """Recursively converts the schema object and its properties to a dictionary."""
+        """Recursively convert this path operation and its fields."""
         data = super().to_dict()
         data["inputs"] = {k: v.to_dict() for k, v in self.inputs.items()}
         data["outputs"] = {k: v.to_dict() for k, v in self.outputs.items()}
@@ -342,14 +453,14 @@ class PathOperation(OpenAPIElement):
     ) -> Dict[str, SchemaObjectProperty]:
         properties = {}
         if section == "requestBody":
-            for name, property in (
+            for name, prop_schema in (
                 path_operation.get("requestBody", {}).get("content", {}) or {}
             ).items():
-                properties[name] = SchemaObjectProperty(self.entity, name, property)
+                properties[name] = SchemaObjectProperty(self.entity, name, prop_schema)
         elif section == "parameters":
-            for property in path_operation.get("parameters", {}) or []:
-                properties[property["name"]] = SchemaObjectProperty(
-                    self.entity, property["name"], property
+            for param in path_operation.get("parameters", {}) or []:
+                properties[param["name"]] = SchemaObjectProperty(
+                    self.entity, param["name"], param
                 )
         elif section == "responses":
             responses = path_operation.get("responses", {})
@@ -363,39 +474,63 @@ class PathOperation(OpenAPIElement):
                         .get("items", {})
                         .get("properties", {})
                     )
-                    for name, property in content.items():
+                    for name, out_schema in content.items():
                         properties[name] = SchemaObjectProperty(
-                            self.entity, name, property
+                            self.entity, name, out_schema
                         )
         return properties
 
     def _get_permissions(self, path_operation: dict) -> dict:
-        """Extract permissions from a path operation using x-af-permissions only.
-
-        Also normalizes action names so 'create'/'update' map to 'write'.
         """
-        permissions = path_operation.get("x-af-permissions") or {}
-        if isinstance(permissions, dict):
-            normalized: Dict[str, Any] = {}
-            for handler, roles in permissions.items():
-                if not isinstance(roles, dict):
-                    normalized[handler] = roles
-                    continue
-                new_roles: Dict[str, Any] = {}
-                for role, actions in roles.items():
-                    if not isinstance(actions, dict):
-                        new_roles[role] = actions
-                        continue
-                    new_actions: Dict[str, Any] = {}
-                    for action, value in actions.items():
-                        key = "write" if action in ("create", "update") else action
-                        new_actions[key] = value
-                    new_roles[role] = new_actions
-                normalized[handler] = new_roles
-            permissions = normalized
-        if permissions:
-            validate_permissions(permissions)
-        return permissions or {}
+        Extract permissions from a path operation using x-af-permissions
+        only. Also normalizes action names so 'create'/'update' map to
+        'write'.
+        """
+        raw_permissions = path_operation.get("x-af-permissions") or {}
+
+        def normalize_actions(actions: Dict[str, Any]) -> Dict[str, Any]:
+            result: Dict[str, Any] = {}
+            for action, value in actions.items():
+                key = "write" if action in ("create", "update") else action
+                result[key] = value
+            return result
+
+        def is_legacy_role_form(obj: Dict[str, Any]) -> bool:
+            if not isinstance(obj, dict):
+                return False
+            for v in obj.values():
+                if isinstance(v, dict):
+                    for k2, v2 in v.items():
+                        if k2 in {
+                            "read",
+                            "write",
+                            "delete",
+                            "create",
+                            "update",
+                        } and not isinstance(v2, dict):
+                            return True
+            return False
+
+        normalized: Dict[str, Any] = {}
+        if isinstance(raw_permissions, dict):
+            if is_legacy_role_form(raw_permissions):
+                for role, actions in raw_permissions.items():
+                    if isinstance(actions, dict):
+                        normalized[role] = normalize_actions(actions)
+                    else:
+                        normalized[role] = actions
+            else:
+                for provider, actions in raw_permissions.items():
+                    if isinstance(actions, dict):
+                        normalized[provider] = normalize_actions(actions)
+                    else:
+                        normalized[provider] = actions
+        else:
+            normalized = {}
+
+        if normalized:
+            validate_permissions(normalized)
+        return normalized or {}
 
 
 class ModelFactory:
@@ -423,11 +558,15 @@ class ModelFactory:
     ) -> Dict[str, Any]:
         """Merge two dictionaries. The override values take precedence."""
         merged = base.copy()  # Start with base values
-        merged.update(override)  # Override with any values from the second dict
+        # Override with any values from the second dict
+        merged.update(override)
         return merged
 
     def resolve_all_refs(self, spec: Dict[str, Any]) -> Dict[str, Any]:
-        """Recursively resolves all $ref references in an OpenAPI specification."""
+        """
+        Recursively resolve all $ref references in an OpenAPI
+        specification.
+        """
 
         def resolve(obj: Any) -> Any:
             if isinstance(obj, dict):
@@ -469,7 +608,7 @@ class ModelFactory:
 
     def get_config_output(self) -> Dict[str, Any]:
         """Generates and returns the configuration output."""
-        log.info(f"path_operations: {self.path_operations}")
+        log.info("path_operations: %s", self.path_operations)
         return {
             "schema_objects": {
                 name: obj.to_dict() for name, obj in self.schema_objects.items()

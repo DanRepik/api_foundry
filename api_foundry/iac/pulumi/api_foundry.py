@@ -3,7 +3,7 @@ import json
 import yaml
 import boto3
 from typing import Optional, Union
-from pulumi import ComponentResource, Config
+from pulumi import ComponentResource
 
 import pulumi
 import cloud_foundry
@@ -24,64 +24,93 @@ def is_valid_openapi_spec(spec_dict: dict) -> bool:
 
 
 def load_api_spec(api_spec: Union[str, list[str]]) -> dict:
-    api_spec_dict = {}
-    specs = [api_spec] if isinstance(api_spec, str) else api_spec
+    """
+    Load one or more OpenAPI specs from files, directories,
+    S3, or inline YAML.
 
-    all_specs = []
-    for spec in specs:
-        if os.path.isfile(spec):
-            all_specs.append(spec)
-        elif os.path.isdir(spec):
-            all_specs.extend(
-                sorted(
-                    [
-                        os.path.join(spec, f)
-                        for f in os.listdir(spec)
-                        if f.endswith(".yaml")
+        Accepts:
+            - File path(s)
+            - Directory path(s): loads all .yaml/.yml files (sorted)
+            - S3 URL(s): s3://bucket/key or s3://bucket/prefix/
+            - Inline YAML string with an OpenAPI document
+
+        Returns a shallow-merged spec dict; later documents win on conflicts.
+    """
+
+    def _is_s3_url(s: str) -> bool:
+        return isinstance(s, str) and s.startswith("s3://")
+
+    def _gather_inputs(specs: Union[str, list[str]]) -> list[Union[str, dict]]:
+        items = [specs] if isinstance(specs, str) else list(specs or [])
+        inputs: list[Union[str, dict]] = []
+        for spec in items:
+            if not isinstance(spec, str):
+                raise TypeError("api_spec entries must be strings")
+
+            # Local file
+            if os.path.isfile(spec):
+                inputs.append(spec)
+                continue
+
+            # Local directory: include .yaml/.yml files only
+            if os.path.isdir(spec):
+                files = [
+                    os.path.join(spec, f)
+                    for f in os.listdir(spec)
+                    if f.endswith((".yaml", ".yml"))
+                ]
+                inputs.extend(sorted(files))
+                continue
+
+            # S3 file or prefix
+            if _is_s3_url(spec):
+                bucket, key = spec[5:].split("/", 1)
+                if key.endswith("/"):
+                    s3 = boto3.client("s3")
+                    resp = s3.list_objects_v2(Bucket=bucket, Prefix=key)
+                    contents = resp.get("Contents", [])
+                    keys = [
+                        o["Key"]
+                        for o in contents
+                        if o["Key"].endswith((".yaml", ".yml"))
                     ]
-                )
-            )
-        elif spec.startswith("s3://"):
-            s3 = boto3.client("s3")
-            bucket, key = spec[5:].split("/", 1)
-            if key.endswith("/"):
-                response = s3.list_objects_v2(Bucket=bucket, Prefix=key)
-                all_specs.extend(
-                    sorted(
-                        [
-                            f"s3://{bucket}/{obj['Key']}"
-                            for obj in response.get("Contents", [])
-                            if obj["Key"].endswith(".yaml")
-                        ]
-                    )
-                )
-            else:
-                all_specs.append(spec)
-        else:
+                    inputs.extend([f"s3://{bucket}/{k}" for k in sorted(keys)])
+                else:
+                    inputs.append(spec)
+                continue
+
+            # Inline YAML
             try:
-                spec_dict = yaml.safe_load(spec)
-                if is_valid_openapi_spec(spec_dict):
-                    api_spec_dict.update(spec_dict)
-                    return api_spec_dict
-            except yaml.YAMLError:
+                as_yaml = yaml.safe_load(spec)
+            except yaml.YAMLError as exc:  # not YAML
+                raise ValueError(f"Invalid OpenAPI spec source: {spec}") from exc
+
+            if is_valid_openapi_spec(as_yaml):
+                inputs.append(as_yaml)
+            else:
                 raise ValueError(f"Invalid OpenAPI spec provided: {spec}")
 
-    for spec in all_specs:
-        if spec.startswith("s3://"):
-            bucket, key = spec[5:].split("/", 1)
+        return inputs
+
+    merged: dict = {}
+    for source in _gather_inputs(api_spec):
+        if isinstance(source, dict):
+            spec_dict = source
+        elif _is_s3_url(source):
+            bucket, key = source[5:].split("/", 1)
             s3 = boto3.client("s3")
             obj = s3.get_object(Bucket=bucket, Key=key)
             spec_dict = yaml.safe_load(obj["Body"].read().decode("utf-8"))
         else:
-            with open(spec, "r") as yaml_file:
-                spec_dict = yaml.safe_load(yaml_file)
+            with open(source, "r", encoding="utf-8") as f:
+                spec_dict = yaml.safe_load(f)
 
         if not is_valid_openapi_spec(spec_dict):
-            raise ValueError(f"Invalid OpenAPI spec found in: {spec}")
+            raise ValueError(f"Invalid OpenAPI spec found in: {source}")
 
-        api_spec_dict.update(spec_dict)
+        merged.update(spec_dict)
 
-    return api_spec_dict
+    return merged
 
 
 class APIFoundry(ComponentResource):
@@ -119,18 +148,10 @@ class APIFoundry(ComponentResource):
         )
         vpc_config = vpc_config or config_defaults.get("vpc_config", {})
 
-        # Check if we are deploying to LocalStack
-        if self.is_deploying_to_localstack():
-            # Add LocalStack-specific environment variables
-            localstack_env = {
-                "AWS_ACCESS_KEY_ID": "test",
-                "AWS_SECRET_ACCESS_KEY": "test",
-                "AWS_ENDPOINT_URL": "http://localstack:4566",
-            }
-            env_vars = {**localstack_env, **env_vars}
         env_vars["SECRETS"] = secrets
 
-        for database, secret_name in json.loads(secrets).items():
+        # Grant read access to referenced secrets (single broad stmt)
+        if json.loads(secrets):
             policy_statements.append(
                 {
                     "Effect": "Allow",
@@ -148,7 +169,11 @@ class APIFoundry(ComponentResource):
                     ModelFactory(api_spec_dict).get_config_output()
                 ),
             },
-            requirements=["psycopg2-binary", "pyyaml", "api_foundry_query_engine"],
+            requirements=[
+                "psycopg2-binary",
+                "pyyaml",
+                "api_foundry_query_engine",
+            ],
             policy_statements=policy_statements,
             vpc_config=vpc_config,
         )
@@ -157,10 +182,14 @@ class APIFoundry(ComponentResource):
             open_api_spec=api_spec_dict, function=self.api_function
         )
 
+        # Merge gateway_spec.integrations with user-provided integrations
+        specification = gateway_spec.rest_api_spec()
+        merged_integrations = (integrations or []) + (gateway_spec.integrations or [])
+
         self.rest_api = cloud_foundry.rest_api(
             name,
-            specification=[gateway_spec.rest_api_spec()],
-            integrations=gateway_spec.integrations,
+            specification=[specification],
+            integrations=merged_integrations,
             token_validators=token_validators or [],
             export_api=export_api,
             opts=pulumi.ResourceOptions(parent=self),
@@ -172,18 +201,3 @@ class APIFoundry(ComponentResource):
 
     def integrations(self) -> list[dict]:
         return self.api_spec_editor.integrations
-
-    def is_deploying_to_localstack(self) -> bool:
-        config = Config("aws")
-        endpoints = config.get("endpoints")
-
-        if endpoints:
-            try:
-                endpoints_list = json.loads(endpoints)
-                for endpoint in endpoints_list:
-                    if "localhost" in endpoint.get("url", ""):
-                        return True
-            except json.JSONDecodeError:
-                pass
-
-        return False

@@ -455,27 +455,102 @@ At a minimum API-Foundry requires that a database be specified using an 'x-af-da
 
 #### Property Mapping
 
-API-Foundry leverages the property types from the schema object to generate SQL and convert query result sets into JSON responses. The set of types in OpenAPI is simpler compared to the larger set of database types.
+API-Foundry leverages the property types from the schema object to generate SQL and convert query result sets into JSON responses. The conversion system supports flexible type mappings, allowing API types to map to various compatible database column types while maintaining data integrity through proper conversion handling.
 
-For each table column exposed in the API, a corresponding property must be defined in the properties section of the schema object. These property definitions map database column types to their corresponding OpenAPI schema type.
+For each table column exposed in the API, a corresponding property must be defined in the properties section of the schema object. These property definitions specify both the API representation (`type` and `format`) and can optionally specify the database column type for precise control over conversions.
 
 > It is also a good time and a good practice to include descriptions and examples for the properties.
 
-Below is an illustration of how different PostgreSQL, Oracle, and MySQL types are mapped into OpenAPI types:
+##### Supported API Types
 
+API-Foundry supports the following API types with flexible database column type mappings:
 
-| PostgreSQL Type                     | Oracle Type               | MySQL Type                    | OpenAPI Type            | Description |
-|-------------------------------------|---------------------------|-------------------------------|-------------------------|-------------|
-| `character varying`, `varchar`      | `VARCHAR2`, `VARCHAR`     | `VARCHAR`, `CHAR`, `TEXT`     | `string`                | Variable-length character string |
-| `character`, `char`                 | `CHAR`                    | `CHAR`                        | `string`                | Fixed-length character string |
-| `text`                              | `CLOB`                    | `TEXT`, `LONGTEXT`            | `string`                | Variable-length text |
-| `integer`, `bigint`, `smallint`     | `NUMBER`, `INTEGER`       | `INT`, `BIGINT`, `SMALLINT`   | `integer`               | Integer number |
-| `numeric`, `real`, `double precision` | `NUMBER`, `FLOAT`         | `DECIMAL`, `FLOAT`, `DOUBLE`  | `number`                | Floating-point number |
-| `boolean`                           | `NUMBER` (1 or 0)         | `TINYINT(1)`                  | `boolean`               | Boolean value (true/false) |
-| `date`                              | `DATE`                    | `DATE`                        | `string`, `format: date` | Date (ISO 8601 format) |
-| `timestamp without time zone`       | `TIMESTAMP`               | `TIMESTAMP`                   | `string`, `format: date-time` | Timestamp without time zone (ISO 8601 format) |
-| `timestamp with time zone`          | `TIMESTAMP WITH TIME ZONE`| `TIMESTAMP`                   | `string`, `format: date-time` | Timestamp with time zone (ISO 8601 format) |
-| `uuid`                              | `RAW`                     | `CHAR(36)`                    | `string`, `format: uuid` | Universally unique identifier (UUID) |
+| API Type | Format | Database Column Types | Description |
+|----------|--------|-----------------------|-------------|
+| `string` | - | `string`, `varchar`, `char`, `text` | Variable or fixed-length character strings |
+| `string` | `uuid` | `uuid`, `string`, `varchar`, `char` | Universally unique identifier (UUID) |
+| `integer` | - | `integer`, `int`, `bigint`, `smallint`, `serial`, `bigserial` | Integer numbers of various sizes |
+| `number` | - | `number`, `float`, `double`, `numeric`, `decimal`, `real` | Floating-point numbers with various precision |
+| `boolean` | - | `boolean`, `integer`, `int`, `smallint` | Boolean values (can map to integers: 1=true, 0=false) |
+| `string` | `date` | `date` | Date values (ISO 8601 format: YYYY-MM-DD) |
+| `string` | `date-time` | `date-time`, `datetime`, `timestamp`, `timestamptz` | Date and time values (ISO 8601 format) |
+| `string` | `time` | `time`, `timetz` | Time values (ISO format: HH:MM:SS) |
+
+##### Database-Specific Type Mappings
+
+The following table shows how common database types map to API types across different database engines:
+
+| PostgreSQL Type | Oracle Type | MySQL Type | Recommended API Type | Alternative API Types |
+|-----------------|-------------|------------|----------------------|-----------------------|
+| `varchar`, `char`, `text` | `VARCHAR2`, `CHAR`, `CLOB` | `VARCHAR`, `CHAR`, `TEXT` | `string` | `string` (uuid format for UUIDs) |
+| `integer`, `bigint`, `smallint`, `serial` | `NUMBER`, `INTEGER` | `INT`, `BIGINT`, `SMALLINT` | `integer` | - |
+| `numeric`, `real`, `double precision` | `NUMBER`, `FLOAT` | `DECIMAL`, `FLOAT`, `DOUBLE` | `number` | - |
+| `boolean` | `NUMBER` (0/1) | `TINYINT(1)`, `BOOLEAN` | `boolean` | `integer` (for 0/1 storage) |
+| `date` | `DATE` | `DATE` | `string` (date format) | - |
+| `timestamp`, `timestamptz` | `TIMESTAMP` | `TIMESTAMP`, `DATETIME` | `string` (date-time format) | - |
+| `time` | `TIME` | `TIME` | `string` (time format) | - |
+| `uuid` | `RAW(16)` | `CHAR(36)`, `BINARY(16)` | `string` (uuid format) | `string` |
+
+##### Flexible Type Conversion
+
+API-Foundry's type conversion system allows for flexible mappings between API types and database column types:
+
+**Boolean to Integer Mapping**
+```yaml
+is_active:
+  type: boolean           # API represents as boolean
+  x-af-column-type: integer  # Database stores as integer (1/0)
+```
+
+**Number to Various Numeric Types**
+```yaml
+price:
+  type: number           # API represents as number
+  x-af-column-type: decimal  # Database stores as decimal/numeric
+```
+
+**String to UUID**
+```yaml
+user_id:
+  type: string
+  format: uuid           # API represents as UUID string
+  x-af-column-type: uuid # Database stores as native UUID type
+```
+
+##### Type Conversion Behavior
+
+**API to Database (Input Processing)**
+- String values are parsed according to the target column type
+- Boolean strings ("true"/"false") are converted to appropriate database representation
+- Numeric strings are parsed to integers or floats as needed
+- Date/time strings are parsed from ISO 8601 format to database date/time types
+- UUID strings are validated and stored in appropriate database format
+
+**Database to API (Response Processing)**
+- Database values are formatted according to the API type specification
+- Dates and timestamps are formatted as ISO 8601 strings
+- Booleans stored as integers (0/1) are converted to "true"/"false" strings
+- Numeric values maintain precision according to API type
+- UUIDs are formatted as standard UUID strings
+
+##### Advanced Configuration
+
+For cases where the default type mapping isn't sufficient, you can explicitly specify the database column type:
+
+```yaml
+properties:
+  status_code:
+    type: integer
+    x-af-column-type: smallint  # Explicitly map to smallint instead of default integer
+
+  is_deleted:
+    type: boolean
+    x-af-column-type: integer   # Store boolean as integer (1/0)
+
+  metadata:
+    type: string
+    x-af-column-type: text      # Use text column for large string content
+```
 
 
 
@@ -1157,6 +1232,140 @@ def validate_token(token):
 * **Use Specific Rules for Sensitive Operations:** Add local security instructions to enforce stricter controls on operations that handle sensitive data or require elevated privileges.
 * **Document Security Instructions:** Clearly document the roles, scopes, and permissions required for each path operation to make it easier for developers to understand and maintain the API.
 By combining these techniques, you can build secure and robust APIs with API-Foundry while maintaining flexibility and control over access permissions.
+
+## Permissions (x-af-permissions)
+
+API-Foundry uses a Role-Based Access Control (RBAC) model to restrict which fields can be read or written and whether records can be deleted. These rules are expressed in the OpenAPI spec using the `x-af-permissions` extension on schema objects and on path operations.
+
+Key points:
+- Structure: provider → action → role → rule
+  - provider: a named authenticator/validator block, typically `default`. You can add additional providers to override rules for specific authenticators.
+  - action: one of `read`, `write`, `delete` (note: `create` and `update` are normalized to `write`).
+  - role: application role name found in the token claims.
+- Rule forms:
+  - read/write rules: either a regex string of allowed fields (e.g., `".*"`), or an object `{ fields: <regex>, where?: <expression> }`.
+  - delete rules: either a boolean, or an object `{ allow: <bool>, where?: <expression> }`.
+- Where expressions: optional SQL snippets applied as row-level filters. They support claim templating like `${claims.sub}` to express self-only access.
+- Inheritance: if a path operation omits `x-af-permissions`, the schema-level permissions are used.
+- Backward compatibility: the legacy structure (role → action → rule) is still supported; actions `create` and `update` are normalized to `write`.
+
+### Example: schema object permissions
+
+```yaml
+components:
+  schemas:
+    account:
+      type: object
+      x-af-database: chinook
+      properties:
+        id: { type: integer, x-af-primary-key: auto }
+        email: { type: string }
+      x-af-permissions:
+        default:
+          read:
+            user:
+              fields: "^(id|email)$"
+              where: "id = ${claims.sub}"
+          create:
+            admin: ".*"     # normalized to write
+          delete:
+            admin:
+              allow: true
+```
+
+Notes:
+- The `user` role can only read `id` and `email`, and only for their own record.
+- `create` is normalized to `write` internally.
+- Admins can delete; you can also add a `where` to constrain deletions.
+
+### Example: path operation permissions
+
+```yaml
+paths:
+  /active:
+    get:
+      x-af-database: db
+      x-af-sql: SELECT id, name FROM t
+      x-af-permissions:
+        default:
+          read:
+            viewer: ".*"
+          update:
+            editor: ".*"  # normalized to write
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    name: { type: string }
+```
+
+### Provider overrides
+
+Use multiple provider blocks when you need different rules per authenticator/validator source. For most cases, a single `default` provider is sufficient.
+
+```yaml
+x-af-permissions:
+  default:
+    read:
+      user: "^(id|email)$"
+  my-auth-provider:
+    read:
+      user: ".*"   # this provider allows reading all fields
+```
+
+### Claim templating in where filters
+
+In rule objects, the `where` field supports string interpolation with `${claims.<name>}` drawn from the validated token claims. Example:
+
+- `where: "owner_id = ${claims.sub}"` for self-only records
+- `where: "tenant_id = ${claims.tenant_id}"` for multi-tenant isolation
+
+These expressions are injected into generated SQL query predicates; keep them simple and safe.
+
+### Migration from legacy format
+
+Legacy role-first permissions are still accepted and normalized at runtime. Example legacy shape:
+
+```yaml
+x-af-permissions:
+  sales_reader:
+    read: "^(id|name)$"
+  sales_manager:
+    create: ".*"
+    update: ".*"  # both become write
+    delete: true
+```
+
+You can convert to the provider-first format by nesting the above under `default`:
+
+```yaml
+x-af-permissions:
+  default:
+    read:
+      sales_reader: "^(id|name)$"
+    write:
+      sales_manager: ".*"
+    delete:
+      sales_manager: true
+```
+
+### Troubleshooting
+
+- Error 402: "After applying permissions there are no properties returned in response"
+  - Cause: the effective `read` rule excludes all fields, or required properties were not matched by the regex.
+  - Fix: widen the `fields` regex (e.g., `".*"`) or request a subset via the `__properties` metadata parameter in the URL.
+- No rows visible with self-only rules
+  - Ensure the `where` expression resolves correctly for the caller's claims (e.g., `${claims.sub}` matches `id`).
+- Missing operation rules
+  - If `x-af-permissions` is not present on a path operation, schema-level permissions are applied.
+
 
 # Configuration
 

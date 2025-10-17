@@ -1,12 +1,15 @@
 import json
 import os
+from pathlib import Path
+
 import pytest
 import psycopg2
 import pulumi
 import pulumi_aws as aws
 import yaml
+from contextlib import contextmanager
+import requests
 
-from pathlib import Path
 from api_foundry_query_engine.utils.api_model import APIModel
 from fixture_foundry import to_localstack_url
 from fixture_foundry import deploy  # noqa F401
@@ -14,8 +17,11 @@ from fixture_foundry import exec_sql_file
 from fixture_foundry import postgres  # noqa F401
 from fixture_foundry import localstack  # noqa F401
 from fixture_foundry import container_network  # noqa F401
+from simple_oauth_server import SimpleOAuth
 
-os.environ["PULUMI_BACKEND_URL"] = "file://~"
+os.environ["PULUMI_BACKEND_URL"] = "file://."
+# Ensure a consistent issuer for the SimpleOAuth authorizer and validator
+os.environ.setdefault("ISSUER", "https://oauth.local/")
 
 DEFAULT_IMAGE = "localstack/localstack:latest"
 DEFAULT_SERVICES = "logs,iam,lambda,secretsmanager,apigateway,cloudwatch"
@@ -115,17 +121,77 @@ def chinook_api(chinook_db):
             secret_string=json.dumps(conn_info),
         )
 
-        # Create the FarmMarket component
+        # OAuth server for tests
+        oauth_server = SimpleOAuth("oauth", config=yaml.dump(TEST_USERS))
+
+        # Create the Chinook component
         chinook_api = secret.arn.apply(
             lambda arn: APIFoundry(
                 "chinook-api",
-                api_spec="resources/chinook_api.yaml",
+                api_spec=[
+                    "resources/chinook_api.yaml",
+                    oauth_server.authorizer_api_spec,
+                ],
+                integrations=[
+                    {
+                        "path": "/token",
+                        "method": "post",
+                        "function": oauth_server.authorizer(),
+                    }
+                ],
+                token_validators=[
+                    {
+                        "name": "oauth",
+                        "type": "token",
+                        "function": oauth_server.validator(),
+                    }
+                ],
                 secrets=json.dumps({"chinook": arn}),
             )
         )
         pulumi.export("domain", chinook_api.domain)
 
     return pulumi_program
+
+
+TEST_USERS: dict = {
+    "clients": {
+        "user_sales_reader": {
+            "client_secret": "sales-reader-secret",
+            "audience": "chinook-api",
+            "sub": "user_sales_reader",
+            "scope": "read:*",
+            "roles": ["sales_reader"],
+        },
+        "user_sales_associate": {
+            "client_secret": "sales-associate-secret",
+            "audience": "chinook-api",
+            "sub": "user_sales_associate",
+            "scope": "read:* write:*",
+            "roles": ["sales_associate"],
+        },
+        "user_sales_manager": {
+            "client_secret": "sales-manager-secret",
+            "audience": "chinook-api",
+            "sub": "user_sales_manager",
+            "scope": "read:* write:* delete:*",
+            "roles": ["sales_manager"],
+        },
+    }
+}
+
+
+@pytest.fixture(scope="module")
+def chinook_api_stack(request, chinook_db, localstack):  # noqa F811
+    teardown = request.config.getoption("--teardown").lower() == "true"
+    with deploy(
+        "api-foundry",
+        "test-api",
+        chinook_api(chinook_db),
+        localstack=localstack,
+        teardown=teardown,
+    ) as outputs:
+        yield outputs
 
 
 @pytest.fixture(scope="module")
@@ -147,3 +213,24 @@ def chinook_api_model():
     filename = os.path.join(os.getcwd(), "resources/chinook_api.yaml")
     with open(filename, "r") as file:
         yield yaml.safe_load(file)
+
+
+@pytest.fixture(scope="module")
+def sales_associate(chinook_api_endpoint: str):
+    user = TEST_USERS["clients"]["user_sales_associate"]
+
+    resp = requests.post(
+        f"{chinook_api_endpoint}/token",
+        json={
+            "grant_type": "client_credentials",
+            "client_id": user["sub"],
+            "client_secret": user["client_secret"],
+            "audience": user["audience"],
+            "scope": user["scope"],
+        },
+        headers={"Accept": "application/json"},
+        timeout=10,
+    )
+    resp.raise_for_status()
+    result = resp.json()
+    yield result["token"]

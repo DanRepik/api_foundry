@@ -95,7 +95,7 @@ pip install pytest docker psycopg2-binary requests pulumi pulumi-aws pyyaml
 
 ## Core fixtures and helpers
 
-The infrstructure_fixtures.py file contains a pallette of fixtures.  
+The infrstructure_fixtures.py file contains a pallette of fixtures.
 
 Building test infrastructure for a test suite consists of using those fixtures.  Typically this is done in the conftest.py file for the test suite.
 
@@ -103,7 +103,7 @@ Building test infrastructure for a test suite consists of using those fixtures. 
 
 The core fixtures provided by the infrastructure_fixtures.py file are;
 
-* postgres - this session scoped fixture will start up a postgres container.  
+* postgres - this session scoped fixture will start up a postgres container.
 * localstack - this session scoped container will start a localstack container.
 
 Additionally some utility functions are provided;

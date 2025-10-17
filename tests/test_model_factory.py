@@ -22,7 +22,10 @@ def test_set_spec():
                         "type": "object",
                         "x-af-database": "database",
                         "properties": {
-                            "id": {"type": "integer", "x-af-primary-key": "auto"},
+                            "id": {
+                                "type": "integer",
+                                "x-af-primary-key": "auto",
+                            },
                             "name": {"type": "string"},
                         },
                     }
@@ -32,7 +35,7 @@ def test_set_spec():
     )
 
     result = model_factory.get_config_output()
-    log.info(f"result: {result}")
+    log.info("result: %s", result)
     assert result == {
         "schema_objects": {
             "TestSchema": {
@@ -128,8 +131,9 @@ components:
         )
         assert False
     except KeyError as ke:
-        log.info(f"ke: {ke}")
-        assert str(ke) == "\"Reference part 'track' not found in the OpenAPI spec.\""
+        log.info("ke: %s", ke)
+        expected = "\"Reference part 'track' not found in the OpenAPI spec.\""
+        assert str(ke) == expected
 
 
 def test_invalid_type():
@@ -160,13 +164,12 @@ components:
         )
 
     except ApplicationException as ae:
-        log.info(f"ae: {ae}")
-        assert (
-            ae.message
-            == "Property: artist_id in schema object: artist of type: float is not a valid type"
+        log.info("ae: %s", ae)
+        assert ae.message == (
+            "Property: artist_id in schema object: artist "
+            "of type: float is not a valid type"
         )
         return
-    assert False, "Expected exception"
 
 
 def test_relation():
@@ -226,10 +229,11 @@ components:
         )
 
     except KeyError as ke:
-        log.info(f"ke: {ke}")
-        assert str(ke) == "\"Reference part 'track' not found in the OpenAPI spec.\""
+        log.info("ke: %s", ke)
+        expected = "\"Reference part 'track' not found in the OpenAPI spec.\""
+        assert str(ke) == expected
     result = model_factory.get_config_output()
-    log.info(f"result: {result}")
+    log.info("result: %s", result)
     assert result == {
         "schema_objects": {
             "artist": {
@@ -320,8 +324,16 @@ def test_path_operation_parsing():
                     "x-af-database": "farm_market",
                     "x-af-sql": "SELECT * FROM active_ads",
                     "parameters": [
-                        {"in": "query", "name": "limit", "schema": {"type": "integer"}},
-                        {"in": "query", "name": "q", "schema": {"type": "string"}},
+                        {
+                            "in": "query",
+                            "name": "limit",
+                            "schema": {"type": "integer"},
+                        },
+                        {
+                            "in": "query",
+                            "name": "q",
+                            "schema": {"type": "string"},
+                        },
                     ],
                     "responses": {
                         "200": {
@@ -357,11 +369,138 @@ def test_path_operation_parsing():
     assert op["action"] == "read"
     # inputs
     assert set(op["inputs"].keys()) == {"limit", "q"}
-    # ModelFactory currently treats parameter types as string unless top-level 'type' is present
+    # ModelFactory currently treats parameter types as string
+    # unless top-level 'type' is present
     assert op["inputs"]["limit"]["api_type"] == "string"
     # outputs
     assert set(op["outputs"].keys()) == {"id", "name"}
     assert op["outputs"]["id"]["api_type"] == "string"
+
+
+@pytest.mark.unit
+def test_permissions_legacy_and_action_normalization():
+    spec = yaml.safe_load(
+        """
+components:
+    schemas:
+        Person:
+            type: object
+            x-af-database: db
+            properties:
+                id:
+                    type: integer
+                    x-af-primary-key: auto
+                name:
+                    type: string
+            x-af-permissions:
+                sales_reader:
+                    read: "^(id|name)$"
+                sales_manager:
+                    create: ".*"
+                    update: ".*"
+                    delete: true
+"""
+    )
+
+    mf = ModelFactory(spec)
+    out = mf.get_config_output()
+    perms = out["schema_objects"]["Person"]["permissions"]
+    assert perms["sales_reader"]["read"] == "^(id|name)$"
+    # create/update normalized to write
+    assert perms["sales_manager"]["write"] == ".*"
+    assert "create" not in perms["sales_manager"]
+    assert "update" not in perms["sales_manager"]
+    assert perms["sales_manager"]["delete"] is True
+
+
+@pytest.mark.unit
+def test_permissions_provider_form_with_where_and_delete():
+    spec = yaml.safe_load(
+        """
+components:
+    schemas:
+        Account:
+            type: object
+            x-af-database: db
+            properties:
+                id:
+                    type: integer
+                    x-af-primary-key: auto
+                email:
+                    type: string
+            x-af-permissions:
+                default:
+                    read:
+                        user:
+                            fields: "^(id|email)$"
+                            where: "id = ${claims.sub}"
+                    create:
+                        admin: ".*"
+                    delete:
+                        admin:
+                            allow: true
+"""
+    )
+
+    mf = ModelFactory(spec)
+    out = mf.get_config_output()
+    perms = out["schema_objects"]["Account"]["permissions"]
+    assert "default" in perms
+    default = perms["default"]
+    assert default["read"]["user"]["fields"] == "^(id|email)$"
+    assert "where" in default["read"]["user"]
+    # create normalized to write
+    assert default["write"]["admin"] == ".*"
+    # delete rule preserved
+    assert default["delete"]["admin"]["allow"] is True
+
+
+@pytest.mark.unit
+def test_path_operation_permissions_provider_form():
+    spec = {
+        "openapi": "3.0.0",
+        "paths": {
+            "/active": {
+                "get": {
+                    "x-af-database": "db",
+                    "x-af-sql": "SELECT id, name FROM t",
+                    "responses": {
+                        "200": {
+                            "description": "ok",
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {"type": "string"},
+                                                "name": {"type": "string"},
+                                            },
+                                        },
+                                    }
+                                }
+                            },
+                        }
+                    },
+                    "x-af-permissions": {
+                        "default": {
+                            "read": {"viewer": ".*"},
+                            "update": {"editor": ".*"},
+                        }
+                    },
+                }
+            }
+        },
+    }
+
+    mf = ModelFactory(spec)
+    ops = mf.get_config_output()["path_operations"]
+    assert "active_read" in ops
+    perms = ops["active_read"]["permissions"]
+    assert perms["default"]["read"]["viewer"] == ".*"
+    # update normalized to write
+    assert perms["default"]["write"]["editor"] == ".*"
 
 
 @pytest.mark.unit
@@ -396,7 +535,10 @@ def test_concurrency_property_valid_and_invalid():
                     "x-af-database": "db",
                     "x-af-concurrency-control": "etag",
                     "properties": {
-                        "id": {"type": "integer", "x-af-primary-key": "auto"},
+                        "id": {
+                            "type": "integer",
+                            "x-af-primary-key": "auto",
+                        },
                         # no 'etag' property here
                     },
                 }
@@ -420,7 +562,10 @@ def test_sequence_primary_key_requires_sequence_name():
                     "type": "object",
                     "x-af-database": "db",
                     "properties": {
-                        "id": {"type": "integer", "x-af-primary-key": "sequence"},
+                        "id": {
+                            "type": "integer",
+                            "x-af-primary-key": "sequence",
+                        },
                     },
                 }
             }
@@ -515,7 +660,7 @@ def test_chinook_generation():
 
     try:
         # Load YAML from file
-        with open(spec_file_path, "r") as file:
+        with open(spec_file_path, "r", encoding="utf-8") as file:
             test_spec = yaml.safe_load(file)
 
         # Set the specification in the model factory
@@ -527,13 +672,14 @@ def test_chinook_generation():
 
         # Write result to a file in the temp directory
         output_file = os.path.join(os.getcwd(), "resources/api_spec.yaml")
-        with open(output_file, "w") as out_file:
+        with open(output_file, "w", encoding="utf-8") as out_file:
             yaml.dump(result, out_file, indent=4)
 
         # Ensure the result file exists
         assert os.path.exists(output_file)
 
     except KeyError as ke:
-        log.info(f"KeyError: {ke}")
+        log.info("KeyError: %s", ke)
         # Adjust the assertion to match the exact KeyError message
-        assert str(ke) == "\"Reference part 'track' not found in the OpenAPI spec.\""
+        expected = "\"Reference part 'track' not found in the OpenAPI spec.\""
+        assert str(ke) == expected

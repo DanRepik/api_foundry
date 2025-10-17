@@ -222,13 +222,17 @@ components:
       x-af-database: chinook
       x-af-permissions:
         sales_reader:
-            read: .*
+            read: "album_id|title"
         sales_associate:
-          read: .*
-          write: .*
+          read:
+            fields: "album_id|title|artist_id"
+            where: "album_id <= 50"  # Example: only access first 50 albums
+          write:
+            fields: "title"
+            where: "album_id <= 50"
         sales_manager:
-          read: .*
-          write: .*
+          read: ".*"
+          write: ".*"
           delete: true
     employee:
       type: object
@@ -238,10 +242,6 @@ components:
           x-af-primary-key: auto
           description: Unique identifier for the employee.
           example: 1
-        employee:
-          $ref: '#/components/schemas/employee'
-          x-af-parent-property: employee_id
-          description: Employee associated with the employee.
         last_name:
           type: string
           maxLength: 20
@@ -283,12 +283,6 @@ components:
         email:
           type: string
           maxLength: 60
-        employee_items:
-          type: array
-          items:
-            $ref: '#/components/schemas/employee'
-          x-af-child-property: employee_id
-          description: List of employee items associated with this employee.
       required:
       - employee_id
       - last_name
