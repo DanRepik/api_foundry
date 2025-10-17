@@ -996,63 +996,103 @@ Global security requirements are automatically inherited by all operations in th
 
 ### Security Instructions for Schema Object
 
-For schema objects or table integrations, **API-Foundry** provides the extended `x-af-security` attribute within the schema definition. This attribute defines validation rules for CRUD (Create, Read, Update, Delete) operations, allowing fine-grained access control for the API-generated services.
+For schema objects or table integrations, **API-Foundry** provides the extended `x-af-permissions` attribute within the schema definition. This attribute defines validation rules for CRUD (Create, Read, Update, Delete) operations, allowing fine-grained access control for the API-generated services.
 
-The keys under `x-af-security` (e.g., `my-oauth`) reference validators configured earlier. Validators authenticate and authorize requests by validating bearer tokens and extracting claims such as roles and permissions. During runtime, these security rules are applied to ensure that only authorized users can perform specific operations.
+The `x-af-permissions` structure follows a provider → action → role → rule hierarchy, where providers reference configured token validators, actions specify operation types, roles define user groups, and rules control field access and row-level filtering.
 
 ---
 
-### Using `x-af-security` for Table Operations
+### Using `x-af-permissions` for Table Operations
 
-The `x-af-security` attribute specifies roles and their associated permissions for CRUD actions. Each role defines which properties of a table can be accessed or modified for specific operations.
+The `x-af-permissions` attribute supports both concise and verbose permission formats, including row-level security through WHERE clause filtering and claim templating.
 
-#### **Example**
+#### **Permission Structure**
 
-Below is an example of the `x-af-security` attribute applied to an `invoice` schema:
+```yaml
+x-af-permissions:
+  <provider>:          # Token validator name (typically "default")
+    <action>:          # read, write, delete
+      <role>:          # User role from token claims
+        <rule>         # Permission rule (string or object)
+```
+
+#### **Concise Format Example**
+
+For simple field-level permissions without row filtering:
 
 ```yaml
 components:
   schemas:
-    invoice:
+    album:
       type: object
       x-af-database: chinook
-      x-af-security:
-        my-oauth:
-          sales_reader:
-            read: "^(customer_id|total)$"
-          sales_associate:
-            read: "*"
-            write: "^(customer_id|total|status)$"
-          sales_manager:
-            read: "*"
-            write: "*"
-            delete: "*"
+      x-af-permissions:
+        default:
+          read:
+            sales_associate: "album_id|title|artist_id"
+            sales_manager: ".*"
+          write:
+            sales_associate: "title"
+            sales_manager: ".*"
+          delete:
+            sales_manager: true
       properties:
-        invoice_id:
+        album_id:
           type: integer
           x-af-primary-key: auto
-        customer_id:
+        title:
+          type: string
+        artist_id:
           type: integer
-        total:
-          type: number
-        status:
+```
+
+#### **Verbose Format with Row-Level Security**
+
+For advanced permissions with WHERE clause filtering:
+
+```yaml
+components:
+  schemas:
+    account:
+      type: object
+      x-af-database: app
+      x-af-permissions:
+        default:
+          read:
+            user:
+              properties: "^(id|email|name)$"
+              where: "id = ${claims.sub}"
+            admin:
+              properties: ".*"
+          write:
+            user:
+              properties: "^(email|name)$"
+              where: "id = ${claims.sub}"
+            admin:
+              properties: ".*"
+          delete:
+            admin:
+              allow: true
+      properties:
+        id:
+          type: integer
+          x-af-primary-key: auto
+        email:
+          type: string
+        name:
           type: string
 ```
 
-#### **Explanation**:
-- **`x-af-security`**:
-  - A dictionary where each key represents a security mechanism (e.g., `my-oauth`).
-  - Under `my-oauth`, roles such as `sales_reader`, `sales_associate`, and `sales_manager` are defined with their permissions.
-- **Permissions**:
-  - **`read`**: Specifies which fields can be read by a role.
-  - **`write`**: Specifies which fields can be modified using POST or PUT operations.
-  - **`delete`**: Grants permission to delete records.
-- **Regex-Based Field Access**:
-  - Fields can be matched using regular expressions. For example, `^(customer_id|total)$` allows access to only the `customer_id` and `total` fields.
+#### **Key Features**:
 
-#### **Key Highlights**:
-- `"*"` grants unrestricted access for an operation (e.g., `read: "*"` means the role can read all fields).
-- Operations with no matching rules will be denied by default.
+- **Concise Format**: Operations can directly specify property regex strings when no WHERE clause is needed
+- **Verbose Format**: Operations use objects with `properties` and optional `where` fields
+- **Claim Templating**: WHERE clauses support `${claims.property}` substitution for user context
+- **Row-Level Security**: WHERE expressions filter records based on user identity or tenant
+- **Backward Compatibility**: Legacy role-first format is automatically normalized
+- **Flexible Rules**:
+  - Read/Write: Property regex patterns (`".*"` for all, `"prop1|prop2"` for specific)
+  - Delete: Boolean (`true`/`false`) or object with `allow` and optional `where`
 
 ---
 
@@ -1065,18 +1105,18 @@ When a request is received, **API-Foundry** processes security rules as follows:
    - The token is checked for authenticity, expiration, and claims (e.g., `sub`, `scope`, and custom claims).
 
 2. **Claim Matching**:
-   - Roles in `x-af-security` are matched against claims in the token.
+   - Roles in `x-af-permissions` are matched against claims in the token.
    - The validator verifies whether the user's roles and scopes permit the requested operation (e.g., `read`, `write`, `delete`).
 
 3. **Permission Enforcement**:
-   - If the requested operation matches the permissions defined in `x-af-security`, the operation is allowed.
+   - If the requested operation matches the permissions defined in `x-af-permissions`, the operation is allowed.
    - Otherwise, the request is denied.
 
 ---
 
 ### Role-Based Access Control (RBAC)
 
-The `x-af-security` attribute enables Role-Based Access Control (RBAC), where roles map directly to specific permissions:
+The `x-af-permissions` attribute enables Role-Based Access Control (RBAC), where roles map directly to specific permissions:
 
 - **Example Roles**:
   - **`sales_reader`**:
@@ -1094,7 +1134,7 @@ The `x-af-security` attribute enables Role-Based Access Control (RBAC), where ro
 - A `sales_reader` wants to view an invoice.
 - The API receives the request with a bearer token.
 - The token is validated, and the user's role (`sales_reader`) is extracted.
-- The role is checked against the `x-af-security` rules.
+- The role is checked against the `x-af-permissions` rules.
 - The user can only view `customer_id` and `total` fields as per the defined permissions.
 
 ---
@@ -1105,12 +1145,12 @@ The `x-af-security` attribute enables Role-Based Access Control (RBAC), where ro
    - Verify that the token includes the expected roles or permissions.
    - Use tools like `jwt.io` to decode and inspect the token.
 
-2. **Check `x-af-security` Configuration**:
-   - Validate that the `x-af-security` attribute is correctly defined in the OpenAPI specification.
+2. **Check `x-af-permissions` Configuration**:
+   - Validate that the `x-af-permissions` attribute is correctly defined in the OpenAPI specification.
    - Ensure roles and permissions are aligned with business requirements.
 
 3. **Role and Scope Mismatch**:
-   - If a role in the token does not match a defined role in `x-af-security`, the request will be denied. Double-check the role configuration.
+   - If a role in the token does not match a defined role in `x-af-permissions`, the request will be denied. Double-check the role configuration.
 
 4. **Logging**:
    - Enable detailed logging in your validator to trace token validation and permission checks.
@@ -1119,7 +1159,7 @@ The `x-af-security` attribute enables Role-Based Access Control (RBAC), where ro
 
 ### Summary
 
-The `x-af-security` attribute allows fine-grained control over table operations by combining Role-Based Access Control with token validation. Using the attribute:
+The `x-af-permissions` attribute allows fine-grained control over table operations by combining Role-Based Access Control with token validation. Using the attribute:
 - Permissions can be tailored for specific roles and operations.
 - Validators enforce security rules based on token claims.
 
@@ -1243,7 +1283,7 @@ Key points:
   - action: one of `read`, `write`, `delete` (note: `create` and `update` are normalized to `write`).
   - role: application role name found in the token claims.
 - Rule forms:
-  - read/write rules: either a regex string of allowed fields (e.g., `".*"`), or an object `{ fields: <regex>, where?: <expression> }`.
+  - read/write rules: either a regex string of allowed properties (e.g., `".*"`), or an object `{ properties: <regex>, where?: <expression> }`.
   - delete rules: either a boolean, or an object `{ allow: <bool>, where?: <expression> }`.
 - Where expressions: optional SQL snippets applied as row-level filters. They support claim templating like `${claims.sub}` to express self-only access.
 - Inheritance: if a path operation omits `x-af-permissions`, the schema-level permissions are used.
@@ -1264,7 +1304,7 @@ components:
         default:
           read:
             user:
-              fields: "^(id|email)$"
+              properties: "^(id|email)$"
               where: "id = ${claims.sub}"
           create:
             admin: ".*"     # normalized to write
@@ -1359,8 +1399,8 @@ x-af-permissions:
 ### Troubleshooting
 
 - Error 402: "After applying permissions there are no properties returned in response"
-  - Cause: the effective `read` rule excludes all fields, or required properties were not matched by the regex.
-  - Fix: widen the `fields` regex (e.g., `".*"`) or request a subset via the `__properties` metadata parameter in the URL.
+  - Cause: the effective `read` rule excludes all properties, or required properties were not matched by the regex.
+  - Fix: widen the `properties` regex (e.g., `".*"`) or request a subset via the `__properties` metadata parameter in the URL.
 - No rows visible with self-only rules
   - Ensure the `where` expression resolves correctly for the caller's claims (e.g., `${claims.sub}` matches `id`).
 - Missing operation rules

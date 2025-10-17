@@ -224,12 +224,10 @@ components:
         sales_reader:
             read: "album_id|title"
         sales_associate:
-          read:
-            fields: "album_id|title|artist_id"
-            where: "album_id <= 50"  # Example: only access first 50 albums
+          where: "album_id <= 50"  # Role-level: applies to all operations
+          read: "album_id|title|artist_id"  # Concise format
           write:
-            fields: "title"
-            where: "album_id <= 50"
+            properties: "title"  # Verbose format for comparison
         sales_manager:
           read: ".*"
           write: ".*"

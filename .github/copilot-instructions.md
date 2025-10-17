@@ -48,4 +48,13 @@ components:
 - **Tests**: `tests/` with integration fixtures and Chinook test data
 
 ## Security
-Role-based access via JWT tokens with `x-af-security` on schema objects and standard OpenAPI `security` on path operations.
+Role-based access via JWT tokens with `x-af-permissions` on schema objects and standard OpenAPI `security` on path operations.
+
+### Permission System
+- **Structure**: provider → action → role → rule hierarchy
+- **Actions**: `read`, `write` (normalized from create/update), `delete`
+- **Formats**:
+  - Concise: `read: "property1|property2"` for simple property filtering
+  - Verbose: `read: {properties: "regex", where: "SQL_condition"}` for row-level security
+- **Claim Templating**: WHERE clauses support `${claims.property}` substitution
+- **Backward Compatibility**: Legacy role-first format automatically normalized

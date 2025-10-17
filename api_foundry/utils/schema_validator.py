@@ -36,7 +36,7 @@ def validate_permissions(permissions):
     def _validate_rule(action: str, role_name: str, rule):
         if action in {"read", "write"}:
             # Accept either a string regex or an object
-            # {fields: regex, where?: string}
+            # {properties: regex, where?: string}
             if isinstance(rule, str):
                 try:
                     re.compile(rule)
@@ -52,7 +52,8 @@ def validate_permissions(permissions):
                         + str(e)
                     ) from e
             elif isinstance(rule, dict):
-                allowed_keys = {"fields", "where"}
+                # Support both for backward compatibility
+                allowed_keys = {"properties", "fields", "where"}
                 unknown = set(rule.keys()) - allowed_keys
                 if unknown:
                     raise ValueError(
@@ -60,18 +61,19 @@ def validate_permissions(permissions):
                         f"'{role_name}' action '{action}'. "
                         f"Allowed keys: {allowed_keys}."
                     )
-                fields = rule.get("fields")
-                if not isinstance(fields, str):
+                # Accept both 'properties' (preferred) and 'fields' (legacy)
+                properties = rule.get("properties") or rule.get("fields")
+                if not isinstance(properties, str):
                     raise ValueError(
                         f"Rule for role '{role_name}' action "
-                        f"'{action}' must include 'fields' as a regex "
+                        f"'{action}' must include 'properties' as a regex "
                         f"string."
                     )
                 try:
-                    re.compile(fields)
+                    re.compile(properties)
                 except re.error as e:
                     raise ValueError(
-                        "Invalid regex pattern in 'fields' for role '"
+                        "Invalid regex pattern in 'properties' for role '"
                         + role_name
                         + "' action '"
                         + action
@@ -87,7 +89,7 @@ def validate_permissions(permissions):
             else:
                 raise ValueError(
                     f"Rule for role '{role_name}' action '{action}' "
-                    f"must be a string or object with 'fields' "
+                    f"must be a string or object with 'properties' "
                     f"(and optional 'where')."
                 )
 
@@ -130,20 +132,25 @@ def validate_permissions(permissions):
                 f"'read', 'write', and 'delete'."
             )
 
-    # Detect legacy form: role -> {action: rule}
+    # Detect legacy form: role -> {action: rule} or role with 'where'
     def _is_legacy_form(obj: dict) -> bool:
         if not obj:
             return False
         # If any top-level value is a dict where an action maps to a non-dict
         # rule (e.g., string/bool/object rule), it's the legacy form.
+        # Also detect if there's a 'where' key at the role level.
         for v in obj.values():
             if isinstance(v, dict):
+                # Check for role-level 'where' clause (hybrid approach)
+                if "where" in v:
+                    return True
                 for k2, v2 in v.items():
-                    if k2 in {"read", "write", "delete"} and not isinstance(v2, dict):
+                    actions = {"read", "write", "delete"}
+                    if k2 in actions and not isinstance(v2, dict):
                         return True
         return False
 
-    # Legacy path: {role: {read|write|delete: rule}}
+    # Legacy path: {role: {read|write|delete: rule, where?: string}}
     if _is_legacy_form(permissions):
         for role_name, actions in permissions.items():
             if not isinstance(role_name, str):
@@ -154,7 +161,15 @@ def validate_permissions(permissions):
                     f"of actions."
                 )
             for action, rule in actions.items():
-                _validate_rule(action, role_name, rule)
+                if action == "where":
+                    # Validate role-level WHERE clause
+                    if not isinstance(rule, str):
+                        raise ValueError(
+                            f"Role-level 'where' clause for role "
+                            f"'{role_name}' must be a string."
+                        )
+                else:
+                    _validate_rule(action, role_name, rule)
         return True
 
     # New form: {provider: {action: {role: rule}}}
