@@ -1,12 +1,11 @@
-import pkgutil
 import os
 import json
 import yaml
-from typing import Union
-from pulumi import ComponentResource, Config
+import boto3
+from typing import Optional, Union
+from pulumi import ComponentResource
 
-# from pulumi_aws import get_caller_identity, get_region
-
+import pulumi
 import cloud_foundry
 
 from api_foundry.iac.gateway_spec import APISpecEditor
@@ -16,6 +15,104 @@ from cloud_foundry import logger
 log = logger(__name__)
 
 
+def is_valid_openapi_spec(spec_dict: dict) -> bool:
+    return (
+        isinstance(spec_dict, dict)
+        and "openapi" in spec_dict
+        and isinstance(spec_dict["openapi"], str)
+    )
+
+
+def load_api_spec(api_spec: Union[str, list[str]]) -> dict:
+    """
+    Load one or more OpenAPI specs from files, directories,
+    S3, or inline YAML.
+
+        Accepts:
+            - File path(s)
+            - Directory path(s): loads all .yaml/.yml files (sorted)
+            - S3 URL(s): s3://bucket/key or s3://bucket/prefix/
+            - Inline YAML string with an OpenAPI document
+
+        Returns a shallow-merged spec dict; later documents win on conflicts.
+    """
+
+    def _is_s3_url(s: str) -> bool:
+        return isinstance(s, str) and s.startswith("s3://")
+
+    def _gather_inputs(specs: Union[str, list[str]]) -> list[Union[str, dict]]:
+        items = [specs] if isinstance(specs, str) else list(specs or [])
+        inputs: list[Union[str, dict]] = []
+        for spec in items:
+            if not isinstance(spec, str):
+                raise TypeError("api_spec entries must be strings")
+
+            # Local file
+            if os.path.isfile(spec):
+                inputs.append(spec)
+                continue
+
+            # Local directory: include .yaml/.yml files only
+            if os.path.isdir(spec):
+                files = [
+                    os.path.join(spec, f)
+                    for f in os.listdir(spec)
+                    if f.endswith((".yaml", ".yml"))
+                ]
+                inputs.extend(sorted(files))
+                continue
+
+            # S3 file or prefix
+            if _is_s3_url(spec):
+                bucket, key = spec[5:].split("/", 1)
+                if key.endswith("/"):
+                    s3 = boto3.client("s3")
+                    resp = s3.list_objects_v2(Bucket=bucket, Prefix=key)
+                    contents = resp.get("Contents", [])
+                    keys = [
+                        o["Key"]
+                        for o in contents
+                        if o["Key"].endswith((".yaml", ".yml"))
+                    ]
+                    inputs.extend([f"s3://{bucket}/{k}" for k in sorted(keys)])
+                else:
+                    inputs.append(spec)
+                continue
+
+            # Inline YAML
+            try:
+                as_yaml = yaml.safe_load(spec)
+            except yaml.YAMLError as exc:  # not YAML
+                raise ValueError(f"Invalid OpenAPI spec source: {spec}") from exc
+
+            if is_valid_openapi_spec(as_yaml):
+                inputs.append(as_yaml)
+            else:
+                raise ValueError(f"Invalid OpenAPI spec provided: {spec}")
+
+        return inputs
+
+    merged: dict = {}
+    for source in _gather_inputs(api_spec):
+        if isinstance(source, dict):
+            spec_dict = source
+        elif _is_s3_url(source):
+            bucket, key = source[5:].split("/", 1)
+            s3 = boto3.client("s3")
+            obj = s3.get_object(Bucket=bucket, Key=key)
+            spec_dict = yaml.safe_load(obj["Body"].read().decode("utf-8"))
+        else:
+            with open(source, "r", encoding="utf-8") as f:
+                spec_dict = yaml.safe_load(f)
+
+        if not is_valid_openapi_spec(spec_dict):
+            raise ValueError(f"Invalid OpenAPI spec found in: {source}")
+
+        merged.update(spec_dict)
+
+    return merged
+
+
 class APIFoundry(ComponentResource):
     api_spec_editor: APISpecEditor
 
@@ -23,97 +120,84 @@ class APIFoundry(ComponentResource):
         self,
         name,
         *,
-        api_spec: str,
-        secrets: str,
-        environment: dict[str, str] = {},
-        body: Union[str, list[str]] = [],
-        integrations: list[dict] = [],
-        token_validators: list[dict] = [],
-        policy_statements: list = [],
-        vpc_config: dict = {},
+        api_spec: Union[str, list[str]],
+        secrets: Optional[str] = None,
+        environment: Optional[dict[str, Union[str, pulumi.Output[str]]]] = None,
+        integrations: Optional[list[dict]] = None,
+        token_validators: Optional[list[dict]] = None,
+        policy_statements: Optional[list] = None,
+        vpc_config: Optional[dict] = None,
+        export_api: Optional[str] = None,
         opts=None,
     ):
         super().__init__("cloud_foundry:apigw:APIFoundry", name, None, opts)
 
-        if os.path.exists(api_spec):
-            with open(api_spec, "r") as yaml_file:
-                api_spec_dict = yaml.safe_load(yaml_file)
-        else:
-            api_spec_dict = yaml.safe_load(api_spec)
+        api_spec_dict = load_api_spec(api_spec)
+        config_defaults = api_spec_dict.get("x-af-configuration", {})
 
-        if isinstance(body, str):
-            body = [body]
+        secrets = secrets or config_defaults.get("secrets", "")
+        env_vars = environment or config_defaults.get(
+            "environment", {}
+        )  # type: dict[str, Union[str, pulumi.Output[str]]]
+        integrations = integrations or config_defaults.get("integrations", [])
+        token_validators = token_validators or config_defaults.get(
+            "token_validators", []
+        )
+        policy_statements = policy_statements or config_defaults.get(
+            "policy_statements", []
+        )
+        vpc_config = vpc_config or config_defaults.get("vpc_config", {})
 
-        # Check if we are deploying to LocalStack
-        if self.is_deploying_to_localstack():
-            # Add LocalStack-specific environment variables
-            localstack_env = {
-                "AWS_ACCESS_KEY_ID": "test",
-                "AWS_SECRET_ACCESS_KEY": "test",
-                "AWS_ENDPOINT_URL": "http://localstack:4566",
-            }
-            environment = {**localstack_env, **environment}
-        environment["SECRETS"] = secrets
+        env_vars["SECRETS"] = secrets
 
-        #        account_id = get_caller_identity().account_id
-        #        region = get_region().name
-        for database, secret_name in json.loads(secrets).items():
+        # Grant read access to referenced secrets (single broad stmt)
+        if json.loads(secrets):
             policy_statements.append(
                 {
                     "Effect": "Allow",
                     "Actions": ["secretsmanager:GetSecretValue"],
                     "Resources": ["*"],
-                    # "Resources": [f"arn:aws:secretsmanager:{region}:{account_id}:secret:{secret_name}"],
                 }
             )
 
         self.api_function = cloud_foundry.python_function(
             name=name,
-            environment=environment,
+            environment=env_vars,
+            handler="api_foundry_query_engine.lambda_handler.handler",
             sources={
                 "api_spec.yaml": yaml.safe_dump(
                     ModelFactory(api_spec_dict).get_config_output()
                 ),
-                "app.py": pkgutil.get_data(
-                    "api_foundry_query_engine", "lambda_handler.py"
-                ).decode(),  # type: ignore
             },
-            requirements=["psycopg2-binary", "pyyaml", "api_foundry_query_engine"],
+            requirements=[
+                "psycopg2-binary",
+                "pyyaml",
+                "api_foundry_query_engine",
+            ],
             policy_statements=policy_statements,
             vpc_config=vpc_config,
         )
 
         gateway_spec = APISpecEditor(
-            open_api_spec=api_spec_dict,
-            function=self.api_function,
-            function_name=name,
+            open_api_spec=api_spec_dict, function=self.api_function
         )
-        #        log.info(f"integrations: {gateway_spec.integrations}")
+
+        # Merge gateway_spec.integrations with user-provided integrations
+        specification = gateway_spec.rest_api_spec()
+        merged_integrations = (integrations or []) + (gateway_spec.integrations or [])
+
         self.rest_api = cloud_foundry.rest_api(
             name,
-            body=[*body, gateway_spec.rest_api_spec()],
-            integrations=[*integrations, *gateway_spec.integrations],
-            token_validators=token_validators,
+            specification=[specification],
+            integrations=merged_integrations,
+            token_validators=token_validators or [],
+            export_api=export_api,
+            opts=pulumi.ResourceOptions(parent=self),
         )
+
+        self.domain = self.rest_api.domain
+
+        self.register_outputs({f"{name}_domain": self.domain})
 
     def integrations(self) -> list[dict]:
         return self.api_spec_editor.integrations
-
-    def is_deploying_to_localstack(self) -> bool:
-        # Create a Pulumi Config instance
-        config = Config("aws")
-
-        # Check if the 'endpoints' configuration is set, which usually indicates LocalStack
-        endpoints = config.get("endpoints")
-
-        if endpoints:
-            try:
-                # Parse the endpoints configuration and check for LocalStack URL
-                endpoints_list = json.loads(endpoints)
-                for endpoint in endpoints_list:
-                    if "localhost" in endpoint.get("url", ""):
-                        return True
-            except json.JSONDecodeError:
-                pass
-
-        return False

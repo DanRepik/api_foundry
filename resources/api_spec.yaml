@@ -42,7 +42,16 @@ path_operations:
                 column_name: total_sold
                 column_type: integer
                 required: false
-        permissions: {}
+        permissions:
+            sales_associate:
+                read: .*
+                write: .*
+            sales_manager:
+                delete: true
+                read: .*
+                write: .*
+            sales_reader:
+                read: .*
         sql: "SELECT\n    a.album_id as album_id,\n    a.title AS album_title,\n \
             \   COUNT(il.invoice_line_id) AS total_sold\nFROM\n    invoice_line il\n\
             JOIN invoice i ON\n    il.invoice_id = i.invoice_id\nJOIN\n    track t\
@@ -103,7 +112,16 @@ schema_objects:
     album:
         api_name: album
         database: chinook
-        permissions: {}
+        permissions:
+            sales_associate:
+                read: .*
+                write: .*
+            sales_manager:
+                delete: true
+                read: .*
+                write: .*
+            sales_reader:
+                read: .*
         primary_key: album_id
         properties:
             album_id:
@@ -142,7 +160,16 @@ schema_objects:
     artist:
         api_name: artist
         database: chinook
-        permissions: {}
+        permissions:
+            sales_associate:
+                read: .*
+                write: .*
+            sales_manager:
+                delete: true
+                read: .*
+                write: .*
+            sales_reader:
+                read: .*
         primary_key: artist_id
         properties:
             artist_id:
@@ -266,7 +293,7 @@ schema_objects:
                 required: false
             version_stamp:
                 api_name: version_stamp
-                api_type: string
+                api_type: uuid
                 column_name: version_stamp
                 column_type: string
                 required: false
@@ -293,7 +320,7 @@ schema_objects:
                 required: false
             birth_date:
                 api_name: birth_date
-                api_type: string
+                api_type: date-time
                 column_name: birth_date
                 column_type: string
                 required: false
@@ -341,7 +368,7 @@ schema_objects:
                 required: false
             hire_date:
                 api_name: hire_date
-                api_type: string
+                api_type: date-time
                 column_name: hire_date
                 column_type: string
                 required: false
@@ -386,18 +413,7 @@ schema_objects:
                 column_type: string
                 max_length: 30
                 required: false
-        relations:
-            employee:
-                api_name: employee
-                api_type: object
-                parent_property: employee_id
-                schema_name: employee
-            employee_items:
-                api_name: employee_items
-                api_type: array
-                child_property: employee_id
-                parent_property: employee_id
-                schema_name: employee
+        relations: {}
         table_name: employee
     genre:
         api_name: genre
@@ -484,7 +500,7 @@ schema_objects:
                 required: false
             invoice_date:
                 api_name: invoice_date
-                api_type: string
+                api_type: date-time
                 column_name: invoice_date
                 column_type: string
                 required: false
@@ -497,7 +513,7 @@ schema_objects:
                 required: false
             last_updated:
                 api_name: last_updated
-                api_type: string
+                api_type: date-time
                 column_name: last_updated
                 column_type: string
                 required: false

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "api-foundry"
-version = "0.1.18"
+version = "0.1.21"
 authors = [
     { name="Daniel Repik", email="danrepik@icloud.com" },
 ]
@@ -23,8 +23,18 @@ dependencies = [
     "boto3",
     "pulumi",
     "pulumi-aws",
-    "cloud-foundry",
-    "api_foundry_query_engine"
+    "cloud_foundry",
+    "fixture_foundry",
+]
+
+[project.optional-dependencies]
+# Developer tools and CI helpers
+dev = [
+    "pytest>=7.0",
+    "psycopg2-binary",
+    "docker",
+    "api_foundry_query_engine",
+    "pulumi-automation",
 ]
 
 [project.urls]
@@ -40,6 +50,9 @@ include = ["api_foundry"]
 [project.scripts]
 postgres_to_openapi = "api_foundry.scripts.postgres_to_openapi:main"
 install_secret = "api_foundry.scripts.install_secret:main"
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.pytest.ini_options]
 markers = [

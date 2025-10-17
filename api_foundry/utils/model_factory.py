@@ -1,8 +1,10 @@
 import re
 from typing import Any, Dict, Optional
+
+from cloud_foundry import logger
+
 from api_foundry.utils.app_exception import ApplicationException
 from api_foundry.utils.schema_validator import validate_permissions
-from cloud_foundry import logger
 
 log = logger(__name__)
 
@@ -11,7 +13,8 @@ log = logger(__name__)
 METHODS_TO_ACTIONS = {
     "get": "read",
     "post": "create",
-    "update": "update",
+    "put": "update",
+    "patch": "update",
     "delete": "delete",
 }
 
@@ -22,16 +25,28 @@ SUPPORTED_TYPES = {
     "boolean",
     "date",
     "date-time",
+    "time",
+    # Note: OpenAPI uses base type 'number' with optional
+    # format 'float'/'double'. These formats are accepted and
+    # normalized to api_type='number' while preserving the
+    # original format in a separate attribute for mapping.
+    "uuid",
     "array",
     "object",
 }
 
 
 class OpenAPIElement:
-    """Base class for OpenAPI elements like schema properties and associations."""
+    """
+    Base class for OpenAPI elements like schema properties and
+    associations.
+    """
 
     def to_dict(self) -> Dict[str, Any]:
-        """Converts the OpenAPI element to a dictionary, including nested properties."""
+        """
+        Convert the OpenAPI element to a dictionary, including nested
+        properties.
+        """
         return {
             k: (v.to_dict() if isinstance(v, OpenAPIElement) else v)
             for k, v in self.__dict__.items()
@@ -40,32 +55,81 @@ class OpenAPIElement:
 
 
 class SchemaObjectProperty(OpenAPIElement):
-    """Represents a property of a schema object in the OpenAPI specification."""
+    """
+    Represents a property of a schema object in the OpenAPI
+    specification.
+    """
 
-    def __init__(self, schema_name: str, name: str, property: Dict[str, Any]):
+    def __init__(self, schema_name: str, name: str, prop: Dict[str, Any]):
         super().__init__()
         self.api_name = name
-        self.api_type = property.get("fomart") or property.get("type") or "string"
+        # Base OpenAPI type and format
+        base_type = prop.get("type") or "string"
+        api_format = prop.get("format")
+        # Preserve numeric formats (float/double) but normalize api_type
+        # to 'number'
+        if base_type == "number" and api_format in {"float", "double"}:
+            self.api_type = "number"
+            self.numeric_format = api_format
+        else:
+            # Maintain prior behavior for date/date-time/time/uuid by
+            # allowing format as type
+            self.api_type = api_format or base_type
+            self.numeric_format = None
+        # Validate the raw OpenAPI 'type' first to catch invalid base types
+        raw_type = prop.get("type")
+        if raw_type is not None and raw_type not in {
+            "string",
+            "integer",
+            "number",
+            "boolean",
+            "array",
+            "object",
+        }:
+            raise ApplicationException(
+                500,
+                (
+                    f"Property: {name} in schema object: {schema_name} "
+                    f"of type: {raw_type} is not a valid type"
+                ),
+            )
         if self.api_type not in SUPPORTED_TYPES:
             raise ApplicationException(
                 500,
-                f"Property: {name} in schema object: {schema_name} of type: {self.api_type} is not a valid type",
+                (
+                    f"Property: {name} in schema object: {schema_name} "
+                    f"of type: {self.api_type} is not a valid type"
+                ),
             )
-        self.column_name = property.get("x-af-column-name") or name
-        self.column_type = (
-            property.get("x-af-column-type") or property.get("type") or "string"
-        )
-        self.required = property.get("required", False)
-        self.min_length = property.get("minLength", None)
-        self.max_length = property.get("maxLength", None)
-        self.pattern = property.get("pattern", None)
-        self.default = property.get("default", None)
+        self.column_name = prop.get("x-af-column-name") or name
+        # Choose column type. If user didn't specify x-af-column-type and this
+        # is a numeric with a float/double format, apply a sensible default
+        # (Postgres: float -> real, double -> double precision).
+        if prop.get("x-af-column-type"):
+            self.column_type = prop.get("x-af-column-type")
+        elif base_type == "number" and self.numeric_format in {
+            "float",
+            "double",
+        }:
+            self.column_type = (
+                "real" if self.numeric_format == "float" else "double precision"
+            )
+        else:
+            self.column_type = prop.get("type") or "string"
+        self.required = prop.get("required", False)
+        self.min_length = prop.get("minLength", None)
+        self.max_length = prop.get("maxLength", None)
+        self.pattern = prop.get("pattern", None)
+        self.default = prop.get("default", None)
         self.key_type = None
         self.sequence_name = None
-        self.concurrency_control = self._concurrency_control(schema_name, property)
+        self.concurrency_control = self._concurrency_control(schema_name, prop)
+        # For embedded objects/arrays
+        self.sub_properties: Optional[Dict[str, SchemaObjectProperty]] = None
+        self.items_sub_properties: Optional[Dict[str, SchemaObjectProperty]] = None
 
-    def _concurrency_control(self, schema_name: str, property: dict) -> Optional[str]:
-        concurrency_control = property.get("x-af-concurrency-control", None)
+    def _concurrency_control(self, schema_name: str, prop_dict: dict) -> Optional[str]:
+        concurrency_control = prop_dict.get("x-af-concurrency-control", None)
         if concurrency_control:
             concurrency_control = concurrency_control.lower()
             assert concurrency_control in [
@@ -116,17 +180,17 @@ class SchemaObjectKey(SchemaObjectProperty):
 class SchemaObjectAssociation(OpenAPIElement):
     """Represents an association (relationship) between schema objects."""
 
-    def __init__(self, name: str, property: Dict[str, Any], parent_key):
+    def __init__(self, name: str, prop: Dict[str, Any], parent_key):
         super().__init__()
         self.api_name = name
-        self.api_type = property["type"]
+        self.api_type = prop["type"]
 
         self.schema_name = (
-            property["items"]["$ref"] if self.api_type == "array" else property["$ref"]
+            prop["items"]["$ref"] if self.api_type == "array" else prop["$ref"]
         ).split("/")[-1]
 
-        self.child_property = property.get("x-af-child-property", None)
-        self.parent_property = property.get("x-af-parent-property", parent_key)
+        self.child_property = prop.get("x-af-child-property", None)
+        self.parent_property = prop.get("x-af-parent-property", parent_key)
 
 
 class SchemaObject(OpenAPIElement):
@@ -145,11 +209,8 @@ class SchemaObject(OpenAPIElement):
 
     def _get_table_name(self, schema_object: dict) -> str:
         schema = schema_object.get("x-af-schema")
-        return (
-            f"{schema}."
-            if schema
-            else "" + schema_object.get("x-af-table", self.api_name)
-        )
+        table_name = schema_object.get("x-af-table", self.api_name)
+        return f"{schema}.{table_name}" if schema else table_name
 
     def _resolve_properties(
         self, schema_object: dict
@@ -164,9 +225,63 @@ class SchemaObject(OpenAPIElement):
     def _resolve_property(
         self, property_name: str, prop: Dict[str, Any]
     ) -> Optional[SchemaObjectProperty]:
-        prop_type = prop.get("type")
-        if prop_type == "object" or prop_type == "array":
+        # Validate raw OpenAPI base type early to catch invalid types
+        # like 'float'
+        raw_type = prop.get("type")
+        if raw_type is not None and raw_type not in {
+            "string",
+            "integer",
+            "number",
+            "boolean",
+            "array",
+            "object",
+        }:
+            raise ApplicationException(
+                500,
+                (
+                    f"Property: {property_name} in schema object: "
+                    f"{self.api_name} of type: {raw_type} is not a valid type"
+                ),
+            )
+        # If $ref is present, treat as relation
+        if "$ref" in prop:
             return None
+        prop_type = prop.get("type")
+        # Embedded object
+        if prop_type == "object":
+            if "properties" in prop:
+                # Recursively resolve sub-properties
+                sub_properties = {}
+                for sub_name, sub_prop in prop["properties"].items():
+                    sub_properties[sub_name] = self._resolve_property(
+                        sub_name, sub_prop
+                    )
+                # Store as a SchemaObjectProperty with nested sub_properties
+                obj = SchemaObjectProperty(self.api_name, property_name, prop)
+                obj.sub_properties = sub_properties
+                return obj
+            else:
+                # Generic object property
+                return SchemaObjectProperty(self.api_name, property_name, prop)
+        # Array
+        if prop_type == "array":
+            items = prop.get("items", {})
+            if "$ref" in items:
+                return None  # relation
+            if items.get("type") == "object" and "properties" in items:
+                # Array of embedded objects
+                sub_properties = {}
+                for sub_name, sub_prop in items["properties"].items():
+                    sub_properties[sub_name] = self._resolve_property(
+                        sub_name, sub_prop
+                    )
+                obj = SchemaObjectProperty(self.api_name, property_name, prop)
+                obj.items_sub_properties = sub_properties
+                return obj
+            else:
+                # Array of primitives
+                return SchemaObjectProperty(self.api_name, property_name, prop)
+        # Primitive property
         return SchemaObjectProperty(self.api_name, property_name, prop)
 
     def _resolve_relations(
@@ -174,7 +289,13 @@ class SchemaObject(OpenAPIElement):
     ) -> Dict[str, SchemaObjectAssociation]:
         relations = {}
         for property_name, prop in schema_object.get("properties", {}).items():
-            if prop.get("type") == "object" or prop.get("type") == "array":
+            # Direct $ref (object relation)
+            if "$ref" in prop:
+                relations[property_name.lower()] = SchemaObjectAssociation(
+                    property_name, prop, self.primary_key
+                )
+            # Array of $ref (array relation)
+            elif prop.get("type") == "array" and "$ref" in prop.get("items", {}):
                 relations[property_name.lower()] = SchemaObjectAssociation(
                     property_name, prop, self.primary_key
                 )
@@ -188,47 +309,106 @@ class SchemaObject(OpenAPIElement):
         ):
             raise ApplicationException(
                 500,
-                f"Invalid concurrency property: {concurrency_property_name} not found in properties.",
+                (
+                    "Invalid concurrency property: "
+                    f"{concurrency_property_name} not found in properties."
+                ),
             )
         return concurrency_property_name
 
     def _get_primary_key(self, schema_object: dict) -> Optional[str]:
         for property_name, properties in schema_object.get("properties", {}).items():
             if "x-af-primary-key" in properties:
-                property = self.properties[property_name]
-                property.key_type = properties.get("x-af-primary-key", "auto")
+                prop_obj = self.properties[property_name]
+                prop_obj.key_type = properties.get("x-af-primary-key", "auto")
 
-                if property.key_type not in ["manual", "uuid", "auto", "sequence"]:
+                if prop_obj.key_type not in [
+                    "manual",
+                    "uuid",
+                    "auto",
+                    "sequence",
+                ]:
                     raise ApplicationException(
                         500,
                         (
-                            f"Invalid primary key type '{property.key_type}' "
+                            f"Invalid primary key type '{prop_obj.key_type}' "
                             + f"in schema object '{self.api_name}'"
                             + f", property '{property_name}'"
                         ),
                     )
 
-                if property.key_type == "sequence":
-                    property.sequence_name = properties.get("x-af-sequence-name", None)
-                    if not property.sequence_name:
+                if prop_obj.key_type == "sequence":
+                    prop_obj.sequence_name = properties.get("x-af-sequence-name", None)
+                    if not prop_obj.sequence_name:
                         raise ApplicationException(
                             500,
                             (
-                                "Sequence-based primary keys must have a sequence name "
-                                + f"in schema object '{self.api_name}', property '{property_name}'"
+                                "Sequence-based primary keys must have a "
+                                "sequence name "
+                                + f"in schema object '{self.api_name}', "
+                                + f"property '{property_name}'"
                             ),
                         )
                 return property_name
         return None
 
     def _get_permissions(self, schema_object: dict) -> dict:
-        permissions = schema_object.get("x-af-permissions", {})
-        if permissions:
-            validate_permissions(permissions)
-        return permissions
+        """Extract permissions from schema using x-af-permissions only.
+
+        Also normalizes action names so 'create'/'update' map to 'write'.
+        """
+        raw_permissions = schema_object.get("x-af-permissions") or {}
+
+        def normalize_actions(actions: Dict[str, Any]) -> Dict[str, Any]:
+            result: Dict[str, Any] = {}
+            for action, value in actions.items():
+                key = "write" if action in ("create", "update") else action
+                result[key] = value
+            return result
+
+        def is_legacy_role_form(obj: Dict[str, Any]) -> bool:
+            # Legacy: role -> { action: rule }
+            if not isinstance(obj, dict):
+                return False
+            for v in obj.values():
+                if isinstance(v, dict):
+                    # Any dict that looks like action->rule (value not dict)
+                    for k2, v2 in v.items():
+                        if k2 in {
+                            "read",
+                            "write",
+                            "delete",
+                            "create",
+                            "update",
+                        } and not isinstance(v2, dict):
+                            return True
+            return False
+
+        normalized: Dict[str, Any] = {}
+        if isinstance(raw_permissions, dict):
+            if is_legacy_role_form(raw_permissions):
+                # Keep legacy shape, just normalize action names
+                for role, actions in raw_permissions.items():
+                    if isinstance(actions, dict):
+                        normalized[role] = normalize_actions(actions)
+                    else:
+                        normalized[role] = actions
+            else:
+                # New form: provider -> action -> role
+                for provider, actions in raw_permissions.items():
+                    if isinstance(actions, dict):
+                        normalized[provider] = normalize_actions(actions)
+                    else:
+                        normalized[provider] = actions
+        else:
+            normalized = {}
+
+        if normalized:
+            validate_permissions(normalized)
+        return normalized or {}
 
     def to_dict(self) -> Dict[str, Any]:
-        """Recursively converts the schema object and its properties to a dictionary."""
+        """Recursively convert this schema object and its properties."""
         data = super().to_dict()
         data["properties"] = {k: v.to_dict() for k, v in self.properties.items()}
         data["relations"] = {k: v.to_dict() for k, v in self.relations.items()}
@@ -238,7 +418,10 @@ class SchemaObject(OpenAPIElement):
 
 
 class PathOperation(OpenAPIElement):
-    """Represents a single operation (method) on a path in the OpenAPI specification."""
+    """
+    Represents a single operation (method) on a path in the OpenAPI
+    specification.
+    """
 
     def __init__(self, path: str, method: str, path_operation: Dict[str, Any]):
         super().__init__()
@@ -259,7 +442,7 @@ class PathOperation(OpenAPIElement):
         return result
 
     def to_dict(self) -> Dict[str, Any]:
-        """Recursively converts the schema object and its properties to a dictionary."""
+        """Recursively convert this path operation and its fields."""
         data = super().to_dict()
         data["inputs"] = {k: v.to_dict() for k, v in self.inputs.items()}
         data["outputs"] = {k: v.to_dict() for k, v in self.outputs.items()}
@@ -270,14 +453,14 @@ class PathOperation(OpenAPIElement):
     ) -> Dict[str, SchemaObjectProperty]:
         properties = {}
         if section == "requestBody":
-            for name, property in (
+            for name, prop_schema in (
                 path_operation.get("requestBody", {}).get("content", {}) or {}
             ).items():
-                properties[name] = SchemaObjectProperty(self.entity, name, property)
+                properties[name] = SchemaObjectProperty(self.entity, name, prop_schema)
         elif section == "parameters":
-            for property in path_operation.get("parameters", {}) or []:
-                properties[property["name"]] = SchemaObjectProperty(
-                    self.entity, property["name"], property
+            for param in path_operation.get("parameters", {}) or []:
+                properties[param["name"]] = SchemaObjectProperty(
+                    self.entity, param["name"], param
                 )
         elif section == "responses":
             responses = path_operation.get("responses", {})
@@ -291,17 +474,63 @@ class PathOperation(OpenAPIElement):
                         .get("items", {})
                         .get("properties", {})
                     )
-                    for name, property in content.items():
+                    for name, out_schema in content.items():
                         properties[name] = SchemaObjectProperty(
-                            self.entity, name, property
+                            self.entity, name, out_schema
                         )
         return properties
 
     def _get_permissions(self, path_operation: dict) -> dict:
-        permissions = path_operation.get("x-af-permissions", {})
-        if permissions:
-            validate_permissions(permissions)
-        return permissions
+        """
+        Extract permissions from a path operation using x-af-permissions
+        only. Also normalizes action names so 'create'/'update' map to
+        'write'.
+        """
+        raw_permissions = path_operation.get("x-af-permissions") or {}
+
+        def normalize_actions(actions: Dict[str, Any]) -> Dict[str, Any]:
+            result: Dict[str, Any] = {}
+            for action, value in actions.items():
+                key = "write" if action in ("create", "update") else action
+                result[key] = value
+            return result
+
+        def is_legacy_role_form(obj: Dict[str, Any]) -> bool:
+            if not isinstance(obj, dict):
+                return False
+            for v in obj.values():
+                if isinstance(v, dict):
+                    for k2, v2 in v.items():
+                        if k2 in {
+                            "read",
+                            "write",
+                            "delete",
+                            "create",
+                            "update",
+                        } and not isinstance(v2, dict):
+                            return True
+            return False
+
+        normalized: Dict[str, Any] = {}
+        if isinstance(raw_permissions, dict):
+            if is_legacy_role_form(raw_permissions):
+                for role, actions in raw_permissions.items():
+                    if isinstance(actions, dict):
+                        normalized[role] = normalize_actions(actions)
+                    else:
+                        normalized[role] = actions
+            else:
+                for provider, actions in raw_permissions.items():
+                    if isinstance(actions, dict):
+                        normalized[provider] = normalize_actions(actions)
+                    else:
+                        normalized[provider] = actions
+        else:
+            normalized = {}
+
+        if normalized:
+            validate_permissions(normalized)
+        return normalized or {}
 
 
 class ModelFactory:
@@ -329,11 +558,15 @@ class ModelFactory:
     ) -> Dict[str, Any]:
         """Merge two dictionaries. The override values take precedence."""
         merged = base.copy()  # Start with base values
-        merged.update(override)  # Override with any values from the second dict
+        # Override with any values from the second dict
+        merged.update(override)
         return merged
 
     def resolve_all_refs(self, spec: Dict[str, Any]) -> Dict[str, Any]:
-        """Recursively resolves all $ref references in an OpenAPI specification."""
+        """
+        Recursively resolve all $ref references in an OpenAPI
+        specification.
+        """
 
         def resolve(obj: Any) -> Any:
             if isinstance(obj, dict):
@@ -375,7 +608,7 @@ class ModelFactory:
 
     def get_config_output(self) -> Dict[str, Any]:
         """Generates and returns the configuration output."""
-        log.info(f"path_operations: {self.path_operations}")
+        log.info("path_operations: %s", self.path_operations)
         return {
             "schema_objects": {
                 name: obj.to_dict() for name, obj in self.schema_objects.items()

@@ -2,8 +2,10 @@
 *.pyc
 dist/
 __pycache__/
-venv
+venv/
+temp/
 build/
+volume/
 coverage.xml
 htmlcov/
 .coverage.*

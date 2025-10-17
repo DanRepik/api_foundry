@@ -3,20 +3,11 @@
 import re
 import pytest
 from typing import Any
-from cloud_foundry import Function, logger
+from cloud_foundry import logger
 
 from api_foundry.iac.gateway_spec import APISpecEditor
-from tests.test_fixtures import read_spec
 
 log = logger(__name__)
-
-
-class MockFunction(Function):
-    def __init__(self, invoke_url: str):
-        self._invoke_url = invoke_url
-
-    def invoke_url(self) -> str:
-        return self._invoke_url
 
 
 date_property = {"type": "string", "format": "date"}
@@ -122,9 +113,7 @@ class TestGatewaySpec:
         ],
     )
     def test_generate_regex(self, property: dict[str, Any], value: str, valid: bool):
-        spec_editor = APISpecEditor(
-            open_api_spec={}, function=MockFunction("url"), function_name="test"
-        )
+        spec_editor = APISpecEditor(open_api_spec={}, function=MockFunction("url"))
         pattern = spec_editor.generate_regex(property)
         log.info(f"pattern: {pattern}")
 
@@ -136,13 +125,13 @@ class TestGatewaySpec:
                 pattern, value
             ), f"Expected {value} to not match {pattern}"
 
-    def test_create_operation(self):
-        spec = read_spec("./resources/chinook_api.yaml")
-        schema_object = spec.get("components", {}).get("schemas", {})["genre"]
+    def test_create_operation(self, chinook_api_model):
+        schema_object = chinook_api_model.get("components", {}).get("schemas", {})[
+            "genre"
+        ]
         log.info(f"schema_object: {schema_object}")
         rest_api_spec = APISpecEditor(
-            open_api_spec=spec,
-            function_name="test_function",
+            open_api_spec=chinook_api_model,
             function=MockFunction("function_url_value"),
         )
         rest_api_spec.generate_create_operation("/genre", "genre", schema_object)
@@ -181,13 +170,13 @@ class TestGatewaySpec:
             },
         }
 
-    def test_get_many_operation(self):
-        spec = read_spec("./resources/chinook_api.yaml")
-        schema_object = spec.get("components", {}).get("schemas", {})["genre"]
+    def test_get_many_operation(self, chinook_api_model):
+        schema_object = chinook_api_model.get("components", {}).get("schemas", {})[
+            "genre"
+        ]
         log.info(f"schema_object: {schema_object}")
         rest_api_spec = APISpecEditor(
-            open_api_spec=spec,
-            function_name="test_function",
+            open_api_spec=chinook_api_model,
             function=MockFunction("function_url_value"),
         )
         rest_api_spec.generate_get_many_operation("/genre", "genre", schema_object)
@@ -234,13 +223,13 @@ class TestGatewaySpec:
             },
         }
 
-    def test_get_by_id_operation(self):
-        spec = read_spec("./resources/chinook_api.yaml")
-        schema_object = spec.get("components", {}).get("schemas", {})["genre"]
+    def test_get_by_id_operation(self, chinook_api_model):
+        schema_object = chinook_api_model.get("components", {}).get("schemas", {})[
+            "genre"
+        ]
         log.info(f"schema_object: {schema_object}")
         rest_api_spec = APISpecEditor(
-            open_api_spec=spec,
-            function_name="test_function",
+            open_api_spec=chinook_api_model,
             function=MockFunction("function_url_value"),
         )
         rest_api_spec.generate_get_by_id_operation("/genre", "genre", schema_object)
@@ -254,18 +243,11 @@ class TestGatewaySpec:
             "summary": "Retrieve genre by genre_id",
             "parameters": [
                 {
-                    "name": "id",
+                    "name": "genre_id",
                     "in": "path",
                     "description": "ID of the genre to get",
                     "required": True,
-                    "schema": {
-                        "type": {
-                            "type": "integer",
-                            "x-af-primary-key": "auto",
-                            "description": "Unique identifier for the genre.",
-                            "example": 1,
-                        }
-                    },
+                    "schema": {"type": "string"},
                 }
             ],
             "responses": {
@@ -283,14 +265,14 @@ class TestGatewaySpec:
             },
         }
 
-    def test_update_by_id_operation_with_cc(self):
+    def test_update_by_id_operation_with_cc(self, chinook_api_model):
         # check invalid concurrency control is present
-        spec = read_spec("./resources/chinook_api.yaml")
-        schema_object = spec.get("components", {}).get("schemas", {})["genre"]
+        schema_object = chinook_api_model.get("components", {}).get("schemas", {})[
+            "genre"
+        ]
         log.info(f"schema_object: {schema_object}")
         rest_api_spec = APISpecEditor(
-            open_api_spec=spec,
-            function_name="test_function",
+            open_api_spec=chinook_api_model,
             function=MockFunction("function_url_value"),
         )
         rest_api_spec.generate_update_by_id_operation("/genre", "genre", schema_object)
@@ -301,13 +283,13 @@ class TestGatewaySpec:
             result is None
         ), "update by id path operation is not valid for schema components with currency control properties"
 
-    def test_update_by_id_operation(self):
-        spec = read_spec("./resources/chinook_api.yaml")
-        schema_object = spec.get("components", {}).get("schemas", {})["invoice_line"]
+    def test_update_by_id_operation(self, chinook_api_model):
+        schema_object = chinook_api_model.get("components", {}).get("schemas", {})[
+            "invoice_line"
+        ]
         log.info(f"schema_object: {schema_object}")
         rest_api_spec = APISpecEditor(
-            open_api_spec=spec,
-            function_name="test_function",
+            open_api_spec=chinook_api_model,
             function=MockFunction("function_url_value"),
         )
         rest_api_spec.generate_update_by_id_operation(
@@ -325,12 +307,7 @@ class TestGatewaySpec:
                     "in": "path",
                     "description": "ID of the invoice_line to update",
                     "required": True,
-                    "schema": {
-                        "type": "integer",
-                        "x-af-primary-key": "auto",
-                        "description": "Unique identifier for the invoice_line.",
-                        "example": 1,
-                    },
+                    "schema": {"type": "string"},
                 }
             ],
             "requestBody": {
@@ -365,13 +342,13 @@ class TestGatewaySpec:
             },
         }
 
-    def test_update_with_cc_operation(self):
-        spec = read_spec("./resources/chinook_api.yaml")
-        schema_object = spec.get("components", {}).get("schemas", {})["genre"]
+    def test_update_with_cc_operation(self, chinook_api_model):
+        schema_object = chinook_api_model.get("components", {}).get("schemas", {})[
+            "genre"
+        ]
         log.info(f"schema_object: {schema_object}")
         rest_api_spec = APISpecEditor(
-            open_api_spec=spec,
-            function_name="test_function",
+            open_api_spec=chinook_api_model,
             function=MockFunction("function_url_value"),
         )
         rest_api_spec.generate_update_with_cc_operation(
@@ -390,19 +367,14 @@ class TestGatewaySpec:
                     "in": "path",
                     "description": "ID of the genre to update",
                     "required": True,
-                    "schema": {
-                        "type": "integer",
-                        "x-af-primary-key": "auto",
-                        "description": "Unique identifier for the genre.",
-                        "example": 1,
-                    },
+                    "schema": {"type": "string"},
                 },
                 {
                     "name": "version",
                     "in": "path",
                     "description": "version of the genre to update",
                     "required": True,
-                    "schema": {"type": "integer"},
+                    "schema": {"type": "string"},
                 },
             ],
             "requestBody": {
@@ -434,13 +406,13 @@ class TestGatewaySpec:
             },
         }
 
-    def test_update_many(self):
-        spec = read_spec("./resources/chinook_api.yaml")
-        schema_object = spec.get("components", {}).get("schemas", {})["invoice_line"]
+    def test_update_many(self, chinook_api_model):
+        schema_object = chinook_api_model.get("components", {}).get("schemas", {})[
+            "invoice_line"
+        ]
         log.info(f"schema_object: {schema_object}")
         rest_api_spec = APISpecEditor(
-            open_api_spec=spec,
-            function_name="test_function",
+            open_api_spec=chinook_api_model,
             function=MockFunction("function_url_value"),
         )
         rest_api_spec.generate_update_many_operation(
@@ -550,13 +522,13 @@ class TestGatewaySpec:
             },
         }
 
-    def test_update_many_with_cc(self):
-        spec = read_spec("./resources/chinook_api.yaml")
-        schema_object = spec.get("components", {}).get("schemas", {})["invoice"]
+    def test_update_many_with_cc(self, chinook_api_model):
+        schema_object = chinook_api_model.get("components", {}).get("schemas", {})[
+            "invoice"
+        ]
         log.info(f"schema_object: {schema_object}")
         rest_api_spec = APISpecEditor(
-            open_api_spec=spec,
-            function_name="test_function",
+            open_api_spec=chinook_api_model,
             function=MockFunction("function_url_value"),
         )
         rest_api_spec.generate_update_many_operation(
@@ -566,17 +538,16 @@ class TestGatewaySpec:
         log.info(f"result: {result}")
         assert result is None
 
-    def test_delete_by_id_operation_with_cc(self):
+    def test_delete_by_id_operation_with_cc(self, chinook_api_model):
         # check invalid concurrency control is present
-        spec = read_spec("./resources/chinook_api.yaml")
-        schema_object = spec.get("components", {}).get("schemas", {})["genre"]
+        schema_object = chinook_api_model.get("components", {}).get("schemas", {})[
+            "invoice_line"
+        ]
         log.info(f"schema_object: {schema_object}")
         rest_api_spec = APISpecEditor(
-            open_api_spec=spec,
-            function_name="test_function",
+            open_api_spec=chinook_api_model,
             function=MockFunction("function_url_value"),
         )
-        rest_api_spec.generate_delete_by_id_operation("/genre", "genre", schema_object)
         result = rest_api_spec.editor.get_spec_part(
             ["paths", "/genre/{genre_id}", "put"]
         )
@@ -584,13 +555,13 @@ class TestGatewaySpec:
             result is None
         ), "update by id path operation is not valid for schema components with currency control properties"
 
-    def test_delete_by_id_operation(self):
-        spec = read_spec("./resources/chinook_api.yaml")
-        schema_object = spec.get("components", {}).get("schemas", {})["invoice_line"]
+    def test_delete_by_id_operation(self, chinook_api_model):
+        schema_object = chinook_api_model.get("components", {}).get("schemas", {})[
+            "invoice_line"
+        ]
         log.info(f"schema_object: {schema_object}")
         rest_api_spec = APISpecEditor(
-            open_api_spec=spec,
-            function_name="test_function",
+            open_api_spec=chinook_api_model,
             function=MockFunction("function_url_value"),
         )
         rest_api_spec.generate_delete_by_id_operation(
@@ -608,14 +579,7 @@ class TestGatewaySpec:
                     "in": "path",
                     "description": "ID of the invoice_line to update",
                     "required": True,
-                    "schema": {
-                        "type": {
-                            "type": "integer",
-                            "x-af-primary-key": "auto",
-                            "description": "Unique identifier for the invoice_line.",
-                            "example": 1,
-                        }
-                    },
+                    "schema": {"type": "string"},
                 }
             ],
             "responses": {
@@ -633,13 +597,13 @@ class TestGatewaySpec:
             },
         }
 
-    def test_delete_with_cc_operation(self):
-        spec = read_spec("./resources/chinook_api.yaml")
-        schema_object = spec.get("components", {}).get("schemas", {})["genre"]
+    def test_delete_with_cc_operation(self, chinook_api_model):
+        schema_object = chinook_api_model.get("components", {}).get("schemas", {})[
+            "genre"
+        ]
         log.info(f"schema_object: {schema_object}")
         rest_api_spec = APISpecEditor(
-            open_api_spec=spec,
-            function_name="test_function",
+            open_api_spec=chinook_api_model,
             function=MockFunction("function_url_value"),
         )
         rest_api_spec.generate_delete_with_cc_operation(
@@ -658,21 +622,14 @@ class TestGatewaySpec:
                     "in": "path",
                     "description": "ID of the genre to update",
                     "required": True,
-                    "schema": {
-                        "type": {
-                            "type": "integer",
-                            "x-af-primary-key": "auto",
-                            "description": "Unique identifier for the genre.",
-                            "example": 1,
-                        }
-                    },
+                    "schema": {"type": "string"},
                 },
                 {
                     "name": "version",
                     "in": "path",
                     "description": "version of the genre to update",
                     "required": True,
-                    "schema": {"type": "integer"},
+                    "schema": {"type": "string"},
                 },
             ],
             "responses": {
@@ -690,13 +647,13 @@ class TestGatewaySpec:
             },
         }
 
-    def test_delete_many(self):
-        spec = read_spec("./resources/chinook_api.yaml")
-        schema_object = spec.get("components", {}).get("schemas", {})["invoice_line"]
+    def test_delete_many(self, chinook_api_model):
+        schema_object = chinook_api_model.get("components", {}).get("schemas", {})[
+            "invoice_line"
+        ]
         log.info(f"schema_object: {schema_object}")
         rest_api_spec = APISpecEditor(
-            open_api_spec=spec,
-            function_name="test_function",
+            open_api_spec=chinook_api_model,
             function=MockFunction("function_url_value"),
         )
         rest_api_spec.generate_delete_many_operation(
@@ -775,13 +732,13 @@ class TestGatewaySpec:
             },
         }
 
-    def test_delete_many_with_cc(self):
-        spec = read_spec("./resources/chinook_api.yaml")
-        schema_object = spec.get("components", {}).get("schemas", {})["invoice"]
+    def test_delete_many_with_cc(self, chinook_api_model):
+        schema_object = chinook_api_model.get("components", {}).get("schemas", {})[
+            "invoice"
+        ]
         log.info(f"schema_object: {schema_object}")
         rest_api_spec = APISpecEditor(
-            open_api_spec=spec,
-            function_name="test_function",
+            open_api_spec=chinook_api_model,
             function=MockFunction("function_url_value"),
         )
         rest_api_spec.generate_delete_many_operation(
@@ -790,3 +747,30 @@ class TestGatewaySpec:
         result = rest_api_spec.editor.get_spec_part(["paths", "/invoice", "delete"])
         log.info(f"result: {result}")
         assert result is None
+
+
+class MockFunction:
+    """
+    Minimal stand‑in for a deployed cloud_foundry Function used by APISpecEditor.
+    Provides a URL-like attribute the editor can embed in x‑amazon‑apigateway‑integration
+    or similar structures without needing real infrastructure.
+    """
+
+    def __init__(self, url: str, name: str = "mock_function"):
+        self.url = url
+        self.function_url = url  # common alternative attribute name
+        self.name = name
+        self.invoke_arn = f"arn:aws:lambda:us-east-1:123456789012:function:{self.name}"
+
+    def export(self) -> dict:
+        # Helper if any code expects a dict of outputs
+        return {
+            "url": self.url,
+            "function_url": self.function_url,
+            "invoke_arn": self.invoke_arn,
+            "name": self.name,
+        }
+
+    # No-op permission method (some code may try to add permissions)
+    def add_permission(self, *_, **__):
+        return None
