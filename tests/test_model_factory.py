@@ -378,7 +378,7 @@ def test_path_operation_parsing():
 
 
 @pytest.mark.unit
-def test_permissions_legacy_and_action_normalization():
+def test_permissions_provider_format_and_action_normalization():
     spec = yaml.safe_load(
         """
 components:
@@ -393,24 +393,27 @@ components:
                 name:
                     type: string
             x-af-permissions:
-                sales_reader:
-                    read: "^(id|name)$"
-                sales_manager:
-                    create: ".*"
-                    update: ".*"
-                    delete: true
+                default:
+                    read:
+                        sales_reader: "^(id|name)$"
+                    create:
+                        sales_manager: ".*"
+                    update:
+                        sales_manager: ".*"
+                    delete:
+                        sales_manager: true
 """
     )
 
     mf = ModelFactory(spec)
     out = mf.get_config_output()
     perms = out["schema_objects"]["Person"]["permissions"]
-    assert perms["sales_reader"]["read"] == "^(id|name)$"
+    assert perms["default"]["read"]["sales_reader"] == "^(id|name)$"
     # create/update normalized to write
-    assert perms["sales_manager"]["write"] == ".*"
-    assert "create" not in perms["sales_manager"]
-    assert "update" not in perms["sales_manager"]
-    assert perms["sales_manager"]["delete"] is True
+    assert perms["default"]["write"]["sales_manager"] == ".*"
+    assert "create" not in perms["default"]
+    assert "update" not in perms["default"]
+    assert perms["default"]["delete"]["sales_manager"] is True
 
 
 @pytest.mark.unit

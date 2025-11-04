@@ -43,15 +43,16 @@ path_operations:
                 column_type: integer
                 required: false
         permissions:
-            sales_associate:
-                read: .*
-                write: .*
-            sales_manager:
-                delete: true
-                read: .*
-                write: .*
-            sales_reader:
-                read: .*
+            default:
+                delete:
+                    sales_manager: true
+                read:
+                    sales_associate: .*
+                    sales_manager: .*
+                    sales_reader: .*
+                write:
+                    sales_associate: .*
+                    sales_manager: .*
         sql: "SELECT\n    a.album_id as album_id,\n    a.title AS album_title,\n \
             \   COUNT(il.invoice_line_id) AS total_sold\nFROM\n    invoice_line il\n\
             JOIN invoice i ON\n    il.invoice_id = i.invoice_id\nJOIN\n    track t\
@@ -113,15 +114,20 @@ schema_objects:
         api_name: album
         database: chinook
         permissions:
-            sales_associate:
-                read: .*
-                write: .*
-            sales_manager:
-                delete: true
-                read: .*
-                write: .*
-            sales_reader:
-                read: .*
+            default:
+                delete:
+                    sales_manager: true
+                read:
+                    sales_associate:
+                        properties: album_id|title|artist_id
+                        where: album_id <= 50
+                    sales_manager: .*
+                    sales_reader: album_id|title
+                write:
+                    sales_associate:
+                        properties: title
+                        where: album_id <= 50
+                    sales_manager: .*
         primary_key: album_id
         properties:
             album_id:
@@ -161,15 +167,16 @@ schema_objects:
         api_name: artist
         database: chinook
         permissions:
-            sales_associate:
-                read: .*
-                write: .*
-            sales_manager:
-                delete: true
-                read: .*
-                write: .*
-            sales_reader:
-                read: .*
+            default:
+                delete:
+                    sales_manager: true
+                read:
+                    sales_associate: .*
+                    sales_manager: .*
+                    sales_reader: .*
+                write:
+                    sales_associate: .*
+                    sales_manager: .*
         primary_key: artist_id
         properties:
             artist_id:

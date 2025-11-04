@@ -149,6 +149,7 @@ class APIFoundry(ComponentResource):
         vpc_config = vpc_config or config_defaults.get("vpc_config", {})
 
         env_vars["SECRETS"] = secrets
+        requirements = []
 
         # Grant read access to referenced secrets (single broad stmt)
         if json.loads(secrets):
@@ -160,6 +161,12 @@ class APIFoundry(ComponentResource):
                 }
             )
 
+            requirements.extend(
+                ["psycopg2-binary", "pyyaml", "../api_foundry_query_engine"]
+            )
+        if env_vars.get("JWKS_HOST"):
+            requirements.extend(["PyJWT", "cryptography", "requests"])
+
         self.api_function = cloud_foundry.python_function(
             name=name,
             environment=env_vars,
@@ -169,11 +176,7 @@ class APIFoundry(ComponentResource):
                     ModelFactory(api_spec_dict).get_config_output()
                 ),
             },
-            requirements=[
-                "psycopg2-binary",
-                "pyyaml",
-                "api_foundry_query_engine",
-            ],
+            requirements=requirements,
             policy_statements=policy_statements,
             vpc_config=vpc_config,
         )

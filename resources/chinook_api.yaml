@@ -76,15 +76,16 @@ paths:
             total_sold DESC
         LIMIT :limit
       x-af-permissions:
-        sales_reader:
-            read: .*
-        sales_associate:
-          read: .*
-          write: .*
-        sales_manager:
-          read: .*
-          write: .*
-          delete: true
+        default:
+          read:
+            sales_reader: ".*"
+            sales_associate: ".*"
+            sales_manager: ".*"
+          write:
+            sales_associate: ".*"
+            sales_manager: ".*"
+          delete:
+            sales_manager: true
 
   /top_selling_albums_rename:
     get:
@@ -183,15 +184,16 @@ components:
       - artist_id
       x-af-database: chinook
       x-af-permissions:
-        sales_reader:
-            read: .*
-        sales_associate:
-          read: .*
-          write: .*
-        sales_manager:
-          read: .*
-          write: .*
-          delete: true
+        default:
+          read:
+            sales_reader: ".*"
+            sales_associate: ".*"
+            sales_manager: ".*"
+          write:
+            sales_associate: ".*"
+            sales_manager: ".*"
+          delete:
+            sales_manager: true
     album:
       type: object
       properties:
@@ -221,17 +223,20 @@ components:
       - artist_id
       x-af-database: chinook
       x-af-permissions:
-        sales_reader:
-            read: "album_id|title"
-        sales_associate:
-          where: "album_id <= 50"  # Role-level: applies to all operations
-          read: "album_id|title|artist_id"  # Concise format
+        default:
+          read:
+            sales_reader: "album_id|title"
+            sales_associate:
+              properties: "album_id|title|artist_id"
+              where: "album_id <= 50"
+            sales_manager: ".*"
           write:
-            properties: "title"  # Verbose format for comparison
-        sales_manager:
-          read: ".*"
-          write: ".*"
-          delete: true
+            sales_associate:
+              properties: "title"
+              where: "album_id <= 50"
+            sales_manager: ".*"
+          delete:
+            sales_manager: true
     employee:
       type: object
       properties:

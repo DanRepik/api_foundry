@@ -355,6 +355,7 @@ class SchemaObject(OpenAPIElement):
     def _get_permissions(self, schema_object: dict) -> dict:
         """Extract permissions from schema using x-af-permissions only.
 
+        Expects provider -> action -> role -> rule format.
         Also normalizes action names so 'create'/'update' map to 'write'.
         """
         raw_permissions = schema_object.get("x-af-permissions") or {}
@@ -366,42 +367,14 @@ class SchemaObject(OpenAPIElement):
                 result[key] = value
             return result
 
-        def is_legacy_role_form(obj: Dict[str, Any]) -> bool:
-            # Legacy: role -> { action: rule }
-            if not isinstance(obj, dict):
-                return False
-            for v in obj.values():
-                if isinstance(v, dict):
-                    # Any dict that looks like action->rule (value not dict)
-                    for k2, v2 in v.items():
-                        if k2 in {
-                            "read",
-                            "write",
-                            "delete",
-                            "create",
-                            "update",
-                        } and not isinstance(v2, dict):
-                            return True
-            return False
-
         normalized: Dict[str, Any] = {}
         if isinstance(raw_permissions, dict):
-            if is_legacy_role_form(raw_permissions):
-                # Keep legacy shape, just normalize action names
-                for role, actions in raw_permissions.items():
-                    if isinstance(actions, dict):
-                        normalized[role] = normalize_actions(actions)
-                    else:
-                        normalized[role] = actions
-            else:
-                # New form: provider -> action -> role
-                for provider, actions in raw_permissions.items():
-                    if isinstance(actions, dict):
-                        normalized[provider] = normalize_actions(actions)
-                    else:
-                        normalized[provider] = actions
-        else:
-            normalized = {}
+            # Expected format: provider -> action -> role -> rule
+            for provider, actions in raw_permissions.items():
+                if isinstance(actions, dict):
+                    normalized[provider] = normalize_actions(actions)
+                else:
+                    normalized[provider] = actions
 
         if normalized:
             validate_permissions(normalized)
@@ -483,8 +456,8 @@ class PathOperation(OpenAPIElement):
     def _get_permissions(self, path_operation: dict) -> dict:
         """
         Extract permissions from a path operation using x-af-permissions
-        only. Also normalizes action names so 'create'/'update' map to
-        'write'.
+        only. Expects provider -> action -> role -> rule format.
+        Also normalizes action names so 'create'/'update' map to 'write'.
         """
         raw_permissions = path_operation.get("x-af-permissions") or {}
 
@@ -495,38 +468,14 @@ class PathOperation(OpenAPIElement):
                 result[key] = value
             return result
 
-        def is_legacy_role_form(obj: Dict[str, Any]) -> bool:
-            if not isinstance(obj, dict):
-                return False
-            for v in obj.values():
-                if isinstance(v, dict):
-                    for k2, v2 in v.items():
-                        if k2 in {
-                            "read",
-                            "write",
-                            "delete",
-                            "create",
-                            "update",
-                        } and not isinstance(v2, dict):
-                            return True
-            return False
-
         normalized: Dict[str, Any] = {}
         if isinstance(raw_permissions, dict):
-            if is_legacy_role_form(raw_permissions):
-                for role, actions in raw_permissions.items():
-                    if isinstance(actions, dict):
-                        normalized[role] = normalize_actions(actions)
-                    else:
-                        normalized[role] = actions
-            else:
-                for provider, actions in raw_permissions.items():
-                    if isinstance(actions, dict):
-                        normalized[provider] = normalize_actions(actions)
-                    else:
-                        normalized[provider] = actions
-        else:
-            normalized = {}
+            # Expected format: provider -> action -> role -> rule
+            for provider, actions in raw_permissions.items():
+                if isinstance(actions, dict):
+                    normalized[provider] = normalize_actions(actions)
+                else:
+                    normalized[provider] = actions
 
         if normalized:
             validate_permissions(normalized)
