@@ -113,6 +113,23 @@ schema_objects:
     album:
         api_name: album
         database: chinook
+        inject_properties:
+            created_at:
+                inject_on: &id001
+                - create
+                inject_value: timestamp
+            created_by:
+                inject_on: &id002
+                - create
+                inject_value: claim:sub
+            updated_at:
+                inject_on: &id003
+                - update
+                inject_value: timestamp
+            updated_by:
+                inject_on: &id004
+                - update
+                inject_value: claim:sub
         permissions:
             default:
                 delete:
@@ -143,12 +160,44 @@ schema_objects:
                 column_name: artist_id
                 column_type: integer
                 required: false
+            created_at:
+                api_name: created_at
+                api_type: date-time
+                column_name: created_at
+                column_type: string
+                inject_on: *id001
+                inject_value: timestamp
+                required: false
+            created_by:
+                api_name: created_by
+                api_type: string
+                column_name: created_by
+                column_type: string
+                inject_on: *id002
+                inject_value: claim:sub
+                required: false
             title:
                 api_name: title
                 api_type: string
                 column_name: title
                 column_type: string
                 max_length: 160
+                required: false
+            updated_at:
+                api_name: updated_at
+                api_type: date-time
+                column_name: updated_at
+                column_type: string
+                inject_on: *id003
+                inject_value: timestamp
+                required: false
+            updated_by:
+                api_name: updated_by
+                api_type: string
+                column_name: updated_by
+                column_type: string
+                inject_on: *id004
+                inject_value: claim:sub
                 required: false
         relations:
             artist:
@@ -166,6 +215,7 @@ schema_objects:
     artist:
         api_name: artist
         database: chinook
+        inject_properties: {}
         permissions:
             default:
                 delete:
@@ -205,6 +255,7 @@ schema_objects:
         api_name: customer
         concurrency_property: version_stamp
         database: chinook
+        inject_properties: {}
         permissions: {}
         primary_key: customer_id
         properties:
@@ -315,6 +366,7 @@ schema_objects:
     employee:
         api_name: employee
         database: chinook
+        inject_properties: {}
         permissions: {}
         primary_key: employee_id
         properties:
@@ -426,6 +478,7 @@ schema_objects:
         api_name: genre
         concurrency_property: version
         database: chinook
+        inject_properties: {}
         permissions: {}
         primary_key: genre_id
         properties:
@@ -461,6 +514,7 @@ schema_objects:
         api_name: invoice
         concurrency_property: last_updated
         database: chinook
+        inject_properties: {}
         permissions: {}
         primary_key: invoice_id
         properties:
@@ -546,6 +600,7 @@ schema_objects:
     invoice_line:
         api_name: invoice_line
         database: chinook
+        inject_properties: {}
         permissions: {}
         primary_key: invoice_line_id
         properties:
@@ -595,6 +650,7 @@ schema_objects:
     media_type:
         api_name: media_type
         database: chinook
+        inject_properties: {}
         permissions: {}
         primary_key: media_type_id
         properties:
@@ -623,6 +679,7 @@ schema_objects:
     playlist:
         api_name: playlist
         database: chinook
+        inject_properties: {}
         permissions: {}
         primary_key: playlist_id
         properties:
@@ -651,6 +708,7 @@ schema_objects:
     playlist_track:
         api_name: playlist_track
         database: chinook
+        inject_properties: {}
         permissions: {}
         primary_key: playlist_id
         properties:
@@ -682,6 +740,7 @@ schema_objects:
     track:
         api_name: track
         database: chinook
+        inject_properties: {}
         permissions: {}
         primary_key: track_id
         properties:

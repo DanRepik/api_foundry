@@ -124,11 +124,16 @@ class SchemaObjectProperty(OpenAPIElement):
         self.key_type = None
         self.sequence_name = None
         self.concurrency_control = self._concurrency_control(schema_name, prop)
+        # Value injection attributes
+        self.inject_value = prop.get("x-af-inject-value", None)
+        self.inject_on = self._parse_inject_on(name, prop) or None
         # For embedded objects/arrays
         self.sub_properties: Optional[Dict[str, SchemaObjectProperty]] = None
         self.items_sub_properties: Optional[Dict[str, SchemaObjectProperty]] = None
 
-    def _concurrency_control(self, schema_name: str, prop_dict: dict) -> Optional[str]:
+    def _concurrency_control(
+        self, schema_name: str, prop_dict: dict
+    ) -> Optional[str]:
         concurrency_control = prop_dict.get("x-af-concurrency-control", None)
         if concurrency_control:
             concurrency_control = concurrency_control.lower()
@@ -142,6 +147,49 @@ class SchemaObjectProperty(OpenAPIElement):
                 + f"property '{self.api_name}'"
             )
         return concurrency_control
+
+    def _parse_inject_on(
+        self, property_name: str, prop_dict: dict
+    ) -> list[str]:
+        """
+        Parse x-af-inject-on attribute or infer default behavior based on
+        property name and x-af-inject-value presence.
+        """
+        inject_value = prop_dict.get("x-af-inject-value")
+        if not inject_value:
+            return []
+
+        # Explicit configuration takes precedence
+        if "x-af-inject-on" in prop_dict:
+            inject_on = prop_dict["x-af-inject-on"]
+            if isinstance(inject_on, list):
+                return inject_on
+            return [inject_on]
+
+        # Infer from property name patterns
+        # Properties starting with "created" default to create-only
+        if property_name.startswith("created_"):
+            return ["create"]
+
+        # Properties starting with "updated" default to update-only
+        if property_name.startswith("updated_"):
+            return ["update"]
+
+        # Properties ending with "_by" or "_at" default to create-only
+        if property_name.endswith(("_by", "_at")):
+            return ["create"]
+
+        # Tenant/owner fields default to create-only (immutable)
+        if property_name in [
+            "tenant_id",
+            "owner_id",
+            "organization_id",
+            "workspace_id",
+        ]:
+            return ["create"]
+
+        # Default: inject only on create for safety
+        return ["create"]
 
 
 class SchemaObjectKey(SchemaObjectProperty):
@@ -206,6 +254,7 @@ class SchemaObject(OpenAPIElement):
         self.relations = self._resolve_relations(schema_object)
         self.concurrency_property = self._get_concurrency_property(schema_object)
         self.permissions = self._get_permissions(schema_object)
+        self.inject_properties = self._get_inject_properties()
 
     def _get_table_name(self, schema_object: dict) -> str:
         schema = schema_object.get("x-af-schema")
@@ -379,6 +428,21 @@ class SchemaObject(OpenAPIElement):
         if normalized:
             validate_permissions(normalized)
         return normalized or {}
+
+    def _get_inject_properties(self) -> dict:
+        """
+        Collect all properties that have injection attributes.
+        
+        Returns a dictionary mapping property names to their injection metadata.
+        """
+        inject_props = {}
+        for prop_name, prop in self.properties.items():
+            if hasattr(prop, 'inject_value') and prop.inject_value:
+                inject_props[prop_name] = {
+                    'inject_value': prop.inject_value,
+                    'inject_on': getattr(prop, 'inject_on', ['create'])
+                }
+        return inject_props
 
     def to_dict(self) -> Dict[str, Any]:
         """Recursively convert this schema object and its properties."""

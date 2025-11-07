@@ -211,6 +211,28 @@ components:
           $ref: '#/components/schemas/artist'
           x-af-parent-property: artist_id
           description: Artist associated with the album.
+        created_by:
+          type: string
+          description: User who created this album (auto-populated)
+          x-af-inject-value: "claim:sub"
+          x-af-inject-on: ["create"]
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when album was created (auto-populated)
+          x-af-inject-value: "timestamp"
+          x-af-inject-on: ["create"]
+        updated_by:
+          type: string
+          description: User who last updated this album (auto-populated)
+          x-af-inject-value: "claim:sub"
+          x-af-inject-on: ["update"]
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp of last update (auto-populated)
+          x-af-inject-value: "timestamp"
+          x-af-inject-on: ["update"]
         track_items:
           type: array
           items:

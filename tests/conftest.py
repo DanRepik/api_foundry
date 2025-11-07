@@ -4,7 +4,12 @@ import os
 from pathlib import Path
 
 import pytest
-import psycopg2
+
+try:
+    import psycopg2
+except ImportError:
+    psycopg2 = None
+
 import pulumi
 import pulumi_aws as aws
 import yaml
@@ -81,6 +86,9 @@ def chinook_db(postgres):  # noqa F811
     chinook_sql = project_root / "tests" / "Chinook_Postgres.sql"
 
     assert chinook_sql.exists(), f"Missing {chinook_sql}"
+    
+    if psycopg2 is None:
+        pytest.skip("psycopg2 not installed, skipping database test")
 
     # Connect and load schemas
     dsn = f"postgresql://{postgres['username']}:{postgres['password']}@localhost:{postgres['host_port']}/{postgres['database']}"  # noqa E501

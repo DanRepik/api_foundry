@@ -62,6 +62,7 @@ def test_set_spec():
                 "primary_key": "id",
                 "relations": {},
                 "permissions": {},
+                "inject_properties": {},
             }
         },
         "path_operations": {},
@@ -268,6 +269,7 @@ components:
                     }
                 },
                 "permissions": {},
+                "inject_properties": {},
             },
             "album": {
                 "api_name": "album",
@@ -308,6 +310,7 @@ components:
                     }
                 },
                 "permissions": {},
+                "inject_properties": {},
             },
         },
         "path_operations": {},
