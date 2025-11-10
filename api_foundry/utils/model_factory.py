@@ -124,6 +124,11 @@ class SchemaObjectProperty(OpenAPIElement):
         self.key_type = None
         self.sequence_name = None
         self.concurrency_control = self._concurrency_control(schema_name, prop)
+        # Value injection attributes
+        self.inject_value = prop.get("x-af-inject-value", None)
+        self.inject_on = self._parse_inject_on(name, prop) or None
+        # Soft delete configuration
+        self.soft_delete = self._parse_soft_delete(schema_name, name, prop)
         # For embedded objects/arrays
         self.sub_properties: Optional[Dict[str, SchemaObjectProperty]] = None
         self.items_sub_properties: Optional[Dict[str, SchemaObjectProperty]] = None
@@ -142,6 +147,121 @@ class SchemaObjectProperty(OpenAPIElement):
                 + f"property '{self.api_name}'"
             )
         return concurrency_control
+
+    def _parse_inject_on(self, property_name: str, prop_dict: dict) -> list[str]:
+        """
+        Parse x-af-inject-on attribute or infer default behavior based on
+        property name and x-af-inject-value presence.
+        """
+        inject_value = prop_dict.get("x-af-inject-value")
+        if not inject_value:
+            return []
+
+        # Explicit configuration takes precedence
+        if "x-af-inject-on" in prop_dict:
+            inject_on = prop_dict["x-af-inject-on"]
+            if isinstance(inject_on, list):
+                return inject_on
+            return [inject_on]
+
+        # Infer from property name patterns
+        # Properties starting with "created" default to create-only
+        if property_name.startswith("created_"):
+            return ["create"]
+
+        # Properties starting with "updated" default to update-only
+        if property_name.startswith("updated_"):
+            return ["update"]
+
+        # Properties ending with "_by" or "_at" default to create-only
+        if property_name.endswith(("_by", "_at")):
+            return ["create"]
+
+        # Tenant/owner fields default to create-only (immutable)
+        if property_name in [
+            "tenant_id",
+            "owner_id",
+            "organization_id",
+            "workspace_id",
+        ]:
+            return ["create"]
+
+        # Default: inject only on create for safety
+        return ["create"]
+
+    def _parse_soft_delete(
+        self, schema_name: str, property_name: str, prop_dict: dict
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Parse x-af-soft-delete attribute with validation.
+        """
+        soft_delete_config = prop_dict.get("x-af-soft-delete")
+        if not soft_delete_config:
+            return None
+
+        if not isinstance(soft_delete_config, dict):
+            raise ApplicationException(
+                500,
+                f"Invalid x-af-soft-delete configuration for property "
+                f"'{property_name}' in schema '{schema_name}'. "
+                f"Must be an object with strategy and configuration.",
+            )
+
+        strategy = soft_delete_config.get("strategy")
+        if not strategy:
+            raise ApplicationException(
+                500,
+                f"Missing 'strategy' in x-af-soft-delete configuration "
+                f"for property '{property_name}' in schema '{schema_name}'.",
+            )
+
+        valid_strategies = [
+            "null_check",
+            "boolean_flag",
+            "exclude_values",
+            "audit_field",
+        ]
+        if strategy not in valid_strategies:
+            raise ApplicationException(
+                500,
+                f"Invalid soft delete strategy '{strategy}' for property "
+                f"'{property_name}' in schema '{schema_name}'. "
+                f"Valid strategies are: {', '.join(valid_strategies)}",
+            )
+
+        # Validate strategy-specific configuration
+        if strategy == "boolean_flag":
+            active_value = soft_delete_config.get("active_value", True)
+            if not isinstance(active_value, bool):
+                raise ApplicationException(
+                    500,
+                    f"Property '{property_name}' in schema '{schema_name}' "
+                    f"uses boolean_flag strategy but active_value is not "
+                    f"boolean.",
+                )
+
+        elif strategy == "exclude_values":
+            values = soft_delete_config.get("values", [])
+            if not isinstance(values, list) or not values:
+                raise ApplicationException(
+                    500,
+                    f"Property '{property_name}' in schema '{schema_name}' "
+                    f"uses exclude_values strategy but 'values' is not a "
+                    f"non-empty list.",
+                )
+
+        elif strategy == "audit_field":
+            action = soft_delete_config.get("action")
+            valid_actions = ["delete", "restore", "restore_timestamp"]
+            if action not in valid_actions:
+                raise ApplicationException(
+                    500,
+                    f"Property '{property_name}' in schema '{schema_name}' "
+                    f"uses audit_field strategy but action '{action}' is not "
+                    f"valid. Valid actions are: {', '.join(valid_actions)}",
+                )
+
+        return soft_delete_config
 
 
 class SchemaObjectKey(SchemaObjectProperty):
@@ -206,6 +326,7 @@ class SchemaObject(OpenAPIElement):
         self.relations = self._resolve_relations(schema_object)
         self.concurrency_property = self._get_concurrency_property(schema_object)
         self.permissions = self._get_permissions(schema_object)
+        self.inject_properties = self._get_inject_properties()
 
     def _get_table_name(self, schema_object: dict) -> str:
         schema = schema_object.get("x-af-schema")
@@ -355,6 +476,7 @@ class SchemaObject(OpenAPIElement):
     def _get_permissions(self, schema_object: dict) -> dict:
         """Extract permissions from schema using x-af-permissions only.
 
+        Expects provider -> action -> role -> rule format.
         Also normalizes action names so 'create'/'update' map to 'write'.
         """
         raw_permissions = schema_object.get("x-af-permissions") or {}
@@ -366,46 +488,33 @@ class SchemaObject(OpenAPIElement):
                 result[key] = value
             return result
 
-        def is_legacy_role_form(obj: Dict[str, Any]) -> bool:
-            # Legacy: role -> { action: rule }
-            if not isinstance(obj, dict):
-                return False
-            for v in obj.values():
-                if isinstance(v, dict):
-                    # Any dict that looks like action->rule (value not dict)
-                    for k2, v2 in v.items():
-                        if k2 in {
-                            "read",
-                            "write",
-                            "delete",
-                            "create",
-                            "update",
-                        } and not isinstance(v2, dict):
-                            return True
-            return False
-
         normalized: Dict[str, Any] = {}
         if isinstance(raw_permissions, dict):
-            if is_legacy_role_form(raw_permissions):
-                # Keep legacy shape, just normalize action names
-                for role, actions in raw_permissions.items():
-                    if isinstance(actions, dict):
-                        normalized[role] = normalize_actions(actions)
-                    else:
-                        normalized[role] = actions
-            else:
-                # New form: provider -> action -> role
-                for provider, actions in raw_permissions.items():
-                    if isinstance(actions, dict):
-                        normalized[provider] = normalize_actions(actions)
-                    else:
-                        normalized[provider] = actions
-        else:
-            normalized = {}
+            # Expected format: provider -> action -> role -> rule
+            for provider, actions in raw_permissions.items():
+                if isinstance(actions, dict):
+                    normalized[provider] = normalize_actions(actions)
+                else:
+                    normalized[provider] = actions
 
         if normalized:
             validate_permissions(normalized)
         return normalized or {}
+
+    def _get_inject_properties(self) -> dict:
+        """
+        Collect all properties that have injection attributes.
+
+        Returns a dictionary mapping property names to their injection metadata.
+        """
+        inject_props = {}
+        for prop_name, prop in self.properties.items():
+            if hasattr(prop, "inject_value") and prop.inject_value:
+                inject_props[prop_name] = {
+                    "inject_value": prop.inject_value,
+                    "inject_on": getattr(prop, "inject_on", ["create"]),
+                }
+        return inject_props
 
     def to_dict(self) -> Dict[str, Any]:
         """Recursively convert this schema object and its properties."""
@@ -483,8 +592,8 @@ class PathOperation(OpenAPIElement):
     def _get_permissions(self, path_operation: dict) -> dict:
         """
         Extract permissions from a path operation using x-af-permissions
-        only. Also normalizes action names so 'create'/'update' map to
-        'write'.
+        only. Expects provider -> action -> role -> rule format.
+        Also normalizes action names so 'create'/'update' map to 'write'.
         """
         raw_permissions = path_operation.get("x-af-permissions") or {}
 
@@ -495,38 +604,14 @@ class PathOperation(OpenAPIElement):
                 result[key] = value
             return result
 
-        def is_legacy_role_form(obj: Dict[str, Any]) -> bool:
-            if not isinstance(obj, dict):
-                return False
-            for v in obj.values():
-                if isinstance(v, dict):
-                    for k2, v2 in v.items():
-                        if k2 in {
-                            "read",
-                            "write",
-                            "delete",
-                            "create",
-                            "update",
-                        } and not isinstance(v2, dict):
-                            return True
-            return False
-
         normalized: Dict[str, Any] = {}
         if isinstance(raw_permissions, dict):
-            if is_legacy_role_form(raw_permissions):
-                for role, actions in raw_permissions.items():
-                    if isinstance(actions, dict):
-                        normalized[role] = normalize_actions(actions)
-                    else:
-                        normalized[role] = actions
-            else:
-                for provider, actions in raw_permissions.items():
-                    if isinstance(actions, dict):
-                        normalized[provider] = normalize_actions(actions)
-                    else:
-                        normalized[provider] = actions
-        else:
-            normalized = {}
+            # Expected format: provider -> action -> role -> rule
+            for provider, actions in raw_permissions.items():
+                if isinstance(actions, dict):
+                    normalized[provider] = normalize_actions(actions)
+                else:
+                    normalized[provider] = actions
 
         if normalized:
             validate_permissions(normalized)

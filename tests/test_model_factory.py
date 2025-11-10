@@ -62,6 +62,7 @@ def test_set_spec():
                 "primary_key": "id",
                 "relations": {},
                 "permissions": {},
+                "inject_properties": {},
             }
         },
         "path_operations": {},
@@ -268,6 +269,7 @@ components:
                     }
                 },
                 "permissions": {},
+                "inject_properties": {},
             },
             "album": {
                 "api_name": "album",
@@ -308,6 +310,7 @@ components:
                     }
                 },
                 "permissions": {},
+                "inject_properties": {},
             },
         },
         "path_operations": {},
@@ -378,7 +381,7 @@ def test_path_operation_parsing():
 
 
 @pytest.mark.unit
-def test_permissions_legacy_and_action_normalization():
+def test_permissions_provider_format_and_action_normalization():
     spec = yaml.safe_load(
         """
 components:
@@ -393,24 +396,27 @@ components:
                 name:
                     type: string
             x-af-permissions:
-                sales_reader:
-                    read: "^(id|name)$"
-                sales_manager:
-                    create: ".*"
-                    update: ".*"
-                    delete: true
+                default:
+                    read:
+                        sales_reader: "^(id|name)$"
+                    create:
+                        sales_manager: ".*"
+                    update:
+                        sales_manager: ".*"
+                    delete:
+                        sales_manager: true
 """
     )
 
     mf = ModelFactory(spec)
     out = mf.get_config_output()
     perms = out["schema_objects"]["Person"]["permissions"]
-    assert perms["sales_reader"]["read"] == "^(id|name)$"
+    assert perms["default"]["read"]["sales_reader"] == "^(id|name)$"
     # create/update normalized to write
-    assert perms["sales_manager"]["write"] == ".*"
-    assert "create" not in perms["sales_manager"]
-    assert "update" not in perms["sales_manager"]
-    assert perms["sales_manager"]["delete"] is True
+    assert perms["default"]["write"]["sales_manager"] == ".*"
+    assert "create" not in perms["default"]
+    assert "update" not in perms["default"]
+    assert perms["default"]["delete"]["sales_manager"] is True
 
 
 @pytest.mark.unit
@@ -432,7 +438,7 @@ components:
                 default:
                     read:
                         user:
-                            fields: "^(id|email)$"
+                            properties: "^(id|email)$"
                             where: "id = ${claims.sub}"
                     create:
                         admin: ".*"
@@ -447,12 +453,68 @@ components:
     perms = out["schema_objects"]["Account"]["permissions"]
     assert "default" in perms
     default = perms["default"]
-    assert default["read"]["user"]["fields"] == "^(id|email)$"
+    assert default["read"]["user"]["properties"] == "^(id|email)$"
     assert "where" in default["read"]["user"]
     # create normalized to write
     assert default["write"]["admin"] == ".*"
     # delete rule preserved
     assert default["delete"]["admin"]["allow"] is True
+
+
+@pytest.mark.unit
+def test_permissions_hybrid_where_clause():
+    """Test hybrid approach with role-level and operation-level WHERE."""
+    spec = yaml.safe_load(
+        """
+components:
+    schemas:
+        Invoice:
+            type: object
+            x-af-database: db
+            properties:
+                id:
+                    type: integer
+                    x-af-primary-key: auto
+                customer_id:
+                    type: integer
+                total:
+                    type: number
+            x-af-permissions:
+                sales_associate:
+                    where: "region = '${claims.territory}'"  # Role-level WHERE
+                    read:
+                        properties: ".*"
+                    write:
+                        properties: "total"
+                        # Operation-level WHERE (overrides role-level)
+                        where: "owner_id = ${claims.sub}"
+                sales_manager:
+                    read:
+                        properties: ".*"
+                    write:
+                        properties: ".*"
+                    delete:
+                        allow: true
+"""
+    )
+
+    mf = ModelFactory(spec)
+    out = mf.get_config_output()
+    perms = out["schema_objects"]["Invoice"]["permissions"]
+
+    # Check role-level WHERE clause
+    assert "where" in perms["sales_associate"]
+    expected_role_where = "region = '${claims.territory}'"
+    assert perms["sales_associate"]["where"] == expected_role_where
+
+    # Check operation-level WHERE clause
+    assert "where" in perms["sales_associate"]["write"]
+    expected_op_where = "owner_id = ${claims.sub}"
+    assert perms["sales_associate"]["write"]["where"] == expected_op_where
+
+    # Check properties are correctly set
+    assert perms["sales_associate"]["read"]["properties"] == ".*"
+    assert perms["sales_associate"]["write"]["properties"] == "total"
 
 
 @pytest.mark.unit
@@ -683,3 +745,60 @@ def test_chinook_generation():
         # Adjust the assertion to match the exact KeyError message
         expected = "\"Reference part 'track' not found in the OpenAPI spec.\""
         assert str(ke) == expected
+
+
+def test_permissions_concise_format():
+    """Test the concise format where operation directly specifies
+    property selection."""
+    test_spec = {
+        "openapi": "3.0.0",
+        "info": {"title": "Test API", "version": "1.0.0"},
+        "components": {
+            "schemas": {
+                "album": {
+                    "type": "object",
+                    "x-af-database": "chinook",
+                    "x-af-permissions": {
+                        "sales_associate": {
+                            "where": "album_id <= 50",
+                            # Concise format
+                            "read": "album_id|title|artist_id",
+                            "write": {
+                                # Verbose format for comparison
+                                "properties": "title",
+                                "where": "year_released > 2000",
+                            },
+                        }
+                    },
+                    "properties": {
+                        "album_id": {"type": "integer", "x-af-primary-key": "auto"},
+                        "title": {"type": "string"},
+                        "artist_id": {"type": "integer"},
+                        "year_released": {"type": "integer"},
+                    },
+                }
+            }
+        },
+    }
+
+    # This should not raise any validation errors
+    result = ModelFactory(test_spec).get_config_output()
+
+    # Verify the permissions structure is preserved
+    album_perms = result["schema_objects"]["album"]["permissions"]["sales_associate"]
+
+    # Both should be present and properly formatted
+    assert "read" in album_perms
+    assert "write" in album_perms
+    assert "where" in album_perms
+
+    # Concise format should be preserved as string
+    assert album_perms["read"] == "album_id|title|artist_id"
+
+    # Verbose format should be preserved as dict
+    assert isinstance(album_perms["write"], dict)
+    assert album_perms["write"]["properties"] == "title"
+    assert album_perms["write"]["where"] == "year_released > 2000"
+
+    # Role-level WHERE clause should be preserved
+    assert album_perms["where"] == "album_id <= 50"

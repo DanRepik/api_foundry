@@ -36,9 +36,6 @@ def test_chinook_api_stack_simple_request(chinook_api_endpoint):
     assert response.json() == expected_response
 
 
-b'{"error": "invalid_client", "error_description": "Unknown client"}'
-
-
 def test_sales_associate_can_access_albums(chinook_api_endpoint, sales_associate):
     url = f"{chinook_api_endpoint}/album"
     headers = {"Authorization": f"Bearer {sales_associate}"}

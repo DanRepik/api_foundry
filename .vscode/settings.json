@@ -17,5 +17,6 @@
     "jacoco.xml",
     "coverage.cobertura.xml"
   ],
-  "coverage-gutters.coverageReportFileName": ""
+  "coverage-gutters.coverageReportFileName": "",
+  "python.envFile": "${workspaceFolder}/.env",
 }

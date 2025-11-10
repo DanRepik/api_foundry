@@ -1,13 +1,18 @@
 import json
+import logging
 import os
 from pathlib import Path
 
 import pytest
-import psycopg2
+
+try:
+    import psycopg2
+except ImportError:
+    psycopg2 = None
+
 import pulumi
 import pulumi_aws as aws
 import yaml
-from contextlib import contextmanager
 import requests
 
 from api_foundry_query_engine.utils.api_model import APIModel
@@ -19,62 +24,59 @@ from fixture_foundry import localstack  # noqa F401
 from fixture_foundry import container_network  # noqa F401
 from simple_oauth_server import SimpleOAuth
 
-os.environ["PULUMI_BACKEND_URL"] = "file://."
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
+
 # Ensure a consistent issuer for the SimpleOAuth authorizer and validator
 os.environ.setdefault("ISSUER", "https://oauth.local/")
 
-DEFAULT_IMAGE = "localstack/localstack:latest"
-DEFAULT_SERVICES = "logs,iam,lambda,secretsmanager,apigateway,cloudwatch"
+
+def to_localstack_internal_url(_localstack, aws_gateway_endpoint: str) -> str:
+    """
+    Convert AWS API Gateway endpoint to LocalStack internal container format.
+
+    Args:
+        localstack: LocalStack fixture with container_name and container_port
+        aws_gateway_endpoint: AWS Gateway endpoint like
+                             "jjhkkvcjf0.execute-api.us-east-1.amazonaws.com/oauth-rest-api"
+
+    Returns:
+        LocalStack internal URL like
+        "http://container_name:container_port/restapis/jjhkkvcjf0/oauth-rest-api/_user_request_/path"
+    """
+    # Remove any protocol prefix if present
+    endpoint = aws_gateway_endpoint.replace("https://", "").replace("http://", "")
+
+    # Split the endpoint into parts
+    # Format: api-id.execute-api.region.amazonaws.com/stage
+    parts = endpoint.split("/")
+    domain_part = parts[0]  # api-id.execute-api.region.amazonaws.com
+    stage = parts[1] if len(parts) > 1 else ""  # stage part
+
+    # Extract API ID from domain
+    api_id = domain_part.split(".")[0]  # jjhkkvcjf0
+
+    # Build LocalStack internal URL using container name and port from fixture
+    # Format: http://container_name:container_port/restapis/{api_id}/{stage}/_user_request_{path}
+    # Use container name and port for container-to-container communication
+    log.debug("localstack info: %s", _localstack)
+    container_host = _localstack["container_name"]
+    container_port = _localstack["container_port"]
+    base_url = f"http://{container_host}:{container_port}/restapis/{api_id}"
+
+    if stage:
+        base_url += f"/{stage}"
+
+    base_url += "/_user_request_"
+    return base_url
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
-    group = parser.getgroup("localstack")
-    group.addoption(
-        "--teardown",
-        action="store",
-        default="true",
-        help="Whether to tear down the LocalStack/Postgres containers after tests (default: true)",
-    )
-    group.addoption(
-        "--localstack-image",
-        action="store",
-        default=DEFAULT_IMAGE,
-        help="Docker image to use for LocalStack (default: localstack/localstack:latest)",
-    )
-    group.addoption(
-        "--localstack-services",
-        action="store",
-        default=DEFAULT_SERVICES,
-        help="Comma-separated list of LocalStack services to start",
-    )
-    group.addoption(
-        "--localstack-timeout",
-        action="store",
-        type=int,
-        default=90,
-        help="Seconds to wait for LocalStack to become healthy (default: 90)",
-    )
-    group.addoption(
-        "--localstack-port",
-        action="store",
-        type=int,
-        default=0,
-        help="Port for LocalStack edge service (default: 0 = random available port)",
-    )
-    group.addoption(
-        "--database",
-        action="store",
-        type=str,
-        default="chinook",
-        help="Name of the database to use (default: chinook)",
-    )
-    group.addoption(
-        "--database-image",
-        action="store",
-        type=str,
-        default="postgis/postgis:16-3.4",
-        help="Docker image to use for the database (default: chinook)",
-    )
+    # Import and use fixture_foundry's default pytest options
+    # This includes --teardown option with default behavior
+    from fixture_foundry import add_fixture_foundry_options
+
+    add_fixture_foundry_options(parser)
 
 
 @pytest.fixture(scope="session")
@@ -84,6 +86,9 @@ def chinook_db(postgres):  # noqa F811
     chinook_sql = project_root / "tests" / "Chinook_Postgres.sql"
 
     assert chinook_sql.exists(), f"Missing {chinook_sql}"
+
+    if psycopg2 is None:
+        pytest.skip("psycopg2 not installed, skipping database test")
 
     # Connect and load schemas
     dsn = f"postgresql://{postgres['username']}:{postgres['password']}@localhost:{postgres['host_port']}/{postgres['database']}"  # noqa E501
@@ -99,7 +104,7 @@ def chinook_db(postgres):  # noqa F811
         conn.close()
 
 
-def chinook_api(chinook_db):
+def chinook_api(chinook_db, localstack):  # noqa F811
     def pulumi_program():
         from api_foundry import APIFoundry
 
@@ -122,16 +127,29 @@ def chinook_api(chinook_db):
         )
 
         # OAuth server for tests
-        oauth_server = SimpleOAuth("oauth", config=yaml.dump(TEST_USERS))
+        oauth_server = SimpleOAuth(
+            "oauth",
+            config=yaml.dump(TEST_USERS),
+            issuer=os.environ["ISSUER"],
+        )
 
         # Create the Chinook component
-        chinook_api = secret.arn.apply(
-            lambda arn: APIFoundry(
+        chinook_api = pulumi.Output.all(secret.arn, oauth_server.server.domain).apply(
+            lambda args: APIFoundry(
                 "chinook-api",
                 api_spec=[
                     "resources/chinook_api.yaml",
                     oauth_server.authorizer_api_spec,
                 ],
+                environment={
+                    "LOG_LEVEL": "DEBUG",
+                    "JWKS_HOST": to_localstack_internal_url(
+                        localstack, f"http://{args[1]}"
+                    ),
+                    "JWT_ISSUER": oauth_server.issuer,
+                    "JWT_ALLOWED_AUDIENCES": TEST_AUDIENCE,
+                    "REQUIRE_AUTHENTICATION": "FALSE",
+                },
                 integrations=[
                     {
                         "path": "/token",
@@ -146,7 +164,7 @@ def chinook_api(chinook_db):
                         "function": oauth_server.validator(),
                     }
                 ],
-                secrets=json.dumps({"chinook": arn}),
+                secrets=json.dumps({"chinook": args[0]}),
             )
         )
         pulumi.export("domain", chinook_api.domain)
@@ -154,25 +172,26 @@ def chinook_api(chinook_db):
     return pulumi_program
 
 
+TEST_AUDIENCE = "chinook-api"
 TEST_USERS: dict = {
     "clients": {
         "user_sales_reader": {
             "client_secret": "sales-reader-secret",
-            "audience": "chinook-api",
+            "audience": TEST_AUDIENCE,
             "sub": "user_sales_reader",
             "scope": "read:*",
             "roles": ["sales_reader"],
         },
         "user_sales_associate": {
             "client_secret": "sales-associate-secret",
-            "audience": "chinook-api",
+            "audience": TEST_AUDIENCE,
             "sub": "user_sales_associate",
             "scope": "read:* write:*",
             "roles": ["sales_associate"],
         },
         "user_sales_manager": {
             "client_secret": "sales-manager-secret",
-            "audience": "chinook-api",
+            "audience": TEST_AUDIENCE,
             "sub": "user_sales_manager",
             "scope": "read:* write:* delete:*",
             "roles": ["sales_manager"],
@@ -187,7 +206,7 @@ def chinook_api_stack(request, chinook_db, localstack):  # noqa F811
     with deploy(
         "api-foundry",
         "test-api",
-        chinook_api(chinook_db),
+        chinook_api(chinook_db, localstack),
         localstack=localstack,
         teardown=teardown,
     ) as outputs:
@@ -234,3 +253,6 @@ def sales_associate(chinook_api_endpoint: str):
     resp.raise_for_status()
     result = resp.json()
     yield result["token"]
+
+
+# Removed pytest_configure to allow normal command line option handling
