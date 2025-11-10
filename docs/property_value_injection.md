@@ -55,26 +55,26 @@ components:
           x-af-primary-key: auto
         title:
           type: string
-        
+
         # WHO created the record (immutable)
         created_by:
           type: string
           x-af-inject-value: "claim:sub"
           # x-af-inject-on: ["create"]  # Inferred from property name
-        
+
         # WHEN was it created (immutable)
         created_at:
           type: string
           format: date-time
           x-af-inject-value: "timestamp"
           # x-af-inject-on: ["create"]  # Inferred from property name
-        
+
         # WHO last updated (changes on every update)
         updated_by:
           type: string
           x-af-inject-value: "claim:sub"
           x-af-inject-on: ["update"]  # Only on updates
-        
+
         # WHEN was it last updated (changes on every update)
         updated_at:
           type: string
@@ -99,14 +99,14 @@ components:
           type: string
         content:
           type: string
-        
+
         # Tenant ID is auto-injected and immutable
         tenant_id:
           type: string
           required: true
           x-af-inject-value: "claim:tenant"
           # x-af-inject-on: ["create"]  # Inferred from property name
-      
+
       # Combine with permissions for row-level security
       x-af-permissions:
         default:
@@ -134,14 +134,14 @@ components:
           x-af-primary-key: auto
         name:
           type: string
-        
+
         # Owner is set on creation and cannot be changed
         owner_id:
           type: string
           required: true
           x-af-inject-value: "claim:sub"
           # x-af-inject-on: ["create"]  # Inferred from property name
-        
+
         # Owner's email for reference
         owner_email:
           type: string
@@ -161,14 +161,14 @@ components:
         id:
           type: integer
           x-af-primary-key: auto
-        
+
         # Generate new UUID on every change for tracking
         version_id:
           type: string
           format: uuid
           x-af-inject-value: "uuid"
           x-af-inject-on: ["create", "update"]  # Both operations
-        
+
         # Track deployment environment
         environment:
           type: string
@@ -329,7 +329,7 @@ created_by:
 created_by:
   type: string
   x-af-inject-value: "claim:sub"
-  
+
 # And exclude from write permissions
 x-af-permissions:
   default:

@@ -49,7 +49,7 @@ Properties automatically infer `inject_on` based on naming conventions:
    - Generates placeholder SQL parameters
 
 5. **`api_foundry_query_engine/dao/sql_update_query_handler.py`**
-   - Validates user cannot set injected properties  
+   - Validates user cannot set injected properties
    - Injects values for properties with `"update"` in `inject_on`
    - Generates placeholder SQL parameters
 
@@ -93,25 +93,25 @@ components:
           x-af-primary-key: auto
         title:
           type: string
-        
+
         # Audit: WHO created (immutable)
         created_by:
           type: string
           x-af-inject-value: "claim:sub"
           # x-af-inject-on: ["create"] - inferred from name
-        
+
         # Audit: WHEN created (immutable)
         created_at:
           type: string
           format: date-time
           x-af-inject-value: "timestamp"
-        
+
         # Audit: WHO last updated (changes on update)
         updated_by:
           type: string
           x-af-inject-value: "claim:sub"
           x-af-inject-on: ["update"]
-        
+
         # Audit: WHEN last updated (changes on update)
         updated_at:
           type: string

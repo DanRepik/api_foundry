@@ -127,13 +127,13 @@ class SchemaObjectProperty(OpenAPIElement):
         # Value injection attributes
         self.inject_value = prop.get("x-af-inject-value", None)
         self.inject_on = self._parse_inject_on(name, prop) or None
+        # Soft delete configuration
+        self.soft_delete = self._parse_soft_delete(schema_name, name, prop)
         # For embedded objects/arrays
         self.sub_properties: Optional[Dict[str, SchemaObjectProperty]] = None
         self.items_sub_properties: Optional[Dict[str, SchemaObjectProperty]] = None
 
-    def _concurrency_control(
-        self, schema_name: str, prop_dict: dict
-    ) -> Optional[str]:
+    def _concurrency_control(self, schema_name: str, prop_dict: dict) -> Optional[str]:
         concurrency_control = prop_dict.get("x-af-concurrency-control", None)
         if concurrency_control:
             concurrency_control = concurrency_control.lower()
@@ -148,9 +148,7 @@ class SchemaObjectProperty(OpenAPIElement):
             )
         return concurrency_control
 
-    def _parse_inject_on(
-        self, property_name: str, prop_dict: dict
-    ) -> list[str]:
+    def _parse_inject_on(self, property_name: str, prop_dict: dict) -> list[str]:
         """
         Parse x-af-inject-on attribute or infer default behavior based on
         property name and x-af-inject-value presence.
@@ -190,6 +188,80 @@ class SchemaObjectProperty(OpenAPIElement):
 
         # Default: inject only on create for safety
         return ["create"]
+
+    def _parse_soft_delete(
+        self, schema_name: str, property_name: str, prop_dict: dict
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Parse x-af-soft-delete attribute with validation.
+        """
+        soft_delete_config = prop_dict.get("x-af-soft-delete")
+        if not soft_delete_config:
+            return None
+
+        if not isinstance(soft_delete_config, dict):
+            raise ApplicationException(
+                500,
+                f"Invalid x-af-soft-delete configuration for property "
+                f"'{property_name}' in schema '{schema_name}'. "
+                f"Must be an object with strategy and configuration.",
+            )
+
+        strategy = soft_delete_config.get("strategy")
+        if not strategy:
+            raise ApplicationException(
+                500,
+                f"Missing 'strategy' in x-af-soft-delete configuration "
+                f"for property '{property_name}' in schema '{schema_name}'.",
+            )
+
+        valid_strategies = [
+            "null_check",
+            "boolean_flag",
+            "exclude_values",
+            "audit_field",
+        ]
+        if strategy not in valid_strategies:
+            raise ApplicationException(
+                500,
+                f"Invalid soft delete strategy '{strategy}' for property "
+                f"'{property_name}' in schema '{schema_name}'. "
+                f"Valid strategies are: {', '.join(valid_strategies)}",
+            )
+
+        # Validate strategy-specific configuration
+        if strategy == "boolean_flag":
+            active_value = soft_delete_config.get("active_value", True)
+            if not isinstance(active_value, bool):
+                raise ApplicationException(
+                    500,
+                    f"Property '{property_name}' in schema '{schema_name}' "
+                    f"uses boolean_flag strategy but active_value is not "
+                    f"boolean.",
+                )
+
+        elif strategy == "exclude_values":
+            values = soft_delete_config.get("values", [])
+            if not isinstance(values, list) or not values:
+                raise ApplicationException(
+                    500,
+                    f"Property '{property_name}' in schema '{schema_name}' "
+                    f"uses exclude_values strategy but 'values' is not a "
+                    f"non-empty list.",
+                )
+
+        elif strategy == "audit_field":
+            action = soft_delete_config.get("action")
+            valid_actions = ["delete", "restore", "restore_timestamp"]
+            if action not in valid_actions:
+                raise ApplicationException(
+                    500,
+                    f"Property '{property_name}' in schema '{schema_name}' "
+                    f"uses audit_field strategy but action '{action}' is not "
+                    f"valid. Valid actions are: {', '.join(valid_actions)}",
+                )
+
+        return soft_delete_config
 
 
 class SchemaObjectKey(SchemaObjectProperty):
@@ -432,15 +504,15 @@ class SchemaObject(OpenAPIElement):
     def _get_inject_properties(self) -> dict:
         """
         Collect all properties that have injection attributes.
-        
+
         Returns a dictionary mapping property names to their injection metadata.
         """
         inject_props = {}
         for prop_name, prop in self.properties.items():
-            if hasattr(prop, 'inject_value') and prop.inject_value:
+            if hasattr(prop, "inject_value") and prop.inject_value:
                 inject_props[prop_name] = {
-                    'inject_value': prop.inject_value,
-                    'inject_on': getattr(prop, 'inject_on', ['create'])
+                    "inject_value": prop.inject_value,
+                    "inject_on": getattr(prop, "inject_on", ["create"]),
                 }
         return inject_props
 

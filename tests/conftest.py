@@ -86,7 +86,7 @@ def chinook_db(postgres):  # noqa F811
     chinook_sql = project_root / "tests" / "Chinook_Postgres.sql"
 
     assert chinook_sql.exists(), f"Missing {chinook_sql}"
-    
+
     if psycopg2 is None:
         pytest.skip("psycopg2 not installed, skipping database test")
 
