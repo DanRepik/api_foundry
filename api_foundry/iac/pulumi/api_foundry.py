@@ -121,6 +121,7 @@ class APIFoundry(ComponentResource):
         name,
         *,
         api_spec: Union[str, list[str]],
+        batch_path: Optional[str] = None,
         secrets: Optional[str] = None,
         environment: Optional[dict[str, Union[str, pulumi.Output[str]]]] = None,
         integrations: Optional[list[dict]] = None,
@@ -182,7 +183,9 @@ class APIFoundry(ComponentResource):
         )
 
         gateway_spec = APISpecEditor(
-            open_api_spec=api_spec_dict, function=self.api_function
+            open_api_spec=api_spec_dict,
+            function=self.api_function,
+            batch_path=batch_path,
         )
 
         # Merge gateway_spec.integrations with user-provided integrations
