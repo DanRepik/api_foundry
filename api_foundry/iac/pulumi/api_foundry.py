@@ -121,6 +121,7 @@ class APIFoundry(ComponentResource):
         name,
         *,
         api_spec: Union[str, list[str]],
+        batch_path: Optional[str] = None,
         secrets: Optional[str] = None,
         environment: Optional[dict[str, Union[str, pulumi.Output[str]]]] = None,
         integrations: Optional[list[dict]] = None,
@@ -151,18 +152,30 @@ class APIFoundry(ComponentResource):
         env_vars["SECRETS"] = secrets
         requirements = []
 
-        # Grant read access to referenced secrets (single broad stmt)
-        if json.loads(secrets):
-            policy_statements.append(
-                {
-                    "Effect": "Allow",
-                    "Actions": ["secretsmanager:GetSecretValue"],
-                    "Resources": ["*"],
-                }
-            )
+        # Grant read access to referenced secrets
+        if secrets:
+            try:
+                secret_arns = list(json.loads(secrets).values())
+                policy_statements.append(
+                    {
+                        "Effect": "Allow",
+                        "Actions": ["secretsmanager:GetSecretValue"],
+                        "Resources": secret_arns,
+                    }
+                )
+            except (json.JSONDecodeError, AttributeError):
+                # If secrets is an Output or invalid JSON, we can't parse it yet
+                # Add a broad policy (will be restricted during deployment)
+                policy_statements.append(
+                    {
+                        "Effect": "Allow",
+                        "Actions": ["secretsmanager:GetSecretValue"],
+                        "Resources": "*",
+                    }
+                )
 
             requirements.extend(
-                ["psycopg2-binary", "pyyaml", "../api_foundry_query_engine"]
+                ["psycopg2-binary", "pyyaml", "api_foundry_query_engine"]
             )
         if env_vars.get("JWKS_HOST"):
             requirements.extend(["PyJWT", "cryptography", "requests"])
@@ -182,7 +195,10 @@ class APIFoundry(ComponentResource):
         )
 
         gateway_spec = APISpecEditor(
-            open_api_spec=api_spec_dict, function=self.api_function
+            open_api_spec=api_spec_dict,
+            function=self.api_function,
+            batch_path=batch_path,
+            token_validators=token_validators,
         )
 
         # Merge gateway_spec.integrations with user-provided integrations
