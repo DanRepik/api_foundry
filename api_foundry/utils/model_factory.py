@@ -303,12 +303,66 @@ class SchemaObjectAssociation(OpenAPIElement):
     def __init__(self, name: str, prop: Dict[str, Any], parent_key):
         super().__init__()
         self.api_name = name
+
+        # Validate type attribute exists
+        if "type" not in prop:
+            raise ApplicationException(
+                500,
+                (
+                    f"Association property '{name}' is missing 'type' "
+                    f"attribute. Schema associations must specify "
+                    f"'type: object' or 'type: array'."
+                ),
+            )
         self.api_type = prop["type"]
 
-        self.schema_name = (
-            prop["items"]["$ref"] if self.api_type == "array" else prop["$ref"]
-        ).split("/")[-1]
+        # Extract and validate schema reference
+        if self.api_type == "array":
+            if "items" not in prop:
+                raise ApplicationException(
+                    500,
+                    (
+                        f"Association property '{name}' has type 'array' but "
+                        f"is missing 'items' attribute. Array associations "
+                        f"must specify items with a $ref to the target schema."
+                    ),
+                )
+            items = prop["items"]
+            if "$ref" not in items:
+                raise ApplicationException(
+                    500,
+                    (
+                        f"Association property '{name}' array items are "
+                        f"missing '$ref' attribute. Use '$ref: "
+                        f"#/components/schemas/YourSchema' to reference the "
+                        f"target schema."
+                    ),
+                )
+            ref = items["$ref"]
+        else:
+            if "$ref" not in prop:
+                raise ApplicationException(
+                    500,
+                    (
+                        f"Association property '{name}' is missing '$ref' "
+                        f"attribute. Use '$ref: #/components/schemas/YourSchema' "
+                        f"to reference the target schema."
+                    ),
+                )
+            ref = prop["$ref"]
 
+        # Validate $ref format
+        if not ref.startswith("#/components/schemas/"):
+            raise ApplicationException(
+                500,
+                (
+                    f"Association property '{name}' has invalid $ref format: "
+                    f"'{ref}'. References must use the format "
+                    f"'#/components/schemas/SchemaName'."
+                ),
+            )
+
+        self.schema_name = ref.split("/")[-1]
         self.child_property = prop.get("x-af-child-property", None)
         self.parent_property = prop.get("x-af-parent-property", parent_key)
 
@@ -319,7 +373,20 @@ class SchemaObject(OpenAPIElement):
     def __init__(self, api_name: str, schema_object: Dict[str, Any]):
         super().__init__()
         self.api_name = api_name
+
+        # Get database name (should always exist as caller filters)
         self.database = schema_object.get("x-af-database", "").lower()
+
+        # Validate database name is not empty
+        if not self.database:
+            raise ApplicationException(
+                500,
+                (
+                    f"Schema object '{api_name}' has empty 'x-af-database' "
+                    f"value. Provide a valid database connection name."
+                ),
+            )
+
         self.table_name = self._get_table_name(schema_object)
         self.properties = self._resolve_properties(schema_object)
         self.primary_key = self._get_primary_key(schema_object)
@@ -438,40 +505,59 @@ class SchemaObject(OpenAPIElement):
         return concurrency_property_name
 
     def _get_primary_key(self, schema_object: dict) -> Optional[str]:
+        primary_keys = []
         for property_name, properties in schema_object.get("properties", {}).items():
             if "x-af-primary-key" in properties:
-                prop_obj = self.properties[property_name]
-                prop_obj.key_type = properties.get("x-af-primary-key", "auto")
+                primary_keys.append(property_name)
 
-                if prop_obj.key_type not in [
-                    "manual",
-                    "uuid",
-                    "auto",
-                    "sequence",
-                ]:
-                    raise ApplicationException(
-                        500,
-                        (
-                            f"Invalid primary key type '{prop_obj.key_type}' "
-                            + f"in schema object '{self.api_name}'"
-                            + f", property '{property_name}'"
-                        ),
-                    )
+        # Validate only one primary key is defined
+        if len(primary_keys) > 1:
+            raise ApplicationException(
+                500,
+                (
+                    f"Schema object '{self.api_name}' has multiple primary "
+                    f"keys defined: {', '.join(primary_keys)}. Only one "
+                    f"property can be marked with 'x-af-primary-key'."
+                ),
+            )
 
-                if prop_obj.key_type == "sequence":
-                    prop_obj.sequence_name = properties.get("x-af-sequence-name", None)
-                    if not prop_obj.sequence_name:
-                        raise ApplicationException(
-                            500,
-                            (
-                                "Sequence-based primary keys must have a "
-                                "sequence name "
-                                + f"in schema object '{self.api_name}', "
-                                + f"property '{property_name}'"
-                            ),
-                        )
-                return property_name
-        return None
+        if not primary_keys:
+            return None
+
+        property_name = primary_keys[0]
+        properties = schema_object["properties"][property_name]
+        prop_obj = self.properties[property_name]
+        prop_obj.key_type = properties.get("x-af-primary-key", "auto")
+
+        if prop_obj.key_type not in [
+            "manual",
+            "uuid",
+            "auto",
+            "sequence",
+        ]:
+            raise ApplicationException(
+                500,
+                (
+                    f"Invalid primary key type '{prop_obj.key_type}' "
+                    f"in schema object '{self.api_name}', "
+                    f"property '{property_name}'. Valid types are: "
+                    f"'manual', 'uuid', 'auto', 'sequence'."
+                ),
+            )
+
+        if prop_obj.key_type == "sequence":
+            prop_obj.sequence_name = properties.get("x-af-sequence-name", None)
+            if not prop_obj.sequence_name:
+                raise ApplicationException(
+                    500,
+                    (
+                        f"Sequence-based primary key '{property_name}' in "
+                        f"schema object '{self.api_name}' is missing "
+                        f"'x-af-sequence-name' attribute. Specify the "
+                        f"database sequence name to use."
+                    ),
+                )
+        return property_name
 
     def _get_permissions(self, schema_object: dict) -> dict:
         """Extract permissions from schema using x-af-permissions only.
@@ -536,8 +622,37 @@ class PathOperation(OpenAPIElement):
         super().__init__()
         self.entity = path.lower().rsplit("/", 1)[-1]
         self.action = METHODS_TO_ACTIONS[method]
+
+        # Validate required x-af-database attribute
+        if "x-af-database" not in path_operation:
+            raise ApplicationException(
+                500,
+                (
+                    f"Path operation '{method.upper()} {path}' is missing "
+                    f"required 'x-af-database' attribute. Custom path operations "
+                    f"must specify which database connection to use."
+                ),
+            )
         self.database = path_operation["x-af-database"]
+
+        # Validate required x-af-sql attribute for custom operations
+        if "x-af-sql" not in path_operation:
+            raise ApplicationException(
+                500,
+                (
+                    f"Path operation '{method.upper()} {path}' is missing "
+                    f"required 'x-af-sql' attribute. Custom path operations must "
+                    f"provide the SQL query/statement to execute.\n\n"
+                    f"Note: If you intended to create CRUD endpoints, define a "
+                    f"schema object in components/schemas with 'x-af-database' "
+                    f"instead of creating custom path operations. API Foundry "
+                    f"auto-generates CRUD endpoints from schema objects.\n\n"
+                    f"For custom SQL operations, add:\n"
+                    f"  x-af-sql: 'SELECT ...' or 'INSERT ...' etc."
+                ),
+            )
         self.sql = path_operation["x-af-sql"]
+
         self.inputs = self.get_inputs(path_operation)
         self.outputs = self._extract_properties(path_operation, "responses")
         self.permissions = self._get_permissions(path_operation)
@@ -670,12 +785,18 @@ class ModelFactory:
         return resolve(spec)
 
     def _load_schema_objects(self) -> Dict[str, SchemaObject]:
-        """Loads all schema objects from the OpenAPI specification."""
+        """Loads all schema objects from the OpenAPI specification.
+
+        Only schemas with x-af-database attribute are loaded. Other schemas
+        (like DTOs, enums, or reference-only types) are silently skipped.
+        """
         schema_objects = {}
         schemas = self.spec.get("components", {}).get("schemas", {})
         for name, schema in schemas.items():
             if "x-af-database" in schema:
                 schema_objects[name] = SchemaObject(name, schema)
+            else:
+                log.debug(f"Skipping schema '{name}' - no x-af-database attribute")
         return schema_objects
 
     def _load_path_operations(self) -> Dict[str, PathOperation]:

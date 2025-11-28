@@ -10,6 +10,8 @@ The `api_foundry` project is a powerful tool designed to automate the deployment
 
 - **Automatic Record Management**: When OpenAPI schema objects are linked to database tables, `api_foundry` automatically generates record management services. This includes the creation of standard CRUD (Create, Read, Update, Delete) operations, providing a robust and scalable solution for managing database records through the API.
 
+- **Soft Delete Support**: `api_foundry` provides built-in soft delete functionality, allowing records to be marked as deleted without physical removal. This maintains data integrity, enables audit trails, and supports data recovery while keeping deleted records hidden from normal operations.
+
 - **Custom SQL Integration**: `api_foundry` allows developers to define custom SQL queries and associate them with specific OpenAPI path operations. This feature provides flexibility to perform complex queries and operations beyond standard CRUD functionalities, tailored to specific application requirements.
 
 - **Role Based Permissions**: Within OpenAPI schema objects and path operations `api_foundry` permissions can be defined based on roles restricting whether a user may delete records and what properties a may be read or written.
@@ -30,6 +32,7 @@ This guide provides a overview of key API-Foundry features, including:
 * **Managing Concurrency** - An explanation of how API-Foundry handles concurrency among application clients.
 * **Object and List Properties** - Demonstrations of how API-Foundry can return objects with nested objects or lists as properties, and how to configure these properties.
 * **Authorization** - API foundry provides role based security allowing restrictions down to the property level.
+* **Soft Deletes** - Learn how to implement soft delete functionality to mark records as deleted without physical removal. See [Soft Deletes Documentation](docs/soft_deletes.md) for detailed guidance.
 
 The examples in this guide use data from the Chinook database. The examples presented here are a subset of a complete working example available in the examples directory.
 

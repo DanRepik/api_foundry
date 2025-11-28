@@ -17,6 +17,7 @@ class APISpecEditor:
     function: Optional[Function]
     integrations: list[dict]
     batch_path: Optional[str]
+    token_validators: list[dict]
 
     def __init__(
         self,
@@ -24,13 +25,35 @@ class APISpecEditor:
         open_api_spec: Optional[dict],
         function: Optional[Function],
         batch_path: Optional[str] = None,
+        token_validators: Optional[list[dict]] = None,
     ):
         self.function = function
         self.batch_path = batch_path
+        self.token_validators = token_validators or []
         self.integrations = []
         self.editor = AWSOpenAPISpecEditor(
             copy.deepcopy(open_api_spec) if open_api_spec else None
         )
+
+    def _get_validators_for_schema(self, schema_object: dict) -> list[str]:
+        """Extract validator names from schema object.
+
+        Extracts provider/validator names from x-af-permissions keys.
+        """
+        validators = []
+
+        # Defensive: ensure schema_object is actually a dict
+        if not isinstance(schema_object, dict):
+            return validators
+
+        # Extract from x-af-permissions provider keys
+        if "x-af-permissions" in schema_object:
+            permissions = schema_object["x-af-permissions"]
+            if isinstance(permissions, dict):
+                # Keys are validator names like "default", "my-oauth"
+                validators = list(permissions.keys())
+
+        return validators
 
     def rest_api_spec(self) -> str:
         schemas = self.editor.get_spec_part(["components", "schemas"], create=False)
@@ -62,13 +85,25 @@ class APISpecEditor:
         schema_object: dict,
         function: Optional[Function] = None,
     ):
-        # Ensure any schema-level permissions are carried onto the operation if not set.
+        # Ensure schema-level permissions carry onto operation if not set.
         if "x-af-permissions" not in operation and isinstance(schema_object, dict):
             permissions = schema_object.get("x-af-permissions")
             if permissions:
                 operation["x-af-permissions"] = permissions
+
+        # Add security requirements based on validators
+        if "security" not in operation and isinstance(schema_object, dict):
+            validators = self._get_validators_for_schema(schema_object)
+            if validators:
+                # Build security array: [{validator_name: []}]
+                operation["security"] = [{v: []} for v in validators]
+
         self.integrations.append(
-            {"path": path, "method": method, "function": function or self.function}
+            {
+                "path": path,
+                "method": method,
+                "function": function or self.function,
+            }
         )
         self.editor.add_operation(
             path=path,
@@ -96,16 +131,19 @@ class APISpecEditor:
 
         elif property["type"] == "string" and property.get("format", None) == "date":
             # Assuming ISO 8601 date format (YYYY-MM-DD)
-            regex_pattern = r"\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])"  # Date part: YYYY-MM-DD
+            regex_pattern = r"\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])"
 
         elif (
             property["type"] == "string" and property.get("format", None) == "date-time"
         ):
             regex_pattern = (
-                r"\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])"  # Date part: YYYY-MM-DD
+                r"\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])"
+                # Date part: YYYY-MM-DD
                 r"T"  # Separator: T
-                r"([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])"  # Time part: HH:MM:SS
-                r"(?:\.\d+)?(?:Z|[+-](?:0[0-9]|1[0-4]):[0-5][0-9])?"  # Optional: fractional seconds and timezone
+                r"([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])"
+                # Time part: HH:MM:SS
+                r"(?:\.\d+)?(?:Z|[+-](?:0[0-9]|1[0-4]):[0-5][0-9])?"
+                # Optional: fractional seconds and timezone
             )
 
         elif property["type"] == "string":
@@ -114,7 +152,8 @@ class APISpecEditor:
             else:
                 max_length = property.get("max_length", 200)
                 min_length = property.get("min_length", 0)
-                regex_pattern = rf"[\w\s]{min_length},{max_length}"  # Allows letters, numbers, and underscores
+                regex_pattern = rf"[\w\s]{min_length},{max_length}"
+                # Allows letters, numbers, and underscores
 
         elif property["type"] == "integer":
             signed = property.get("signed", True)
