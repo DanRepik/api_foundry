@@ -55,7 +55,52 @@ class APISpecEditor:
 
         return validators
 
+    def process_existing_path_operations(self):
+        """Process existing path operations with x-af-database.
+
+        Scans the OpenAPI spec's paths section and adds integrations for
+        any custom SQL operations (those with x-af-database attribute).
+        This ensures custom path operations get Lambda integrations just
+        like auto-generated CRUD operations.
+        """
+        paths = self.editor.get_spec_part(["paths"], create=False)
+        if not paths or not isinstance(paths, dict):
+            return
+
+        for path, path_item in paths.items():
+            if not isinstance(path_item, dict):
+                continue
+
+            # Check each HTTP method
+            for method in ["get", "post", "put", "delete", "patch"]:
+                operation = path_item.get(method)
+                if not operation or not isinstance(operation, dict):
+                    continue
+
+                # Only process operations with x-af-database
+                # (indicates custom SQL managed by API Foundry)
+                if "x-af-database" not in operation:
+                    continue
+
+                # Add to integrations list so cloud_foundry.rest_api
+                # will create the x-amazon-apigateway-integration
+                self.integrations.append(
+                    {
+                        "path": path,
+                        "method": method,
+                        "function": self.function,
+                    }
+                )
+
+                log.info(
+                    f"Added integration for custom SQL operation: "
+                    f"{method.upper()} {path}"
+                )
+
     def rest_api_spec(self) -> str:
+        # Process existing path operations with x-af-database (custom SQL operations)
+        self.process_existing_path_operations()
+
         schemas = self.editor.get_spec_part(["components", "schemas"], create=False)
         if schemas:
             if isinstance(schemas, dict):

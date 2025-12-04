@@ -71,7 +71,7 @@ def test_batch_path_generates_endpoint():
     batch_op_schema = result["components"]["schemas"]["BatchOperation"]
     assert "id" in batch_op_schema["properties"]
     assert "entity" in batch_op_schema["properties"]
-    assert "action" in batch_op_schema["properties"]
+    assert "actions" in batch_op_schema["properties"]
     # ID is no longer required - only entity and action
     assert set(batch_op_schema["required"]) == {"entity", "action"}
     print("   ✓ BatchOperation has id (optional), entity, action (required)")
