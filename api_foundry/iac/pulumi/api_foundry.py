@@ -177,12 +177,37 @@ class APIFoundry(ComponentResource):
             requirements.extend(
                 ["psycopg2-binary", "pyyaml", "api_foundry_query_engine"]
             )
+
+        # Configure Lambda-based token validation if validators are provided
+        if token_validators:
+            # Get the first validator function (primary validator)
+            primary_validator = token_validators[0]
+            validator_function = primary_validator.get("function")
+
+            if validator_function:
+                # Check if validator_function has 'arn' attribute
+                # (Pulumi Output)
+                if hasattr(validator_function, "arn"):
+                    # Store the ARN for the query engine to invoke
+                    env_vars["TOKEN_VALIDATOR_LAMBDA_ARN"] = validator_function.arn
+
+                    # Grant invoke permission for the query lambda
+                    policy_statements.append(
+                        {
+                            "Effect": "Allow",
+                            "Actions": ["lambda:InvokeFunction"],
+                            "Resources": [validator_function.arn],
+                        }
+                    )
+                    log.info("Configured Lambda token validator for query engine")
+
         if env_vars.get("JWKS_HOST"):
             requirements.extend(["PyJWT", "cryptography", "requests"])
 
         self.api_function = cloud_foundry.python_function(
             name=name,
             environment=env_vars,
+            runtime="python3.12",
             handler="api_foundry_query_engine.lambda_handler.handler",
             sources={
                 "api_spec.yaml": yaml.safe_dump(
