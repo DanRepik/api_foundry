@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "api-foundry"
-version = "0.8.6"
+dynamic = ["version"]
 authors = [
     { name="Daniel Repik", email="danrepik@icloud.com" },
 ]
@@ -53,6 +53,10 @@ install_secret = "api_foundry.scripts.install_secret:main"
 
 [tool.hatch.metadata]
 allow-direct-references = true
+
+[tool.hatch.version]
+path = "api_foundry/__init__.py"
+
 
 [tool.pytest.ini_options]
 markers = [
