@@ -38,7 +38,8 @@ class APISpecEditor:
     def _get_validators_for_schema(self, schema_object: dict) -> list[str]:
         """Extract validator names from schema object.
 
-        Extracts provider/validator names from x-af-permissions keys.
+        Uses the global security scheme from the OpenAPI spec instead of
+        x-af-permissions provider keys.
         """
         validators = []
 
@@ -46,12 +47,28 @@ class APISpecEditor:
         if not isinstance(schema_object, dict):
             return validators
 
-        # Extract from x-af-permissions provider keys
+        # Check if schema has permissions (indicating it needs auth)
         if "x-af-permissions" in schema_object:
-            permissions = schema_object["x-af-permissions"]
-            if isinstance(permissions, dict):
-                # Keys are validator names like "default", "my-oauth"
-                validators = list(permissions.keys())
+            # Use the global security scheme from the spec
+            global_security = self.editor.get_spec_part(["security"], create=False)
+            if (
+                global_security
+                and isinstance(global_security, list)
+                and len(global_security) > 0
+            ):
+                # Extract security scheme names from global security
+                # Format: [{"auth": []}, {"other": []}]
+                for sec_item in global_security:
+                    if isinstance(sec_item, dict):
+                        validators.extend(sec_item.keys())
+
+            # Fallback: if no global security, look for securitySchemes
+            if not validators:
+                security_schemes = self.editor.get_spec_part(
+                    ["components", "securitySchemes"], create=False
+                )
+                if security_schemes and isinstance(security_schemes, dict):
+                    validators = list(security_schemes.keys())
 
         return validators
 

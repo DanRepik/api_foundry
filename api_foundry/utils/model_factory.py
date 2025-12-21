@@ -803,13 +803,14 @@ class ModelFactory:
         """Loads all path operations from the OpenAPI specification."""
         path_operations = {}
         paths = self.spec.get("paths", {})
-        for path, methods in paths.items():
-            for method, operation in methods.items():
-                if "x-af-database" in operation:
-                    path_operation = PathOperation(path, method, operation)
-                    path_operations[
-                        f"{path_operation.entity}_{path_operation.action}"
-                    ] = path_operation
+        if paths:
+            for path, methods in paths.items():
+                for method, operation in methods.items():
+                    if "x-af-database" in operation:
+                        path_operation = PathOperation(path, method, operation)
+                        path_operations[
+                            f"{path_operation.entity}_{path_operation.action}"
+                        ] = path_operation
         return path_operations
 
     def get_config_output(self) -> Dict[str, Any]:

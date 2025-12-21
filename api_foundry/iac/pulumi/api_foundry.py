@@ -123,11 +123,15 @@ class APIFoundry(ComponentResource):
         api_spec: Union[str, list[str]],
         batch_path: Optional[str] = None,
         secrets: Optional[str] = None,
+        path_prefix: Optional[str] = None,
         environment: Optional[dict[str, Union[str, pulumi.Output[str]]]] = None,
         integrations: Optional[list[dict]] = None,
         token_validators: Optional[list[dict]] = None,
+        timeout_seconds: Optional[int] = None,
         policy_statements: Optional[list] = None,
         vpc_config: Optional[dict] = None,
+        hosted_zone_id: Optional[str] = None,
+        subdomain: Optional[str] = None,
         export_api: Optional[str] = None,
         opts=None,
     ):
@@ -175,7 +179,11 @@ class APIFoundry(ComponentResource):
                 )
 
             requirements.extend(
-                ["psycopg2-binary", "pyyaml", "api_foundry_query_engine"]
+                [
+                    "psycopg2-binary",
+                    "pyyaml",
+                    "api_foundry_query_engine",
+                ]
             )
 
         # Configure Lambda-based token validation if validators are provided
@@ -215,6 +223,7 @@ class APIFoundry(ComponentResource):
                 ),
             },
             requirements=requirements,
+            timeout=timeout_seconds or 30,
             policy_statements=policy_statements,
             vpc_config=vpc_config,
         )
@@ -236,6 +245,9 @@ class APIFoundry(ComponentResource):
             integrations=merged_integrations,
             token_validators=token_validators or [],
             export_api=export_api,
+            path_prefix=path_prefix,
+            hosted_zone_id=hosted_zone_id,
+            subdomain=subdomain,
             opts=pulumi.ResourceOptions(parent=self),
         )
 
