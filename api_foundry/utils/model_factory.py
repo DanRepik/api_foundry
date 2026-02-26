@@ -620,8 +620,16 @@ class PathOperation(OpenAPIElement):
 
     def __init__(self, path: str, method: str, path_operation: Dict[str, Any]):
         super().__init__()
-        self.entity = path.lower().rsplit("/", 1)[-1]
         self.action = METHODS_TO_ACTIONS[method]
+
+        parts = [p for p in path.lower().split("/") if p]
+        api_prefixes = {"api", "v1", "v2", "v3"}
+        literal_parts = [
+            p
+            for p in parts
+            if p not in api_prefixes and not (p.startswith("{") and p.endswith("}"))
+        ]
+        self.entity = "_".join(literal_parts)
 
         # Validate required x-af-database attribute
         if "x-af-database" not in path_operation:
