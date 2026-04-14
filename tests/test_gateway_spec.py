@@ -110,6 +110,21 @@ class TestGatewaySpec:
                 "not that",
                 False,
             ),
+            (
+                {"type": "string"},
+                "like::Dark*",
+                True,
+            ),
+            (
+                {"type": "string"},
+                "not-like::Dark?",
+                True,
+            ),
+            (
+                integer_property,
+                "like::123",
+                False,
+            ),
         ],
     )
     def test_generate_regex(self, property: dict[str, Any], value: str, valid: bool):
@@ -203,7 +218,7 @@ class TestGatewaySpec:
                     "required": False,
                     "schema": {
                         "type": "string",
-                        "pattern": "^[\\w\\s]0,200$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\w\\s]0,200$|^between::[\\w\\s]0,200,[\\w\\s]0,200$|^not-between::[\\w\\s]0,200,[\\w\\s]0,200,|^in::[\\w\\s]0,200(,[\\w\\s]0,200)*$|^not-in::[\\w\\s]0,200(,[\\w\\s]0,200)*$",  # noqa E501
+                        "pattern": "^[\\w\\s]0,200$|^(?:lt::|le::|eq::|ne::|ge::|gt::)?[\\w\\s]0,200$|^between::[\\w\\s]0,200,[\\w\\s]0,200$|^not-between::[\\w\\s]0,200,[\\w\\s]0,200,|^in::[\\w\\s]0,200(,[\\w\\s]0,200)*$|^not-in::[\\w\\s]0,200(,[\\w\\s]0,200)*$|^like::.+$|^not-like::.+$",  # noqa E501
                     },
                     "description": "Filter by name",
                 },

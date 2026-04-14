@@ -177,6 +177,7 @@ class APISpecEditor:
 
     def generate_regex(self, property: dict[str, Any]) -> str:
         regex_pattern = ""
+        relational_patterns = []
 
         # UUID (either explicit type 'uuid' or string with format 'uuid')
         if property.get("type") == "uuid" or (
@@ -234,6 +235,8 @@ class APISpecEditor:
             + rf"|^not-between::{regex_pattern},{regex_pattern},"
             + rf"|^in::{regex_pattern}(,{regex_pattern})*$"
             + rf"|^not-in::{regex_pattern}(,{regex_pattern})*$"
+            + rf"|^like::.+$"
+            + rf"|^not-like::.+$"
         )
 
     def generate_query_parameters(self, schema_object: dict[str, Any]):

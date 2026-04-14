@@ -249,8 +249,11 @@ Relational operands can be prefixed to the value of a parameter. These operands 
 - `ge` (greater than or equal to)
 - `gt` (greater than)
 - `in` (in a list of values)
+- `not-in` (not in a list of values)
 - `between` (between a range of values)
 - `not-between` (not between a range of values)
+- `like` (pattern match; `*` matches any sequence and `?` matches one character)
+- `not-like` (inverse pattern match; `*` matches any sequence and `?` matches one character)
 
 Examples:
 
@@ -263,6 +266,9 @@ GET /invoice?total=in::5.94,3.96
 
 # read invoices that are between $3.00 and $6.00
 GET /invoice?total=between::3,6
+
+# read tracks whose name starts with "Dark"
+GET /track?name=like::Dark*
 ```
 
 ### Using Metadata Parameters
@@ -271,7 +277,7 @@ Requests can include metadata parameters in query strings to provide additional 
 
 **__properties**
 
-The `__properties` metadata parameter restricts the properties of objects returned by API-Foundry. By default, API-Foundry returns all authorized properties of an object, excluding object and array properties. These properties must be explicitly selected using this parameter.
+The `__properties` metadata parameter restricts the properties of objects returned by API-Foundry. By default, API-Foundry returns all authorized properties of an object, excluding object and array properties. These properties must be explicitly selected using this parameter. Selectors may be separated by whitespace, commas, or a mix of both.
 
 The format of the parameter value is a space-delimited list of regular expressions. Only authorized properties matching any of the expressions are included in the result set.
 
@@ -281,6 +287,8 @@ For example, to select specific properties of the Chinook invoice, you could use
 
 ```yaml
 GET {endpoint}/invoice?__properties=invoice_id%20billing_.*%20price
+
+GET {endpoint}/invoice?__properties=invoice_id,billing_.*,price
 ```
 
 With this expression, the `invoice_id`, `price`, and all billing address properties will be included in the result set objects.
@@ -1786,7 +1794,7 @@ https://bobsrecords/invoice?customer.state=FL
 
 Relational parameters provide the means of applying relational operands to query string parameters.
 
-For these parameters, the query string value has the relational operand followed by '::' prepended to it. The supported operands include: 'lt', 'le', 'eq', 'ne', 'ge', 'gt', 'in', 'between', 'not-in', 'not-between'.
+For these parameters, the query string value has the relational operand followed by '::' prepended to it. The supported operands include: 'lt', 'le', 'eq', 'ne', 'ge', 'gt', 'in', 'not-in', 'between', 'not-between', 'like', 'not-like'.
 
 For example, to select all employees hired after a certain date:
 
@@ -1794,7 +1802,7 @@ For example, to select all employees hired after a certain date:
 https://bobsrecords/employee?hire_date=gt::2024-01-01
 ```
 
-When using range operands that require multiple values ('in', 'between', 'not-in', and 'not-between'), those values are passed as a comma-delimited list.
+When using range operands that require multiple values ('in', 'between', 'not-in', and 'not-between'), those values are passed as a comma-delimited list. Pattern operands ('like' and 'not-like') support `*` for any sequence of characters and `?` for a single character.
 
 For example, to request employees hired in 2023;
 
@@ -1854,7 +1862,7 @@ When interacting with these services there are three catagories of data being su
 
 **Query Parameters** - These parameters are generally passed in the request query string or path parameters.  With query string values relational expressions can be applied to filter sets of records.  These parameters can be applied to GET, PUT, and DELETE methods.
 
-Fundanmental relational expressions are supported when selecting records using a query string.  When passing a query string parameter the value can be prefixed with an relational operator separated by a ':'.  For example a parameter of 'laditude=lt:30' would select records those records with a laditude of less than 30. The supported operations are lt, le, eq, ne, ge, gt, in, between, not-in, not-between.
+Fundanmental relational expressions are supported when selecting records using a query string.  When passing a query string parameter the value can be prefixed with an relational operator separated by a ':'.  For example a parameter of 'laditude=lt:30' would select records those records with a laditude of less than 30. The supported operations are lt, le, eq, ne, ge, gt, in, not-in, between, not-between, like, not-like. For `like` and `not-like`, `*` matches any sequence of characters and `?` matches a single character.
 
 **Store Parameters** - These parameters are always passed in the request body in JSON format and represent data to be stored.  These parameters are only accepted only by POST and PUT methods.
 
