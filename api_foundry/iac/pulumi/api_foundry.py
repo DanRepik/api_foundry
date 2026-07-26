@@ -234,6 +234,7 @@ class APIFoundry(ComponentResource):
             batch_path=batch_path,
             token_validators=token_validators,
         )
+        self.api_spec_editor = gateway_spec
 
         # Merge gateway_spec.integrations with user-provided integrations
         specification = gateway_spec.rest_api_spec()
