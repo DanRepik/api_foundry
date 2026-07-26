@@ -283,39 +283,6 @@ class SchemaObjectProperty(OpenAPIElement):
         return data
 
 
-class SchemaObjectKey(SchemaObjectProperty):
-    """Represents a primary key in a schema object."""
-
-    def __init__(self, schema_name: str, name: str, properties: Dict[str, Any]):
-        super().__init__(schema_name, name, properties)
-        self.key_type = properties.get("x-af-primary-key", "auto")
-
-        if self.key_type not in ["manual", "uuid", "auto", "sequence"]:
-            raise ApplicationException(
-                500,
-                (
-                    f"Invalid primary key type '{self.key_type}' "
-                    + f"in schema object '{schema_name}', "
-                    + f"property '{self.api_name}'"
-                ),
-            )
-
-        self.sequence_name = (
-            properties.get("x-af-sequence-name")
-            if self.key_type == "sequence"
-            else None
-        )
-        if self.key_type == "sequence" and not self.sequence_name:
-            raise ApplicationException(
-                500,
-                (
-                    "Sequence-based primary keys must have a sequence name in "
-                    + f"schema object '{schema_name}', "
-                    + f"property '{self.api_name}'"
-                ),
-            )
-
-
 class SchemaObjectAssociation(OpenAPIElement):
     """Represents an association (relationship) between schema objects."""
 
