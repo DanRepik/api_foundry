@@ -263,6 +263,25 @@ class SchemaObjectProperty(OpenAPIElement):
 
         return soft_delete_config
 
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert to a dictionary, recursively converting sub_properties and
+        items_sub_properties (dicts of SchemaObjectProperty for embedded
+        objects and arrays of embedded objects), which the base
+        OpenAPIElement.to_dict() does not recurse into since they are
+        plain dicts rather than OpenAPIElement instances themselves.
+        """
+        data = super().to_dict()
+        if self.sub_properties is not None:
+            data["sub_properties"] = {
+                k: v.to_dict() for k, v in self.sub_properties.items()
+            }
+        if self.items_sub_properties is not None:
+            data["items_sub_properties"] = {
+                k: v.to_dict() for k, v in self.items_sub_properties.items()
+            }
+        return data
+
 
 class SchemaObjectKey(SchemaObjectProperty):
     """Represents a primary key in a schema object."""

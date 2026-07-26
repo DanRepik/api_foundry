@@ -802,3 +802,74 @@ def test_permissions_concise_format():
 
     # Role-level WHERE clause should be preserved
     assert album_perms["where"] == "album_id <= 50"
+
+
+@pytest.mark.unit
+def test_embedded_object_property_serializes_to_yaml():
+    """
+    Regression test: OpenAPIElement.to_dict() previously only recursed
+    into values that were themselves OpenAPIElement instances, but
+    sub_properties/items_sub_properties (populated for embedded object
+    properties and arrays of embedded objects) are plain dicts *of*
+    SchemaObjectProperty objects, so they passed through to_dict()
+    unconverted. Any schema with an embedded object property broke
+    yaml.safe_dump() at deploy time with a RepresenterError.
+    """
+    spec = {
+        "components": {
+            "schemas": {
+                "order": {
+                    "type": "object",
+                    "x-af-database": "test",
+                    "properties": {
+                        "order_id": {
+                            "type": "integer",
+                            "x-af-primary-key": "auto",
+                        },
+                        "shipping_address": {
+                            "type": "object",
+                            "properties": {
+                                "street": {"type": "string"},
+                                "city": {"type": "string"},
+                            },
+                        },
+                        "line_items": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "sku": {"type": "string"},
+                                    "quantity": {"type": "integer"},
+                                },
+                            },
+                        },
+                    },
+                    "required": ["order_id"],
+                }
+            }
+        },
+        "paths": {},
+    }
+
+    result = ModelFactory(spec).get_config_output()
+
+    # Must not raise yaml.representer.RepresenterError
+    dumped = yaml.safe_dump(result)
+    reloaded = yaml.safe_load(dumped)
+
+    shipping_address = result["schema_objects"]["order"]["properties"][
+        "shipping_address"
+    ]
+    assert set(shipping_address["sub_properties"].keys()) == {"street", "city"}
+    assert isinstance(shipping_address["sub_properties"]["street"], dict)
+
+    line_items = result["schema_objects"]["order"]["properties"]["line_items"]
+    assert set(line_items["items_sub_properties"].keys()) == {"sku", "quantity"}
+    assert isinstance(line_items["items_sub_properties"]["sku"], dict)
+
+    assert (
+        reloaded["schema_objects"]["order"]["properties"]["shipping_address"][
+            "sub_properties"
+        ]["city"]["api_name"]
+        == "city"
+    )
