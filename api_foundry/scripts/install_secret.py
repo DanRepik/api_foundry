@@ -1,15 +1,16 @@
 import argparse
+import os
 import boto3
 import json
 
 from botocore.exceptions import ClientError
 
 
-def create_secret_if_not_exists(secret_name, secret_value):
-    # Create a Secrets Manager client
-    client = boto3.client(
-        "secretsmanager", endpoint_url="http://localhost.localstack.cloud:4566"
-    )
+def create_secret_if_not_exists(secret_name, secret_value, endpoint_url=None):
+    # Create a Secrets Manager client. endpoint_url is None (real AWS
+    # Secrets Manager) unless explicitly overridden, e.g. for testing
+    # against LocalStack.
+    client = boto3.client("secretsmanager", endpoint_url=endpoint_url)
 
     try:
         # Check if the secret already exists
@@ -55,6 +56,15 @@ def main():
     parser.add_argument(
         "--schema", default="public", help="The database schema (default: public)"
     )
+    parser.add_argument(
+        "--endpoint-url",
+        default=os.environ.get("AWS_ENDPOINT_URL"),
+        help=(
+            "Optional AWS endpoint URL override, e.g. for testing against "
+            "LocalStack. Defaults to the AWS_ENDPOINT_URL environment "
+            "variable, or real AWS Secrets Manager if unset."
+        ),
+    )
 
     args = parser.parse_args()
 
@@ -70,7 +80,7 @@ def main():
         }
     )
 
-    create_secret_if_not_exists(args.secret_name, secret_value)
+    create_secret_if_not_exists(args.secret_name, secret_value, args.endpoint_url)
 
 
 if __name__ == "__main__":
