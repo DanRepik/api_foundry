@@ -1,7 +1,10 @@
 import requests
 import logging
+import pytest
 
 log = logging.getLogger(__name__)
+
+pytestmark = pytest.mark.integration
 
 
 def test_stack_deployment(chinook_api_endpoint):
