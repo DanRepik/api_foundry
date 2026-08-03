@@ -372,9 +372,12 @@ def test_path_operation_parsing():
     assert op["action"] == "read"
     # inputs
     assert set(op["inputs"].keys()) == {"limit", "q"}
-    # ModelFactory currently treats parameter types as string
-    # unless top-level 'type' is present
-    assert op["inputs"]["limit"]["api_type"] == "string"
+    # Parameter objects nest type/default/etc. under `schema` per the
+    # OpenAPI spec (unlike requestBody/responses properties, which are
+    # already flat) -- this must be read from there, not a nonexistent
+    # top-level 'type' on the parameter object.
+    assert op["inputs"]["limit"]["api_type"] == "integer"
+    assert op["inputs"]["q"]["api_type"] == "string"
     # outputs
     assert set(op["outputs"].keys()) == {"id", "name"}
     assert op["outputs"]["id"]["api_type"] == "string"
