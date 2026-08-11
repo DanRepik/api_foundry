@@ -373,8 +373,7 @@ def test_path_operation_parsing():
     # inputs
     assert set(op["inputs"].keys()) == {"limit", "q"}
     # Parameter objects nest type/default/etc. under `schema` per the
-    # OpenAPI spec (unlike requestBody/responses properties, which are
-    # already flat) -- this must be read from there, not a nonexistent
+    # OpenAPI spec -- this must be read from there, not a nonexistent
     # top-level 'type' on the parameter object.
     assert op["inputs"]["limit"]["api_type"] == "integer"
     assert op["inputs"]["q"]["api_type"] == "string"
