@@ -677,8 +677,15 @@ class PathOperation(OpenAPIElement):
                 properties[name] = SchemaObjectProperty(self.entity, name, prop_schema)
         elif section == "parameters":
             for param in path_operation.get("parameters", {}) or []:
+                # OpenAPI parameter objects nest type/default/etc. under
+                # `schema` (unlike requestBody/responses properties, which
+                # are already flat) -- merge schema over the parameter
+                # object so type/default/minLength/etc. are read from the
+                # right place while still keeping parameter-level fields
+                # like `required` and `description`.
+                merged = {**param, **(param.get("schema") or {})}
                 properties[param["name"]] = SchemaObjectProperty(
-                    self.entity, param["name"], param
+                    self.entity, param["name"], merged
                 )
         elif section == "responses":
             responses = path_operation.get("responses", {})
