@@ -638,7 +638,7 @@ def test_sequence_primary_key_requires_sequence_name():
     }
     with pytest.raises(ApplicationException) as exc:
         ModelFactory(spec)
-    assert "Sequence-based primary keys must have a sequence name" in str(exc.value)
+    assert "x-af-sequence-name" in str(exc.value)
 
 
 @pytest.mark.unit
