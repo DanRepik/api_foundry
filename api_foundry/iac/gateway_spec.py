@@ -227,16 +227,23 @@ class APISpecEditor:
         if len(regex_pattern) == 0:
             regex_pattern = ".*"
 
-        return (
+        full_pattern = (
             rf"^{regex_pattern}$"
             + rf"|^(?:lt::|le::|eq::|ne::|ge::|gt::)?{regex_pattern}$"
             + rf"|^between::{regex_pattern},{regex_pattern}$"
             + rf"|^not-between::{regex_pattern},{regex_pattern},"
             + rf"|^in::{regex_pattern}(,{regex_pattern})*$"
             + rf"|^not-in::{regex_pattern}(,{regex_pattern})*$"
-            + r"|^like::.+$"
-            + r"|^not-like::.+$"
         )
+
+        # like/not-like only make sense for string-typed properties -- an
+        # integer or number property matching "like::123" is meaningless,
+        # and unconditionally allowing it let non-string filters through
+        # that the SQL layer can't actually execute as a LIKE comparison.
+        if property["type"] == "string":
+            full_pattern += r"|^like::.+$" + r"|^not-like::.+$"
+
+        return full_pattern
 
     def generate_query_parameters(self, schema_object: dict[str, Any]):
         parameters = []
