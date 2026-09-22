@@ -39,7 +39,11 @@ jobs:
       # fixture_foundry (0.2.4) has a real bug, fixed upstream but not
       # yet released, and a git-pinned dependency here would break every
       # publish the same way cloud_foundry's did (DanRepik/cloud_foundry#11).
-      - run: pip install --force-reinstall --no-deps git+https://github.com/DanRepik/fixture_foundry.git@fix/fixtures-stale-teardown-calls
+      #
+      # Pinned to a commit SHA, not the branch name: this runs during the
+      # release gate, so a force-push or later change to that branch must
+      # not be able to silently change what a publish executes.
+      - run: pip install --force-reinstall --no-deps git+https://github.com/DanRepik/fixture_foundry.git@4a6b081452dd7c1aa72a40c9e1a107c346f8ff7e
       - run: pytest tests
 
   build:
@@ -83,4 +87,8 @@ jobs:
         with:
           name: dist
           path: dist/
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      # This step has id-token: write and mints the PyPI OIDC token, so it
+      # is pinned to a reviewed commit SHA (v1.14.2) rather than the
+      # mutable release/v1 ref -- that ref changing would let unreviewed
+      # code run with publish credentials.
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1 (v1.14.2)

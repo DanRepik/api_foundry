@@ -37,7 +37,11 @@ jobs:
           # package whose metadata has a direct URL/VCS dependency, even
           # in an optional extra (see DanRepik/cloud_foundry#11) -- so it's
           # installed here as a separate step instead.
-          pip install --force-reinstall --no-deps git+https://github.com/DanRepik/fixture_foundry.git@fix/fixtures-stale-teardown-calls
+          #
+          # Pinned to a commit SHA rather than the branch name: fetching a
+          # mutable ref here would let a force-push or later change to that
+          # branch silently alter what every PR's test run executes.
+          pip install --force-reinstall --no-deps git+https://github.com/DanRepik/fixture_foundry.git@4a6b081452dd7c1aa72a40c9e1a107c346f8ff7e
 
       - name: Run pytest
         run: pytest tests
