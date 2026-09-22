@@ -40,6 +40,9 @@ dev = [
     "docker",
     "api_foundry_query_engine",
     "pulumi-automation",
+    # tests/conftest.py imports this directly; was missing here entirely
+    # until CI first ran the test suite and caught it.
+    "simple-oauth-server",
 ]
 
 [project.urls]
