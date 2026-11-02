@@ -202,13 +202,12 @@ TEST_USERS: dict = {
 
 @pytest.fixture(scope="module")
 def chinook_api_stack(request, chinook_db, localstack):  # noqa F811
-    teardown = request.config.getoption("--teardown").lower() == "true"
+    # deploy() always destroys the stack on exit; it takes no teardown flag.
     with deploy(
         "api-foundry",
         "test-api",
         chinook_api(chinook_db, localstack),
         localstack=localstack,
-        teardown=teardown,
     ) as outputs:
         yield outputs
 

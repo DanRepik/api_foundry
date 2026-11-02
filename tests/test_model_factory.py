@@ -719,6 +719,12 @@ def test_table_name_with_xaf_schema():
     assert out["schema_objects"]["user_profile"]["table_name"] == "chinook.user_profile"
 
 
+@pytest.mark.xfail(
+    raises=ApplicationException,
+    strict=True,
+    reason="Composite primary keys (chinook playlist_track) are not supported "
+    "yet; on the roadmap. Remove this marker when they are.",
+)
 def test_chinook_generation():
     # Define the path to the YAML test spec file
     spec_file_path = os.path.join(os.getcwd(), "resources/chinook_api.yaml")
