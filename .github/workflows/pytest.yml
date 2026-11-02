@@ -45,9 +45,24 @@ jobs:
           # branch silently alter what every PR's test run executes.
           pip install --force-reinstall --no-deps git+https://github.com/DanRepik/fixture_foundry.git@45e619617f4941fa9c504f991f3e97556510d25a
 
+      # The LocalStack deploy tests drive Pulumi's Automation API, which
+      # shells out to the pulumi CLI. Install the CLI version matching the
+      # installed pulumi SDK.
+      - name: Install Pulumi CLI
+        run: |
+          set -euo pipefail
+          version="$(python -c 'import importlib.metadata as m; print(m.version("pulumi"))')"
+          curl -fsSL https://get.pulumi.com | sh -s -- --version "$version"
+          echo "$HOME/.pulumi/bin" >> "$GITHUB_PATH"
+
       - name: Run pytest
         env:
+          # Local file backend: no Pulumi Cloud login in CI.
+          PULUMI_BACKEND_URL: file://${{ runner.temp }}/pulumi-state
+          PULUMI_CONFIG_PASSPHRASE: ""
           # LocalStack images require an auth token to start. Set it as a
           # repository Actions secret; fork PRs don't receive secrets.
           LOCALSTACK_AUTH_TOKEN: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
-        run: pytest tests
+        run: |
+          mkdir -p "$RUNNER_TEMP/pulumi-state"
+          pytest tests

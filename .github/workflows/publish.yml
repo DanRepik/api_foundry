@@ -44,12 +44,28 @@ jobs:
       # release gate, so a force-push or later change to that branch must
       # not be able to silently change what a publish executes.
       - run: pip install --force-reinstall --no-deps git+https://github.com/DanRepik/fixture_foundry.git@45e619617f4941fa9c504f991f3e97556510d25a
+
+      # The LocalStack deploy tests drive Pulumi's Automation API, which
+      # shells out to the pulumi CLI. Install the CLI version matching the
+      # installed pulumi SDK.
+      - name: Install Pulumi CLI
+        run: |
+          set -euo pipefail
+          version="$(python -c 'import importlib.metadata as m; print(m.version("pulumi"))')"
+          curl -fsSL https://get.pulumi.com | sh -s -- --version "$version"
+          echo "$HOME/.pulumi/bin" >> "$GITHUB_PATH"
+
       # LocalStack images require an auth token to start; the pinned
       # fixture_foundry commit forwards it into the container
       # (DanRepik/fixture_foundry#5).
-      - run: pytest tests
+      - run: |
+          mkdir -p "$RUNNER_TEMP/pulumi-state"
+          pytest tests
         env:
           LOCALSTACK_AUTH_TOKEN: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
+          # Local file backend: no Pulumi Cloud login in CI.
+          PULUMI_BACKEND_URL: file://${{ runner.temp }}/pulumi-state
+          PULUMI_CONFIG_PASSPHRASE: ""
 
   build:
     needs: test
