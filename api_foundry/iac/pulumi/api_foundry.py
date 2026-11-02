@@ -122,7 +122,7 @@ class APIFoundry(ComponentResource):
         *,
         api_spec: Union[str, list[str]],
         batch_path: Optional[str] = None,
-        secrets: Optional[str] = None,
+        secrets: Optional[Union[str, pulumi.Output[str]]] = None,
         path_prefix: Optional[str] = None,
         environment: Optional[dict[str, Union[str, pulumi.Output[str]]]] = None,
         integrations: Optional[list[dict]] = None,
@@ -158,25 +158,38 @@ class APIFoundry(ComponentResource):
 
         # Grant read access to referenced secrets
         if secrets:
-            try:
-                secret_arns = list(json.loads(secrets).values())
+            if isinstance(secrets, pulumi.Output):
+                # Resolve the ARNs at deploy time rather than widening the
+                # grant to "*". The statement list is resolved as a whole
+                # before it reaches cloud_foundry (see below).
                 policy_statements.append(
                     {
                         "Effect": "Allow",
                         "Actions": ["secretsmanager:GetSecretValue"],
-                        "Resources": secret_arns,
+                        "Resources": secrets.apply(
+                            lambda s: list(json.loads(s).values())
+                        ),
                     }
                 )
-            except (json.JSONDecodeError, AttributeError):
-                # If secrets is an Output or invalid JSON, we can't parse it yet
-                # Add a broad policy (will be restricted during deployment)
-                policy_statements.append(
-                    {
-                        "Effect": "Allow",
-                        "Actions": ["secretsmanager:GetSecretValue"],
-                        "Resources": "*",
-                    }
-                )
+            else:
+                try:
+                    secret_arns = list(json.loads(secrets).values())
+                    policy_statements.append(
+                        {
+                            "Effect": "Allow",
+                            "Actions": ["secretsmanager:GetSecretValue"],
+                            "Resources": secret_arns,
+                        }
+                    )
+                except (json.JSONDecodeError, AttributeError):
+                    # Invalid JSON: fall back to a broad policy
+                    policy_statements.append(
+                        {
+                            "Effect": "Allow",
+                            "Actions": ["secretsmanager:GetSecretValue"],
+                            "Resources": "*",
+                        }
+                    )
 
             requirements.extend(
                 [
@@ -211,6 +224,12 @@ class APIFoundry(ComponentResource):
 
         if env_vars.get("JWKS_HOST"):
             requirements.extend(["PyJWT", "cryptography", "requests"])
+
+        if isinstance(secrets, pulumi.Output):
+            # cloud_foundry builds the role policy from plain statements, but
+            # accepts the statement list itself as an Output. Resolve the
+            # list (including Outputs nested in Resources) as one Output.
+            policy_statements = pulumi.Output.from_input(policy_statements)
 
         self.api_function = cloud_foundry.python_function(
             name=name,

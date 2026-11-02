@@ -32,7 +32,9 @@ jobs:
           # container_network/postgres/localstack pytest fixtures (each
           # passes an unsupported teardown= kwarg into its own context
           # manager -- TypeError at fixture setup). Fixed upstream but not
-          # yet released to PyPI: DanRepik/fixture_foundry#4. Not declared
+          # yet released to PyPI: DanRepik/fixture_foundry#4. The pinned
+          # commit also passes LOCALSTACK_AUTH_TOKEN through to the
+          # LocalStack container (DanRepik/fixture_foundry#5). Not declared
           # in pyproject.toml as a git dependency -- PyPI rejects any
           # package whose metadata has a direct URL/VCS dependency, even
           # in an optional extra (see DanRepik/cloud_foundry#11) -- so it's
@@ -41,7 +43,26 @@ jobs:
           # Pinned to a commit SHA rather than the branch name: fetching a
           # mutable ref here would let a force-push or later change to that
           # branch silently alter what every PR's test run executes.
-          pip install --force-reinstall --no-deps git+https://github.com/DanRepik/fixture_foundry.git@4a6b081452dd7c1aa72a40c9e1a107c346f8ff7e
+          pip install --force-reinstall --no-deps git+https://github.com/DanRepik/fixture_foundry.git@45e619617f4941fa9c504f991f3e97556510d25a
+
+      # The LocalStack deploy tests drive Pulumi's Automation API, which
+      # shells out to the pulumi CLI. Install the CLI version matching the
+      # installed pulumi SDK.
+      - name: Install Pulumi CLI
+        run: |
+          set -euo pipefail
+          version="$(python -c 'import importlib.metadata as m; print(m.version("pulumi"))')"
+          curl -fsSL https://get.pulumi.com | sh -s -- --version "$version"
+          echo "$HOME/.pulumi/bin" >> "$GITHUB_PATH"
 
       - name: Run pytest
-        run: pytest tests
+        env:
+          # Local file backend: no Pulumi Cloud login in CI.
+          PULUMI_BACKEND_URL: file://${{ runner.temp }}/pulumi-state
+          PULUMI_CONFIG_PASSPHRASE: ""
+          # LocalStack images require an auth token to start. Set it as a
+          # repository Actions secret; fork PRs don't receive secrets.
+          LOCALSTACK_AUTH_TOKEN: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/pulumi-state"
+          pytest tests

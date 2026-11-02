@@ -13,6 +13,8 @@ out so this test only exercises APIFoundry's own wiring, using pulumi's
 mock runtime (no AWS/network access needed).
 """
 
+import asyncio
+
 import pulumi
 import pytest
 
@@ -56,6 +58,12 @@ def mocked_pulumi():
         def call(self, args):
             return {}
 
+    # Python 3.14+ no longer creates an event loop implicitly, and pulumi's
+    # mock runtime needs one when it registers the root stack.
+    try:
+        asyncio.get_event_loop()
+    except RuntimeError:
+        asyncio.set_event_loop(asyncio.new_event_loop())
     pulumi.runtime.set_mocks(Mocks(), preview=False)
 
 
