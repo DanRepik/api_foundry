@@ -561,7 +561,14 @@ properties:
   metadata:
     type: string
     x-af-column-type: text      # Use text column for large string content
+
+  flags:
+    type: array
+    items: { type: string }
+    x-af-column-type: text[]    # Postgres array column (integer[], uuid[], ...)
 ```
+
+**Postgres array columns.** A `type: array` property with scalar `items` and an array `x-af-column-type` (a type name followed by `[]`) is read and written as a native Postgres array, including through the RDS Data API, which has no array parameter: the query engine sends the list as JSON text and unpacks it in SQL (api_foundry_query_engine 0.8.86 and later). The model factory rejects an array column type on any other property, and any column type that isn't a plain type name followed by `[]`. Without an array `x-af-column-type`, a `type: array` property is written as `jsonb`. `postgres_to_openapi` generates these properties from array columns.
 
 
 
