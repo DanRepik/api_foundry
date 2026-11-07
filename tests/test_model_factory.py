@@ -882,3 +882,62 @@ def test_embedded_object_property_serializes_to_yaml():
         ]["city"]["api_name"]
         == "city"
     )
+
+
+def _array_spec(prop):
+    return {
+        "openapi": "3.0.0",
+        "components": {
+            "schemas": {
+                "lens": {
+                    "type": "object",
+                    "x-af-database": "database",
+                    "properties": {
+                        "lens_id": {"type": "integer", "x-af-primary-key": "auto"},
+                        "flags": prop,
+                    },
+                }
+            }
+        },
+    }
+
+
+@pytest.mark.unit
+def test_array_column_type_is_carried_to_the_engine():
+    config = ModelFactory(
+        _array_spec({"type": "array", "items": {"type": "string"}, "x-af-column-type": "text[]"})
+    ).get_config_output()
+    flags = config["schema_objects"]["lens"]["properties"]["flags"]
+    assert flags["api_type"] == "array" and flags["column_type"] == "text[]"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "prop,message",
+    [
+        ({"type": "string", "x-af-column-type": "text[]"}, "must be type: array"),
+        (
+            {"type": "array", "items": {"type": "object", "properties": {"a": {"type": "string"}}},
+             "x-af-column-type": "text[]"},
+            "must be type: array",
+        ),
+        ({"type": "array", "items": {"type": "string"}, "x-af-column-type": "text[]; drop"}, "type name"),
+        ({"type": "array", "items": {"type": "string"}, "x-af-column-type": "text[][]"}, "type name"),
+    ],
+)
+def test_array_column_type_is_validated(prop, message):
+    with pytest.raises(ApplicationException) as error:
+        ModelFactory(_array_spec(prop))
+    assert message in str(error.value.message)
+
+
+@pytest.mark.unit
+def test_postgres_to_openapi_maps_array_columns():
+    from api_foundry.scripts.postgres_to_openapi import PostgresSchemaToOpenAPI
+
+    generator = PostgresSchemaToOpenAPI.__new__(PostgresSchemaToOpenAPI)  # no database connection
+    assert generator.map_column({"data_type": "ARRAY", "udt_name": "_text"}) == {
+        "type": "array", "items": {"type": "string"}, "x-af-column-type": "text[]"}
+    assert generator.map_column({"data_type": "ARRAY", "udt_name": "_int4"}) == {
+        "type": "array", "items": {"type": "integer"}, "x-af-column-type": "int4[]"}
+    assert generator.map_column({"data_type": "text", "udt_name": "text"}) == {"type": "string"}

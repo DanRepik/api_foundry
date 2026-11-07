@@ -25,7 +25,7 @@ class PostgresSchemaToOpenAPI:
 
     def get_columns(self, table_name):
         query = """
-        SELECT column_name, data_type, is_nullable, character_maximum_length,
+        SELECT column_name, data_type, udt_name, is_nullable, character_maximum_length,
                (SELECT ccu.table_name
                 FROM information_schema.table_constraints AS tc
                 JOIN information_schema.constraint_column_usage AS ccu
@@ -95,6 +95,35 @@ class PostgresSchemaToOpenAPI:
         }
         return type_mapping.get(data_type, {"type": "string"})
 
+    # Element types of Postgres array columns, by udt_name without its
+    # leading underscore ("_text" is text[]).
+    ARRAY_ELEMENT_TYPES = {
+        "text": {"type": "string"},
+        "varchar": {"type": "string"},
+        "bpchar": {"type": "string"},
+        "uuid": {"type": "string", "format": "uuid"},
+        "int2": {"type": "integer"},
+        "int4": {"type": "integer"},
+        "int8": {"type": "integer"},
+        "numeric": {"type": "number"},
+        "float4": {"type": "number"},
+        "float8": {"type": "number"},
+        "bool": {"type": "boolean"},
+        "date": {"type": "string", "format": "date"},
+        "timestamptz": {"type": "string", "format": "date-time"},
+        "timestamp": {"type": "string", "format": "date-time"},
+    }
+
+    def map_column(self, column):
+        """The OpenAPI property for a column. An array column becomes
+        ``type: array`` with an array ``x-af-column-type`` such as text[],
+        which the query engine writes as a native array."""
+        if column["data_type"] == "ARRAY":
+            element = (column.get("udt_name") or "").lstrip("_")
+            items = dict(self.ARRAY_ELEMENT_TYPES.get(element, {"type": "string"}))
+            return {"type": "array", "items": items, "x-af-column-type": f"{element or 'text'}[]"}
+        return self.map_data_type(column["data_type"])
+
     def generate_openapi_schema(self):
         openapi_schema = {
             "openapi": "3.0.0",
@@ -113,7 +142,7 @@ class PostgresSchemaToOpenAPI:
 
             for column in columns:
                 column_name = column["column_name"]
-                column_info = self.map_data_type(column["data_type"])
+                column_info = self.map_column(column)
 
                 if column_name in primary_keys:
                     column_info["x-af-primary-key"] = primary_keys[column_name]

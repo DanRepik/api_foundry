@@ -36,6 +36,12 @@ SUPPORTED_TYPES = {
 }
 
 
+
+# A Postgres array column type: a type name followed by "[]" ("text[]",
+# "integer[]", "character varying[]"). The query engine interpolates the
+# element type into SQL casts, so nothing else is accepted.
+ARRAY_COLUMN_TYPE = re.compile(r"^\s*[A-Za-z][A-Za-z0-9_ ]*?\s*\[\]\s*$")
+
 class OpenAPIElement:
     """
     Base class for OpenAPI elements like schema properties and
@@ -116,6 +122,7 @@ class SchemaObjectProperty(OpenAPIElement):
             )
         else:
             self.column_type = prop.get("type") or "string"
+        self._validate_array_column(schema_name, name, prop)
         self.required = prop.get("required", False)
         self.min_length = prop.get("minLength", None)
         self.max_length = prop.get("maxLength", None)
@@ -132,6 +139,34 @@ class SchemaObjectProperty(OpenAPIElement):
         # For embedded objects/arrays
         self.sub_properties: Optional[Dict[str, SchemaObjectProperty]] = None
         self.items_sub_properties: Optional[Dict[str, SchemaObjectProperty]] = None
+
+    def _validate_array_column(
+        self, schema_name: str, name: str, prop: Dict[str, Any]
+    ) -> None:
+        """A Postgres array column ("text[]", "integer[]", ...) holds a
+        list of scalars, so its property must be ``type: array`` with
+        scalar items. The element type ends up in SQL casts, so it must be
+        a plain type name."""
+        column_type = self.column_type
+        if not isinstance(column_type, str) or "[" not in column_type:
+            return
+        where = f"Property: {name} in schema object: {schema_name}"
+        if not ARRAY_COLUMN_TYPE.match(column_type):
+            raise ApplicationException(
+                500,
+                f"{where} has x-af-column-type {column_type!r}; an array column "
+                "type is a type name followed by [], such as text[]",
+            )
+        items = prop.get("items") or {}
+        if prop.get("type") != "array" or "$ref" in items or items.get("type") in (
+            "object",
+            "array",
+        ):
+            raise ApplicationException(
+                500,
+                f"{where} has array x-af-column-type {column_type!r}; it must be "
+                "type: array with scalar items",
+            )
 
     def _concurrency_control(self, schema_name: str, prop_dict: dict) -> Optional[str]:
         concurrency_control = prop_dict.get("x-af-concurrency-control", None)
