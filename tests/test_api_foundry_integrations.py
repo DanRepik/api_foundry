@@ -47,6 +47,8 @@ class FakeFunction:
 
 class FakeRestAPI:
     domain = "test.example.com"
+    rest_api_id = "test-api-id"
+    stage_name = "test-api"
 
 
 @pytest.fixture

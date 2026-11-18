@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import yaml
 import boto3
@@ -6,6 +7,7 @@ from typing import Optional, Union
 from pulumi import ComponentResource
 
 import pulumi
+import pulumi_aws as aws
 import cloud_foundry
 
 from api_foundry.iac.gateway_spec import APISpecEditor
@@ -111,6 +113,60 @@ def load_api_spec(api_spec: Union[str, list[str]]) -> dict:
         merged.update(spec_dict)
 
     return merged
+
+
+# Requests per second (steady rate) and burst API Gateway lets through, across
+# all callers, for every route of the stage unless the spec's x-af-throttle says
+# otherwise. Far below the account default (10,000/5,000), so an open route
+# can't run up the database bill.
+DEFAULT_THROTTLE = {"rate": 100, "burst": 200}
+_METHODS = ("get", "put", "post", "delete", "patch")
+
+
+def _throttle(value, where: str) -> dict:
+    """An x-af-throttle checked: {rate: positive number, burst: positive integer}."""
+    if not isinstance(value, dict) or set(value) != {"rate", "burst"}:
+        raise ValueError(
+            f"{where}: x-af-throttle needs rate and burst, e.g. {{rate: 10, burst: 20}}"
+        )
+    rate, burst = value["rate"], value["burst"]
+    if (
+        isinstance(rate, bool)
+        or not isinstance(rate, (int, float))
+        or rate <= 0
+        or isinstance(burst, bool)
+        or not isinstance(burst, int)
+        or burst <= 0
+    ):
+        raise ValueError(
+            f"{where}: x-af-throttle rate must be a positive number and burst a "
+            f"positive integer, not {value!r}"
+        )
+    return {"rate": float(rate), "burst": burst}
+
+
+def throttle_limits(spec: dict, path_prefix: Optional[str] = None) -> dict[str, dict]:
+    """API Gateway method settings paths and their limits.
+
+    ``*/*`` is the whole stage: the spec's top-level ``x-af-throttle``, else
+    DEFAULT_THROTTLE. Each path operation with its own ``x-af-throttle`` gets
+    ``{resource path}/{METHOD}``, the resource path (with ``path_prefix``,
+    as cloud_foundry prefixes it) written with "~1" for "/", as the stage's
+    method settings name it.
+    """
+    limits = {"*/*": _throttle(spec.get("x-af-throttle", DEFAULT_THROTTLE), "spec")}
+    for path, item in (spec.get("paths") or {}).items():
+        for method in _METHODS:
+            operation = item.get(method) if isinstance(item, dict) else None
+            if not isinstance(operation, dict) or "x-af-throttle" not in operation:
+                continue
+            resource = (
+                f"{path_prefix.rstrip('/')}/{path.lstrip('/')}" if path_prefix else path
+            )
+            limits[f"{resource.replace('/', '~1')}/{method.upper()}"] = _throttle(
+                operation["x-af-throttle"], f"{method.upper()} {path}"
+            )
+    return limits
 
 
 class APIFoundry(ComponentResource):
@@ -272,6 +328,26 @@ class APIFoundry(ComponentResource):
         )
 
         self.domain = self.rest_api.domain
+
+        # Throttling, one method settings resource per limit. Each updates
+        # the same stage, and concurrent stage updates conflict, so each
+        # waits for the one before.
+        previous = None
+        for method_path, limit in throttle_limits(api_spec_dict, path_prefix).items():
+            slug = re.sub(r"[^A-Za-z0-9]+", "-", method_path).strip("-") or "stage"
+            previous = aws.apigateway.MethodSettings(
+                f"{name}-limit-{slug}",
+                rest_api=self.rest_api.rest_api_id,
+                stage_name=self.rest_api.stage_name,
+                method_path=method_path,
+                settings=aws.apigateway.MethodSettingsSettingsArgs(
+                    throttling_rate_limit=limit["rate"],
+                    throttling_burst_limit=limit["burst"],
+                ),
+                opts=pulumi.ResourceOptions(
+                    parent=self, depends_on=[previous] if previous else None
+                ),
+            )
 
         self.register_outputs({f"{name}_domain": self.domain})
 
