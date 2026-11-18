@@ -150,9 +150,11 @@ def throttle_limits(spec: dict, path_prefix: Optional[str] = None) -> dict[str, 
 
     ``*/*`` is the whole stage: the spec's top-level ``x-af-throttle``, else
     DEFAULT_THROTTLE. Each path operation with its own ``x-af-throttle`` gets
-    ``{resource path}/{METHOD}``, the resource path (with ``path_prefix``,
-    as cloud_foundry prefixes it) written with "~1" for "/", as the stage's
-    method settings name it.
+    ``{resource path}/{METHOD}``: the resource path with ``path_prefix`` (as
+    cloud_foundry prefixes it) and without its leading "/", the form the AWS
+    provider's ``method_path`` takes. The provider stores and looks up the
+    setting under exactly this key, so a "~1"-encoded path deploys without
+    error and matches no resource.
     """
     limits = {"*/*": _throttle(spec.get("x-af-throttle", DEFAULT_THROTTLE), "spec")}
     for path, item in (spec.get("paths") or {}).items():
@@ -163,7 +165,7 @@ def throttle_limits(spec: dict, path_prefix: Optional[str] = None) -> dict[str, 
             resource = (
                 f"{path_prefix.rstrip('/')}/{path.lstrip('/')}" if path_prefix else path
             )
-            limits[f"{resource.replace('/', '~1')}/{method.upper()}"] = _throttle(
+            limits[f"{resource.lstrip('/')}/{method.upper()}"] = _throttle(
                 operation["x-af-throttle"], f"{method.upper()} {path}"
             )
     return limits
