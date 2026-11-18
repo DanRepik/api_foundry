@@ -44,11 +44,10 @@ def test_spec_and_operation_limits():
     )
     assert limits == {
         "*/*": {"rate": 50.0, "burst": 100},
-        # The prefixed resource path, without its leading "/" (the provider's
-        # method_path; "~1" encoding deploys but matches no resource).
-        "api/anchors/{anchor_id}/partitions/GET": {"rate": 5.0, "burst": 10},
+        # The prefixed resource path, its slashes written as "~1".
+        "~1api~1anchors~1{anchor_id}~1partitions/GET": {"rate": 5.0, "burst": 10},
     }
-    assert "anchors/{anchor_id}/partitions/GET" in throttle_limits(SPEC)
+    assert "~1anchors~1{anchor_id}~1partitions/GET" in throttle_limits(SPEC)
 
 
 @pytest.mark.unit
@@ -118,7 +117,7 @@ def test_limits_become_method_settings(monkeypatch):
     program()
 
     settings = {c["methodPath"]: c for c in created}
-    assert set(settings) == {"*/*", "api/anchors/{anchor_id}/partitions/GET"}
-    route = settings["api/anchors/{anchor_id}/partitions/GET"]
+    assert set(settings) == {"*/*", "~1api~1anchors~1{anchor_id}~1partitions/GET"}
+    route = settings["~1api~1anchors~1{anchor_id}~1partitions/GET"]
     assert route["restApi"] == "test-api-id" and route["stageName"] == "test-api"
     assert route["settings"] == {"throttlingRateLimit": 5.0, "throttlingBurstLimit": 10}
