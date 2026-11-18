@@ -40,6 +40,7 @@ def test_set_spec():
         "schema_objects": {
             "TestSchema": {
                 "api_name": "TestSchema",
+                "limit": 1000,
                 "database": "database",
                 "table_name": "TestSchema",
                 "properties": {
@@ -239,6 +240,7 @@ components:
         "schema_objects": {
             "artist": {
                 "api_name": "artist",
+                "limit": 1000,
                 "database": "chinook",
                 "table_name": "artist",
                 "properties": {
@@ -273,6 +275,7 @@ components:
             },
             "album": {
                 "api_name": "album",
+                "limit": 1000,
                 "database": "chinook",
                 "table_name": "album",
                 "properties": {
@@ -905,7 +908,9 @@ def _array_spec(prop):
 @pytest.mark.unit
 def test_array_column_type_is_carried_to_the_engine():
     config = ModelFactory(
-        _array_spec({"type": "array", "items": {"type": "string"}, "x-af-column-type": "text[]"})
+        _array_spec(
+            {"type": "array", "items": {"type": "string"}, "x-af-column-type": "text[]"}
+        )
     ).get_config_output()
     flags = config["schema_objects"]["lens"]["properties"]["flags"]
     assert flags["api_type"] == "array" and flags["column_type"] == "text[]"
@@ -917,12 +922,29 @@ def test_array_column_type_is_carried_to_the_engine():
     [
         ({"type": "string", "x-af-column-type": "text[]"}, "must be type: array"),
         (
-            {"type": "array", "items": {"type": "object", "properties": {"a": {"type": "string"}}},
-             "x-af-column-type": "text[]"},
+            {
+                "type": "array",
+                "items": {"type": "object", "properties": {"a": {"type": "string"}}},
+                "x-af-column-type": "text[]",
+            },
             "must be type: array",
         ),
-        ({"type": "array", "items": {"type": "string"}, "x-af-column-type": "text[]; drop"}, "type name"),
-        ({"type": "array", "items": {"type": "string"}, "x-af-column-type": "text[][]"}, "type name"),
+        (
+            {
+                "type": "array",
+                "items": {"type": "string"},
+                "x-af-column-type": "text[]; drop",
+            },
+            "type name",
+        ),
+        (
+            {
+                "type": "array",
+                "items": {"type": "string"},
+                "x-af-column-type": "text[][]",
+            },
+            "type name",
+        ),
     ],
 )
 def test_array_column_type_is_validated(prop, message):
@@ -935,9 +957,69 @@ def test_array_column_type_is_validated(prop, message):
 def test_postgres_to_openapi_maps_array_columns():
     from api_foundry.scripts.postgres_to_openapi import PostgresSchemaToOpenAPI
 
-    generator = PostgresSchemaToOpenAPI.__new__(PostgresSchemaToOpenAPI)  # no database connection
+    generator = PostgresSchemaToOpenAPI.__new__(
+        PostgresSchemaToOpenAPI
+    )  # no database connection
     assert generator.map_column({"data_type": "ARRAY", "udt_name": "_text"}) == {
-        "type": "array", "items": {"type": "string"}, "x-af-column-type": "text[]"}
+        "type": "array",
+        "items": {"type": "string"},
+        "x-af-column-type": "text[]",
+    }
     assert generator.map_column({"data_type": "ARRAY", "udt_name": "_int4"}) == {
-        "type": "array", "items": {"type": "integer"}, "x-af-column-type": "int4[]"}
-    assert generator.map_column({"data_type": "text", "udt_name": "text"}) == {"type": "string"}
+        "type": "array",
+        "items": {"type": "integer"},
+        "x-af-column-type": "int4[]",
+    }
+    assert generator.map_column({"data_type": "text", "udt_name": "text"}) == {
+        "type": "string"
+    }
+
+
+def _limit_spec(**schema_extra):
+    return {
+        "openapi": "3.0.0",
+        "components": {
+            "schemas": {
+                "album": {
+                    "type": "object",
+                    "x-af-database": "chinook",
+                    **schema_extra,
+                    "properties": {
+                        "album_id": {"type": "integer", "x-af-primary-key": "auto"}
+                    },
+                },
+                "artist": {
+                    "type": "object",
+                    "x-af-database": "chinook",
+                    "properties": {
+                        "artist_id": {"type": "integer", "x-af-primary-key": "auto"}
+                    },
+                },
+            }
+        },
+    }
+
+
+@pytest.mark.unit
+def test_row_limit_default_spec_and_schema_overrides():
+    def limits(spec):
+        output = ModelFactory(spec).get_config_output()["schema_objects"]
+        return {name: obj["limit"] for name, obj in output.items()}
+
+    assert limits(_limit_spec()) == {"album": 1000, "artist": 1000}
+    assert limits({**_limit_spec(), "x-af-limit": 50}) == {"album": 50, "artist": 50}
+    assert limits({**_limit_spec(**{"x-af-limit": 5}), "x-af-limit": 50}) == {
+        "album": 5,
+        "artist": 50,
+    }
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("bad", [0, -1, 2.5, "10", True])
+def test_row_limit_must_be_a_positive_integer(bad):
+    with pytest.raises(
+        ApplicationException, match="x-af-limit must be a positive integer"
+    ):
+        ModelFactory(_limit_spec(**{"x-af-limit": bad}))
+    with pytest.raises(ApplicationException, match="spec: x-af-limit"):
+        ModelFactory({**_limit_spec(), "x-af-limit": bad})

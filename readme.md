@@ -181,6 +181,29 @@ apigw --> client : API Response
 @enduml
 ```
 
+### Throttling and row limits
+
+API Gateway throttles every API-Foundry stage at 100 requests per second with a burst of 200, counted across all callers. That is well below the AWS account default (10,000 per second with a burst of 5,000), so an open route can't run up the database bill. `x-af-throttle` changes it. At the top of the spec it sets the stage-wide limit; on a path operation it sets that route's own limit. `rate` is requests per second (a positive number) and `burst` is the most requests let through at once (a positive integer). Requests over the limit get `429 Too Many Requests`.
+
+A read of a schema object returns at most 1,000 rows. When `__limit` is left out, that number is used; a larger `__limit` is cut down to it. `x-af-limit` (a positive integer) changes it, at the top of the spec for every schema object or on one schema object for that object alone. Custom `x-af-sql` operations must bound their own results.
+
+```yaml
+openapi: 3.0.3
+x-af-throttle: { rate: 50, burst: 100 }   # every route
+x-af-limit: 500                           # every schema object
+paths:
+  /partitions/search:
+    get:
+      x-af-throttle: { rate: 5, burst: 10 }   # this route only
+components:
+  schemas:
+    album:
+      x-af-database: chinook
+      x-af-limit: 100                     # this schema object only
+```
+
+The row limit needs api_foundry_query_engine 0.8.87 or later.
+
 ## Using API-Foundry Services
 
 API-Foundry provides a robust API that allows clients flexibility in selecting and modifying records. This section explores the API services offered by API-Foundry.
@@ -357,7 +380,7 @@ GET {endpoint}/invoice?__sort=invoice_id&__offset=50
 
 **__limit**
 
-Limits the number of records returned. This parameter applies only to `GET` requests. The value must be a positive integer. The response result set maximum length will be the specified limit.
+Limits the number of records returned. This parameter applies only to `GET` requests. The value must be a positive integer. The response result set maximum length will be the specified limit, and never more than the schema object's row limit (`x-af-limit`, 1,000 by default), which also applies when `__limit` is left out.
 
 Example:
 

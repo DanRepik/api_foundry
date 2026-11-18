@@ -36,11 +36,25 @@ SUPPORTED_TYPES = {
 }
 
 
-
 # A Postgres array column type: a type name followed by "[]" ("text[]",
 # "integer[]", "character varying[]"). The query engine interpolates the
 # element type into SQL casts, so nothing else is accepted.
 ARRAY_COLUMN_TYPE = re.compile(r"^\s*[A-Za-z][A-Za-z0-9_ ]*?\s*\[\]\s*$")
+
+# Most rows one read of a schema object returns, unless the spec's (or the
+# schema object's) x-af-limit says otherwise. The query engine caps __limit
+# at it and applies it when __limit is left out.
+DEFAULT_ROW_LIMIT = 1000
+
+
+def row_limit(value: Any, where: str) -> int:
+    """An x-af-limit checked: a positive integer."""
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise ApplicationException(
+            500, f"{where}: x-af-limit must be a positive integer, not {value!r}"
+        )
+    return value
+
 
 class OpenAPIElement:
     """
@@ -158,9 +172,14 @@ class SchemaObjectProperty(OpenAPIElement):
                 "type is a type name followed by [], such as text[]",
             )
         items = prop.get("items") or {}
-        if prop.get("type") != "array" or "$ref" in items or items.get("type") in (
-            "object",
-            "array",
+        if (
+            prop.get("type") != "array"
+            or "$ref" in items
+            or items.get("type")
+            in (
+                "object",
+                "array",
+            )
         ):
             raise ApplicationException(
                 500,
@@ -391,9 +410,18 @@ class SchemaObjectAssociation(OpenAPIElement):
 class SchemaObject(OpenAPIElement):
     """Represents a schema object in the OpenAPI specification."""
 
-    def __init__(self, api_name: str, schema_object: Dict[str, Any]):
+    def __init__(
+        self,
+        api_name: str,
+        schema_object: Dict[str, Any],
+        default_limit: int = DEFAULT_ROW_LIMIT,
+    ):
         super().__init__()
         self.api_name = api_name
+        self.limit = row_limit(
+            schema_object.get("x-af-limit", default_limit),
+            f"Schema object '{api_name}'",
+        )
 
         # Get database name (should always exist as caller filters)
         self.database = schema_object.get("x-af-database", "").lower()
@@ -827,10 +855,13 @@ class ModelFactory:
         (like DTOs, enums, or reference-only types) are silently skipped.
         """
         schema_objects = {}
+        default_limit = row_limit(
+            self.spec.get("x-af-limit", DEFAULT_ROW_LIMIT), "spec"
+        )
         schemas = self.spec.get("components", {}).get("schemas", {})
         for name, schema in schemas.items():
             if "x-af-database" in schema:
-                schema_objects[name] = SchemaObject(name, schema)
+                schema_objects[name] = SchemaObject(name, schema, default_limit)
             else:
                 log.debug(f"Skipping schema '{name}' - no x-af-database attribute")
         return schema_objects

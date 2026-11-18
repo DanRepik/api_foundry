@@ -44,6 +44,8 @@ SECRET_ARN = "arn:aws:secretsmanager:us-east-1:123456789012:secret:chinook-db-Ab
 
 class FakeRestAPI:
     domain = "test.example.com"
+    rest_api_id = "test-api-id"
+    stage_name = "test-api"
 
 
 def fake_archive_builder(archive_path):
